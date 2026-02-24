@@ -176,29 +176,8 @@ export function LoginForm() {
                 } else {
                     const target = profile?.role === 'admin' ? "/admin" : "/";
                     router.push(target);
-                    // Fallback: bazen router.push gecikebiliyor; oturum varsa /'a gitmeyi zorla
-                    setTimeout(() => {
-                        supabase.auth.getSession().then(({ data }) => {
-                            if (data?.session) router.push(target);
-                        });
-                    }, 800);
-                    // Hard fallback: eğer hala login sayfasında takıldıysa tam sayfa yönlendirme
-                    setTimeout(() => {
-                        if (!loadingRef.current) return;
-                        supabase.auth.getSession().then(({ data }) => {
-                            const hasSession = !!data?.session;
-                            const stillOnLogin = typeof window !== "undefined" && window.location?.pathname?.includes("/login");
-                            if (hasSession && stillOnLogin) {
-                                window.location.assign(target);
-                            } else if (stillOnLogin) {
-                                setLoading(false);
-                                setError("Giriş yapıldı ama yönlendirme tamamlanamadı. Sayfayı yenileyip tekrar deneyin.");
-                            }
-                        });
-                    }, 2500);
-                    // Important: Don't setLoading(false) here because if redirect is fast, 
-                    // we want the user to see the loading state until they move pages.
-                    // But if it takes time, the redirect will happen eventually.
+                    clearTimeout(timeoutId);
+                    setLoading(false);
                 }
             } else {
                 setError("Giriş başarısız. Lütfen tekrar deneyin.");
