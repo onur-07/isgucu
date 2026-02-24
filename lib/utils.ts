@@ -62,20 +62,6 @@ export function sanitizeMessage(text: string): { allowed: boolean; reason?: stri
   const digitsOnly = text.replace(/\D/g, "");
   const alnumOnly = text.replace(/[^a-zA-Z0-9]/g, "");
 
-  // 0. Check for Full Name Sharing (e.g. "Ahmet Yılmaz")
-  // Block only when the whole message looks like a name: 2-3 words, each capitalized, letters only.
-  const nameTokens = String(text || "")
-    .trim()
-    .split(/\s+/)
-    .filter(Boolean)
-    .map((t) => t.replace(/[^a-zA-ZçğıöşüÇĞİÖŞÜ]/g, ""))
-    .filter(Boolean);
-  const isNameToken = (t: string) => /^[A-ZÇĞİÖŞÜ][a-zçğıöşü]+$/.test(t);
-  const looksLikeFullName = nameTokens.length >= 2 && nameTokens.length <= 3 && nameTokens.every(isNameToken);
-  if (looksLikeFullName) {
-    return { allowed: false, reason: "Güvenlik nedeniyle isim-soyisim paylaşımı yasaktır." };
-  }
-
   // 1. Check for Phone Numbers (10 or more digits)
   // Only block common TR mobile formats to avoid blocking prices like "100000".
   // Matches:
@@ -104,6 +90,35 @@ export function sanitizeMessage(text: string): { allowed: boolean; reason?: stri
   if (/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/.test(text) || /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/.test(normalizedForEmail)) {
     return { allowed: false, reason: "Güvenlik nedeniyle iletişim bilgisi paylaşımı yasaktır." };
   }
+
+  // 4. Mask Full Names inside the message (e.g. "Selam Ben Ahmet Yılmaz" -> "Selam Ben Ahmet Y.")
+  // Heuristic: find two consecutive capitalized words that look like Name + Surname.
+  // Avoid masking common non-name tokens.
+  const nonNameTokens = new Set([
+    "Selam",
+    "Merhaba",
+    "Ben",
+    "Biz",
+    "Sayın",
+    "Sn",
+    "Sn.",
+    "İyi",
+    "Iyi",
+    "Nasılsın",
+    "Nasilsin",
+    "Teşekkür",
+    "Tesekkur",
+  ]);
+
+  cleaned = cleaned.replace(
+    /\b([A-ZÇĞİÖŞÜ][a-zçğıöşü]{2,})\s+([A-ZÇĞİÖŞÜ][a-zçğıöşü]{2,})\b/g,
+    (m, a, b) => {
+      const first = String(a);
+      const last = String(b);
+      if (nonNameTokens.has(first) || nonNameTokens.has(last)) return m;
+      return `${first} ${last.charAt(0).toUpperCase()}.`;
+    }
+  );
 
   // 3.1 Social / contact hints
   const contactHints = [
@@ -151,9 +166,6 @@ export function sanitizeMessage(text: string): { allowed: boolean; reason?: stri
       return { allowed: false, reason: "Kullandığınız mesajda kurallara aykırı ifadeler bulunmaktadır." };
     }
   }
-
-  // 5. Automatic Name Masking (REMOVED: Destroying normal chat context)
-  // It was incorrectly masking "Selam Beyefendi" as "Selam B."
 
   return { allowed: true, cleanedText: cleaned };
 }
