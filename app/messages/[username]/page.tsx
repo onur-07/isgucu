@@ -41,6 +41,7 @@ export default function MessageThreadPage() {
     const [realtimeReady, setRealtimeReady] = useState<boolean>(false);
 
     const listRef = useRef<HTMLDivElement | null>(null);
+    const scrollRafRef = useRef<number | null>(null);
 
     const withTimeout = async <T,>(p: PromiseLike<T>, ms: number, label: string): Promise<T> => {
         let timeoutId: ReturnType<typeof setTimeout> | undefined;
@@ -145,6 +146,14 @@ export default function MessageThreadPage() {
         el.scrollTop = el.scrollHeight;
     };
 
+    const scheduleScrollToBottom = () => {
+        if (scrollRafRef.current) return;
+        scrollRafRef.current = window.requestAnimationFrame(() => {
+            scrollRafRef.current = null;
+            scrollToBottom();
+        });
+    };
+
     useEffect(() => {
         if (loading) return;
         if (user) return;
@@ -230,7 +239,7 @@ export default function MessageThreadPage() {
                         .select("id, sender_username, receiver_username, text, read, created_at")
                         .or(threadOr)
                         .order("created_at", { ascending: true })
-                        .limit(500),
+                        .limit(200),
                     8000,
                     "Mesaj senkron"
                 )) as any;
@@ -269,7 +278,7 @@ export default function MessageThreadPage() {
         // Polling is safety net; realtime should make the UI instant.
         const intervalId = window.setInterval(() => {
             tick();
-        }, realtimeReady ? 5000 : 2000);
+        }, realtimeReady ? 12000 : 6000);
 
         return () => {
             cancelled = true;
@@ -279,12 +288,12 @@ export default function MessageThreadPage() {
 
     useEffect(() => {
         if (!pageLoading) {
-            setTimeout(scrollToBottom, 0);
+            setTimeout(scheduleScrollToBottom, 0);
         }
     }, [pageLoading]);
 
     useEffect(() => {
-        setTimeout(scrollToBottom, 0);
+        setTimeout(scheduleScrollToBottom, 0);
     }, [messages.length]);
 
     useEffect(() => {
