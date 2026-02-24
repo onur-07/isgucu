@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { MessageCircle, X } from "lucide-react";
+import { Handshake, MessageCircle, Paperclip, X } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/components/auth/auth-context";
 import { Button } from "@/components/ui/button";
@@ -27,6 +27,24 @@ type ChatMessage = {
     created_at: string;
 };
 
+type OfferRow = {
+    id: string | number;
+    sender_id: string;
+    receiver_id: string;
+    sender_username: string;
+    receiver_username: string;
+    message: string | null;
+    price: number | string;
+    delivery_days: number | string;
+    status: "pending" | "accepted" | "rejected" | "cancelled" | string;
+    created_at: string;
+    responded_at: string | null;
+};
+
+type TimelineItem =
+    | { type: "message"; id: string; at: number; data: ChatMessage }
+    | { type: "offer"; id: string; at: number; data: OfferRow };
+
 type IncomingToast = {
     sender: string;
     text: string;
@@ -41,13 +59,21 @@ export function ChatWidget() {
     const [open, setOpen] = useState(false);
     const [items, setItems] = useState<InboxItem[]>([]);
     const [activeOther, setActiveOther] = useState<string>("");
+    const [activeOtherId, setActiveOtherId] = useState<string>("");
     const [messages, setMessages] = useState<ChatMessage[]>([]);
+    const [offers, setOffers] = useState<OfferRow[]>([]);
     const [text, setText] = useState("");
     const [error, setError] = useState("");
     const [sending, setSending] = useState(false);
     const [toast, setToast] = useState<IncomingToast | null>(null);
 
+    const [offerOpen, setOfferOpen] = useState(false);
+    const [offerPrice, setOfferPrice] = useState("");
+    const [offerDays, setOfferDays] = useState("");
+    const [offerNote, setOfferNote] = useState("");
+
     const listRef = useRef<HTMLDivElement | null>(null);
+    const fileInputRef = useRef<HTMLInputElement | null>(null);
     const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const prevUnreadRef = useRef<number>(0);
     const inboxInFlight = useRef(false);
@@ -203,21 +229,50 @@ export function ChatWidget() {
                 `and(sender_username.ilike.${otherFold},receiver_username.ilike.${meFold})`,
             ].join(",");
 
-            const res = (await withTimeout(
-                supabase
-                    .from("messages")
-                    .select("id, sender_username, receiver_username, text, file_data, read, created_at")
-                    .or(threadOr)
-                    .order("created_at", { ascending: true })
-                    .limit(80),
-                8000,
-                "Sohbet"
-            )) as any;
+            const [msgRes, offerRes, otherProfileRes] = await Promise.all([
+                withTimeout(
+                    supabase
+                        .from("messages")
+                        .select("id, sender_username, receiver_username, text, file_data, read, created_at")
+                        .or(threadOr)
+                        .order("created_at", { ascending: true })
+                        .limit(80),
+                    8000,
+                    "Sohbet"
+                ),
+                withTimeout(
+                    supabase
+                        .from("offers")
+                        .select("id, sender_id, receiver_id, sender_username, receiver_username, message, price, delivery_days, status, created_at, responded_at")
+                        .or(
+                            `and(sender_username.ilike.${meKey},receiver_username.ilike.${otherKey}),and(sender_username.ilike.${otherKey},receiver_username.ilike.${meKey}),and(sender_username.ilike.${meFold},receiver_username.ilike.${otherFold}),and(sender_username.ilike.${otherFold},receiver_username.ilike.${meFold})`
+                        )
+                        .order("created_at", { ascending: true })
+                        .limit(40),
+                    8000,
+                    "Teklifler"
+                ),
+                withTimeout(
+                    supabase
+                        .from("profiles")
+                        .select("id, username")
+                        .or(`username.ilike.${otherFold},username.ilike.${otherKey}`)
+                        .limit(1)
+                        .maybeSingle(),
+                    8000,
+                    "Kullanıcı"
+                ),
+            ]);
 
-            if (!res?.error && Array.isArray(res?.data)) {
-                setMessages(res.data as any);
-                setTimeout(scrollToBottom, 0);
+            if (!(msgRes as any)?.error && Array.isArray((msgRes as any)?.data)) {
+                setMessages((msgRes as any).data as any);
             }
+            if (!(offerRes as any)?.error && Array.isArray((offerRes as any)?.data)) {
+                setOffers((offerRes as any).data as any);
+            }
+            const otherProfile = (otherProfileRes as any)?.data;
+            setActiveOtherId(otherProfile?.id ? String(otherProfile.id) : "");
+            setTimeout(scrollToBottom, 0);
         } finally {
             threadInFlight.current = false;
         }
@@ -284,6 +339,20 @@ export function ChatWidget() {
         fetchThread(activeOther);
     }, [activeOther]);
 
+    const timeline = useMemo(() => {
+        const items: TimelineItem[] = [];
+        for (const m of messages) {
+            const at = new Date(String(m.created_at || 0)).getTime() || 0;
+            items.push({ type: "message", id: `m-${String(m.id)}`, at, data: m });
+        }
+        for (const o of offers) {
+            const at = new Date(String(o.created_at || 0)).getTime() || 0;
+            items.push({ type: "offer", id: `o-${String(o.id)}`, at, data: o });
+        }
+        items.sort((a, b) => a.at - b.at);
+        return items;
+    }, [messages, offers]);
+
     const unreadTotal = useMemo(() => items.reduce((acc, x) => acc + (x.unreadCount || 0), 0), [items]);
 
     const handleSend = async () => {
@@ -320,6 +389,114 @@ export function ChatWidget() {
         } catch (e: any) {
             setMessages((prev) => prev.filter((m) => String(m.id) !== String(tempId)));
             setError(e?.message ? String(e.message) : "Mesaj gönderilemedi");
+        } finally {
+            setSending(false);
+        }
+    };
+
+    const handlePickFile = () => {
+        fileInputRef.current?.click();
+    };
+
+    const handleUploadFile = async (file: File) => {
+        if (!meKey || !activeOther) return;
+        setSending(true);
+        setError("");
+
+        const otherKey = usernameKey(activeOther);
+
+        const tempId = `temp-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+        const optimistic: ChatMessage = {
+            id: tempId,
+            sender_username: meKey,
+            receiver_username: otherKey,
+            text: null,
+            file_data: { name: file.name, size: file.size, contentType: file.type, uploading: true },
+            read: true,
+            created_at: new Date().toISOString(),
+        };
+        setMessages((prev) => [...prev, optimistic]);
+
+        try {
+            const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_").slice(0, 80) || "file";
+            const path = `threads/${meKey}__${otherKey}/${Date.now()}_${safeName}`;
+            const bytes = new Uint8Array(await file.arrayBuffer());
+
+            const up = await withTimeout(
+                supabase.storage.from("chat-files").upload(path, bytes, { contentType: file.type || "application/octet-stream" }),
+                20000,
+                "Dosya yükleme"
+            );
+            if ((up as any)?.error) throw (up as any).error;
+
+            const { data: pub } = supabase.storage.from("chat-files").getPublicUrl(path);
+            const url = String((pub as any)?.publicUrl || "");
+            if (!url) throw new Error("Dosya URL alınamadı");
+
+            const payload = {
+                sender_username: meKey,
+                receiver_username: otherKey,
+                text: null,
+                file_data: { name: file.name, size: file.size, contentType: file.type || "application/octet-stream", url, path },
+                read: false,
+            };
+
+            await withTimeout(insertMessageRest(payload as any, 20000), 20000, "Dosya mesajı");
+            setError("");
+        } catch (e: any) {
+            setMessages((prev) => prev.filter((m) => String(m.id) !== String(tempId)));
+            const msg = e?.message ? String(e.message) : "Dosya gönderilemedi";
+            if (msg.toLowerCase().includes("not found") || msg.toLowerCase().includes("bucket")) {
+                setError("Dosya gönderilemedi: Supabase Storage'da 'chat-files' bucket yok. Supabase -> Storage -> New bucket: chat-files (Public) oluştur.");
+            } else {
+                setError(msg);
+            }
+        } finally {
+            setSending(false);
+        }
+    };
+
+    const handleSendOffer = async () => {
+        if (!user?.id || !activeOtherId || !meKey || !activeOther) return;
+        const otherKey = usernameKey(activeOther);
+
+        const price = Number(String(offerPrice || "").replace(",", "."));
+        const days = Number(String(offerDays || "").trim());
+        if (!Number.isFinite(price) || price <= 0 || !Number.isFinite(days) || days <= 0) {
+            setError("Teklif için fiyat ve teslim günü gir.");
+            return;
+        }
+
+        setSending(true);
+        setError("");
+        try {
+            const payload = {
+                gig_id: null,
+                sender_id: user.id,
+                receiver_id: activeOtherId,
+                sender_username: meKey,
+                receiver_username: otherKey,
+                message: offerNote.trim() || null,
+                price,
+                delivery_days: days,
+                extras: null,
+                status: "pending",
+            };
+
+            const res = (await withTimeout(
+                supabase.from("offers").insert([payload]).select("id").maybeSingle(),
+                15000,
+                "Teklif gönderme"
+            )) as any;
+            if (res?.error) throw res.error;
+
+            setOfferOpen(false);
+            setOfferPrice("");
+            setOfferDays("");
+            setOfferNote("");
+            await fetchThread(activeOther);
+        } catch (e: any) {
+            setError(e?.message ? String(e.message) : "Teklif gönderilemedi");
         } finally {
             setSending(false);
         }
@@ -390,15 +567,50 @@ export function ChatWidget() {
                             <div className="flex flex-col bg-gray-50">
                                 <div ref={listRef} className="flex-1 overflow-auto p-3 space-y-2">
                                     {activeOther ? (
-                                        messages.length === 0 ? (
+                                        timeline.length === 0 ? (
                                             <div className="text-xs font-semibold text-gray-500">Mesaj yok.</div>
                                         ) : (
-                                            messages.map((m) => {
-                                                const mine = usernameKey(m.sender_username) === meKey;
+                                            timeline.map((it) => {
+                                                if (it.type === "message") {
+                                                    const m = it.data;
+                                                    const mine = usernameKey(m.sender_username) === meKey;
+                                                    const fd = (m as any)?.file_data;
+                                                    const isFile = !!fd?.url;
+                                                    return (
+                                                        <div key={it.id} className={`flex ${mine ? "justify-end" : "justify-start"}`}>
+                                                            <div className={`max-w-[85%] rounded-2xl px-3 py-2 ${mine ? "bg-blue-600 text-white" : "bg-white border text-gray-900"}`}>
+                                                                {isFile ? (
+                                                                    <a className={`text-xs font-black underline break-all ${mine ? "text-white" : "text-blue-600"}`} href={String(fd.url)} target="_blank" rel="noreferrer">
+                                                                        {String(fd.name || "dosya")}
+                                                                    </a>
+                                                                ) : (
+                                                                    <div className="text-xs font-semibold whitespace-pre-wrap break-words">{m.text || ""}</div>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                }
+
+                                                const o = it.data;
+                                                const mine = usernameKey(o.sender_username) === meKey;
                                                 return (
-                                                    <div key={String(m.id)} className={`flex ${mine ? "justify-end" : "justify-start"}`}>
-                                                        <div className={`max-w-[85%] rounded-2xl px-3 py-2 ${mine ? "bg-blue-600 text-white" : "bg-white border text-gray-900"}`}>
-                                                            <div className="text-xs font-semibold whitespace-pre-wrap break-words">{m.text || ""}</div>
+                                                    <div key={it.id} className={`flex ${mine ? "justify-end" : "justify-start"}`}>
+                                                        <div className={`max-w-[92%] rounded-2xl px-3 py-2 border ${mine ? "bg-blue-50 border-blue-100" : "bg-white border-gray-200"}`}>
+                                                            <div className="flex items-center justify-between gap-2">
+                                                                <div className="text-[10px] font-black uppercase tracking-widest text-gray-500">Teklif</div>
+                                                                <div className="text-[10px] font-black text-gray-500">{String(o.status || "pending")}</div>
+                                                            </div>
+                                                            <div className="mt-2 grid grid-cols-2 gap-2">
+                                                                <div className="rounded-xl bg-gray-50 p-2">
+                                                                    <div className="text-[10px] font-black text-gray-400">Fiyat</div>
+                                                                    <div className="text-xs font-black">{String(o.price)} ₺</div>
+                                                                </div>
+                                                                <div className="rounded-xl bg-gray-50 p-2">
+                                                                    <div className="text-[10px] font-black text-gray-400">Teslim</div>
+                                                                    <div className="text-xs font-black">{String(o.delivery_days)} gün</div>
+                                                                </div>
+                                                            </div>
+                                                            {o.message && <div className="mt-2 text-xs font-semibold text-gray-700 whitespace-pre-wrap break-words">{o.message}</div>}
                                                         </div>
                                                     </div>
                                                 );
@@ -413,6 +625,82 @@ export function ChatWidget() {
 
                                 <div className="p-3 border-t bg-white">
                                     <div className="grid gap-2">
+                                        {offerOpen && (
+                                            <div className="rounded-2xl border bg-white p-3">
+                                                <div className="flex items-center justify-between gap-2">
+                                                    <div className="text-[10px] font-black uppercase tracking-widest text-gray-400">Teklif</div>
+                                                    <Button onClick={() => setOfferOpen(false)} disabled={sending} className="bg-gray-200 hover:bg-gray-300 text-gray-900">
+                                                        Kapat
+                                                    </Button>
+                                                </div>
+                                                <div className="mt-2 grid grid-cols-2 gap-2">
+                                                    <input
+                                                        value={offerPrice}
+                                                        onChange={(e) => setOfferPrice(e.target.value)}
+                                                        placeholder="Fiyat (₺)"
+                                                        className="h-9 rounded-xl border px-3 text-xs font-semibold"
+                                                        disabled={sending}
+                                                    />
+                                                    <input
+                                                        value={offerDays}
+                                                        onChange={(e) => setOfferDays(e.target.value)}
+                                                        placeholder="Teslim (gün)"
+                                                        className="h-9 rounded-xl border px-3 text-xs font-semibold"
+                                                        disabled={sending}
+                                                    />
+                                                </div>
+                                                <Textarea
+                                                    value={offerNote}
+                                                    onChange={(e) => setOfferNote(e.target.value)}
+                                                    placeholder="Not (opsiyonel)"
+                                                    className="mt-2 min-h-[60px] resize-none bg-white"
+                                                    disabled={sending}
+                                                />
+                                                <div className="mt-2 flex justify-end">
+                                                    <Button onClick={handleSendOffer} disabled={sending || !activeOtherId} className="bg-blue-600 hover:bg-blue-700 text-white">
+                                                        Teklifi Gönder
+                                                    </Button>
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        <input
+                                            ref={fileInputRef}
+                                            type="file"
+                                            className="hidden"
+                                            onChange={(e) => {
+                                                const f = e.target.files?.[0];
+                                                if (f) handleUploadFile(f);
+                                                e.currentTarget.value = "";
+                                            }}
+                                        />
+
+                                        <div className="flex items-center justify-between gap-2">
+                                            <div className="flex items-center gap-2">
+                                                <button
+                                                    type="button"
+                                                    onClick={handlePickFile}
+                                                    disabled={sending || !activeOther}
+                                                    className="h-9 w-9 rounded-xl border bg-white hover:bg-gray-50 flex items-center justify-center disabled:opacity-50"
+                                                    aria-label="Dosya"
+                                                >
+                                                    <Paperclip className="h-4 w-4 text-gray-700" />
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setOfferOpen((v) => !v)}
+                                                    disabled={sending || !activeOther}
+                                                    className="h-9 w-9 rounded-xl border bg-white hover:bg-gray-50 flex items-center justify-center disabled:opacity-50"
+                                                    aria-label="Teklif"
+                                                >
+                                                    <Handshake className="h-4 w-4 text-gray-700" />
+                                                </button>
+                                            </div>
+                                            <div className="text-[10px] font-black uppercase tracking-widest text-gray-400">
+                                                {activeOther ? "" : "Konuşma seç"}
+                                            </div>
+                                        </div>
+
                                         <Textarea
                                             value={text}
                                             onChange={(e) => setText(e.target.value)}
