@@ -120,6 +120,30 @@ export function sanitizeMessage(text: string): { allowed: boolean; reason?: stri
     }
   );
 
+  // 4.1 Mask spaced-letter full names (e.g. "A h m e t  Y ı l m a z" -> "Ahmet Y.")
+  // Pattern: sequences of single-letter tokens separated by spaces, with 2+ spaces between name and surname groups.
+  cleaned = cleaned.replace(
+    /\b(?:[A-Za-zÇĞİÖŞÜçğıöşü]\s+){2,}[A-Za-zÇĞİÖŞÜçğıöşü](?:\s{2,}(?:[A-Za-zÇĞİÖŞÜçğıöşü]\s+){2,}[A-Za-zÇĞİÖŞÜçğıöşü])\b/g,
+    (m) => {
+      const groups = m.trim().split(/\s{2,}/).map((g) => g.replace(/\s+/g, "")).filter(Boolean);
+      if (groups.length !== 2) return m;
+      const [g1, g2] = groups;
+      if (g1.length < 3 || g2.length < 3) return m;
+
+      const cap = (s: string) => {
+        const t = String(s);
+        const first = t.charAt(0).toUpperCase();
+        const rest = t.slice(1).toLowerCase();
+        return `${first}${rest}`;
+      };
+
+      const first = cap(g1);
+      const last = cap(g2);
+      if (nonNameTokens.has(first) || nonNameTokens.has(last)) return m;
+      return `${first} ${last.charAt(0).toUpperCase()}.`;
+    }
+  );
+
   // 3.1 Social / contact hints
   const contactHints = [
     "whatsapp",

@@ -772,9 +772,6 @@ export default function MessageThreadPage() {
                         Konuşmayı Temizle
                     </Button>
                 )}
-                <div className={`text-[10px] font-black uppercase tracking-widest ${realtimeReady ? "text-emerald-600" : "text-gray-400"}`}>
-                    {realtimeReady ? "Canlı: Açık" : "Canlı: Kapalı"}
-                </div>
                 <Link href="/messages" className="text-sm font-bold text-blue-600 hover:text-blue-700">
                     Mesajlara dön
                 </Link>
