@@ -1,9 +1,13 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { supabaseAdmin } from "@/lib/supabase-admin";
+import { getSupabaseAdmin } from "@/lib/supabase-admin";
 
 export async function GET(req: Request) {
   try {
+    const supabaseAdmin = getSupabaseAdmin();
+    if (!supabaseAdmin) {
+      return NextResponse.json({ error: "missing_service_role" }, { status: 500 });
+    }
     const authHeader = req.headers.get("authorization") || "";
     const token = authHeader.toLowerCase().startsWith("bearer ")
       ? authHeader.slice(7).trim()
@@ -93,7 +97,7 @@ export async function GET(req: Request) {
           .from("profiles")
           .update({ username: metaUsername })
           .eq("id", p.id)
-          .then(({ error }) => {
+          .then(({ error }: any) => {
             if (error) console.error(`Admin API: Username düzeltme hatası (${p.id}):`, error.message);
             else console.log(`Admin API: Username düzeltildi: "${profileUsername}" → "${metaUsername}"`);
           });

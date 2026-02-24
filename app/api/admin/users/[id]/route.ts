@@ -1,12 +1,16 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { supabaseAdmin } from "@/lib/supabase-admin";
+import { getSupabaseAdmin } from "@/lib/supabase-admin";
 
 export async function GET(
   req: Request,
   ctx: { params: Promise<{ id: string }> }
 ) {
   try {
+    const supabaseAdmin = getSupabaseAdmin();
+    if (!supabaseAdmin) {
+      return NextResponse.json({ error: "missing_service_role" }, { status: 500 });
+    }
     const params = await ctx.params;
     const targetUserId = String(params?.id ?? "").trim();
 
@@ -90,6 +94,10 @@ export async function PATCH(
   ctx: { params: Promise<{ id: string }> }
 ) {
   try {
+    const supabaseAdmin = getSupabaseAdmin();
+    if (!supabaseAdmin) {
+      return NextResponse.json({ error: "missing_service_role" }, { status: 500 });
+    }
     const params = await ctx.params;
     const targetUserId = String(params?.id ?? "").trim();
 
