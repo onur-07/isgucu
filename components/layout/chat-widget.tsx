@@ -74,6 +74,7 @@ export function ChatWidget() {
 
     const listRef = useRef<HTMLDivElement | null>(null);
     const fileInputRef = useRef<HTMLInputElement | null>(null);
+    const composerRef = useRef<HTMLTextAreaElement | null>(null);
     const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const prevUnreadRef = useRef<number>(0);
     const inboxInFlight = useRef(false);
@@ -339,6 +340,17 @@ export function ChatWidget() {
         fetchThread(activeOther);
     }, [activeOther]);
 
+    useEffect(() => {
+        if (!open) return;
+        if (!activeOther) return;
+        const id = window.setTimeout(() => {
+            try {
+                composerRef.current?.focus();
+            } catch {}
+        }, 0);
+        return () => window.clearTimeout(id);
+    }, [open, activeOther]);
+
     const timeline = useMemo(() => {
         const items: TimelineItem[] = [];
         for (const m of messages) {
@@ -535,8 +547,8 @@ export function ChatWidget() {
                             </div>
                         </div>
 
-                        <div className="grid grid-cols-[150px_1fr] h-[calc(100%-56px)]">
-                            <div className="border-r bg-white overflow-auto">
+                        <div className="flex h-[calc(100%-56px)] min-h-0">
+                            <div className="w-[150px] border-r bg-white overflow-auto">
                                 {items.length === 0 ? (
                                     <div className="p-3 text-xs font-semibold text-gray-500">Henüz mesaj yok.</div>
                                 ) : (
@@ -564,8 +576,8 @@ export function ChatWidget() {
                                 )}
                             </div>
 
-                            <div className="flex flex-col bg-gray-50">
-                                <div ref={listRef} className="flex-1 overflow-auto p-3 space-y-2">
+                            <div className="flex-1 flex flex-col bg-gray-50 min-w-0">
+                                <div ref={listRef} className="flex-1 overflow-auto p-3 space-y-2 min-h-0">
                                     {activeOther ? (
                                         timeline.length === 0 ? (
                                             <div className="text-xs font-semibold text-gray-500">Mesaj yok.</div>
@@ -623,7 +635,7 @@ export function ChatWidget() {
 
                                 {error && <div className="px-3 pb-2 text-[11px] font-black text-red-600">{error}</div>}
 
-                                <div className="p-3 border-t bg-white">
+                                <div className="p-3 border-t bg-white relative z-10 pointer-events-auto">
                                     <div className="grid gap-2">
                                         {offerOpen && (
                                             <div className="rounded-2xl border bg-white p-3">
@@ -702,6 +714,7 @@ export function ChatWidget() {
                                         </div>
 
                                         <Textarea
+                                            ref={composerRef}
                                             value={text}
                                             onChange={(e) => setText(e.target.value)}
                                             placeholder={activeOther ? "Mesaj yaz..." : "Önce konuşma seç"}
