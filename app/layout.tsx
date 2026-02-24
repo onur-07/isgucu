@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils";
 import { AuthProvider } from "@/components/auth/auth-context";
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
-import { MessageBubble } from "@/components/layout/message-bubble";
+import { ChatWidget } from "@/components/layout/chat-widget";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 const outfit = Outfit({ subsets: ["latin"], variable: "--font-outfit" });
@@ -36,7 +36,7 @@ export default function RootLayout({
             {children}
           </main>
           <Footer />
-          <MessageBubble />
+          <ChatWidget />
         </AuthProvider>
       </body>
     </html>
