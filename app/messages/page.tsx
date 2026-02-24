@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/components/auth/auth-context";
 import { supabase } from "@/lib/supabase";
-import { usernameFold, usernameKey } from "@/lib/utils";
+import { displayUsername, usernameFold, usernameKey } from "@/lib/utils";
 import { Card } from "@/components/ui/card";
 
 export default function MessagesPage() {
@@ -215,7 +215,7 @@ export default function MessagesPage() {
                             <Card className="p-4 hover:bg-gray-50 transition-colors">
                                 <div className="flex items-center justify-between gap-4">
                                     <div className="min-w-0">
-                                        <div className="font-bold text-gray-900 truncate">{c.otherUsername}</div>
+                                        <div className="font-bold text-gray-900 truncate">{displayUsername(c.otherUsername)}</div>
                                         <div className="text-xs text-gray-500 truncate mt-1">{c.lastText || "(dosya/teklif)"}</div>
                                     </div>
                                     <div className="flex items-center gap-3">

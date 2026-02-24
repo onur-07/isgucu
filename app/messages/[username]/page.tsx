@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/components/auth/auth-context";
-import { sanitizeMessage, usernameFold, usernameKey } from "@/lib/utils";
+import { displayUsername, sanitizeMessage, usernameFold, usernameKey } from "@/lib/utils";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -110,7 +110,15 @@ export default function MessageThreadPage() {
 
             if (!res.ok) {
                 const txt = await res.text().catch(() => "");
-                throw new Error(txt || `HTTP ${res.status}`);
+                try {
+                    const j = JSON.parse(txt);
+                    if (j?.error === "missing_service_role") {
+                        throw new Error("Admin temizleme çalışmıyor: Vercel'de SUPABASE_SERVICE_ROLE_KEY eklenmemiş.");
+                    }
+                    throw new Error(j?.details || j?.error || txt || `HTTP ${res.status}`);
+                } catch {
+                    throw new Error(txt || `HTTP ${res.status}`);
+                }
             }
 
             setMessages([]);
@@ -753,7 +761,7 @@ export default function MessageThreadPage() {
             <div className="flex items-center justify-between gap-4 mb-6">
                 <div className="flex items-center gap-3 min-w-0">
                     <div className="text-xs text-gray-500 font-bold uppercase tracking-widest">Sohbet</div>
-                    <h1 className="text-2xl font-bold tracking-tight truncate">{otherUsername}</h1>
+                    <h1 className="text-2xl font-bold tracking-tight truncate">{displayUsername(otherUsername)}</h1>
                 </div>
                 {user?.role === "admin" && (
                     <Button

@@ -8,7 +8,7 @@ import { useAuth } from "@/components/auth/auth-context";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
-import { sanitizeMessage, usernameFold, usernameKey } from "@/lib/utils";
+import { displayUsername, sanitizeMessage, usernameFold, usernameKey } from "@/lib/utils";
 
 type InboxItem = {
     otherUsername: string;
@@ -536,7 +536,7 @@ export function ChatWidget() {
             {toast && !open && (
                 <div className="fixed bottom-24 right-6 z-[60] w-[320px] max-w-[85vw] rounded-2xl border bg-white shadow-xl p-4 animate-in fade-in slide-in-from-bottom-2 duration-200">
                     <div className="text-[10px] font-black uppercase tracking-widest text-gray-400">Yeni Mesaj</div>
-                    <div className="mt-1 text-sm font-bold text-gray-900 truncate">{toast.sender}</div>
+                    <div className="mt-1 text-sm font-bold text-gray-900 truncate">{displayUsername(toast.sender)}</div>
                     <div className="mt-1 text-xs text-gray-600 line-clamp-2">{toast.text || "(içerik)"}</div>
                 </div>
             )}
@@ -547,7 +547,7 @@ export function ChatWidget() {
                         <div className="flex items-center justify-between gap-2 px-4 py-3 border-b bg-white">
                             <div className="min-w-0">
                                 <div className="text-[10px] font-black uppercase tracking-widest text-gray-400">Sohbet</div>
-                                <div className="text-sm font-bold text-gray-900 truncate">{activeOther || "Mesajlar"}</div>
+                                <div className="text-sm font-bold text-gray-900 truncate">{activeOther ? displayUsername(activeOther) : "Mesajlar"}</div>
                             </div>
                             <div className="flex items-center gap-2">
                                 {activeOther && (
@@ -576,7 +576,7 @@ export function ChatWidget() {
                                                 }`}
                                             >
                                                 <div className="flex items-center justify-between gap-2">
-                                                    <div className="text-xs font-black text-gray-900 truncate">{c.otherUsername}</div>
+                                                    <div className="text-xs font-black text-gray-900 truncate">{displayUsername(c.otherUsername)}</div>
                                                     {c.unreadCount > 0 && (
                                                         <div className="h-5 min-w-5 px-1 bg-red-500 text-white text-[10px] font-black rounded-full flex items-center justify-center">
                                                             {c.unreadCount}

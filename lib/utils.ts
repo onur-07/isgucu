@@ -41,6 +41,14 @@ export function maskFullName(name: string | null | undefined): string {
   return `${firstName} ${lastInitial}.`;
 }
 
+export function displayUsername(value: string | null | undefined): string {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+  // If username contains whitespace, treat it as a full name for display purposes.
+  if (/\s/.test(raw)) return maskFullName(raw);
+  return raw;
+}
+
 /**
  * Sanitizes message content: blocks IBAN, Phone numbers, Emails and Profanity.
  */

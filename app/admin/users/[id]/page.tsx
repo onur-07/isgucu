@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { toggleBanUser, deleteUserAccount } from "@/lib/data-service";
+import { maskFullName } from "@/lib/utils";
 
 interface UserDetail {
     id: string;
@@ -235,7 +236,7 @@ export default function AdminUserDetailPage() {
                         </div>
                         <div className="text-center md:text-left">
                             <div className="flex items-center gap-3 justify-center md:justify-start flex-wrap">
-                                <h1 className="text-3xl font-black uppercase tracking-tight">{detail.fullName || detail.username}</h1>
+                                <h1 className="text-3xl font-black uppercase tracking-tight">{maskFullName(detail.fullName) || detail.username}</h1>
                                 <span className={`px-3 py-1 rounded-full text-[10px] font-black border ${roleBadge.color}`}>
                                     {roleBadge.label}
                                 </span>

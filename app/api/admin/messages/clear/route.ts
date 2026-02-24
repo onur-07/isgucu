@@ -6,7 +6,13 @@ export async function POST(req: Request) {
   try {
     const supabaseAdmin = getSupabaseAdmin();
     if (!supabaseAdmin) {
-      return NextResponse.json({ error: "missing_service_role" }, { status: 500 });
+      return NextResponse.json(
+        {
+          error: "missing_service_role",
+          details: "SUPABASE_SERVICE_ROLE_KEY ortam değişkeni eksik. Vercel Project Settings -> Environment Variables bölümüne ekleyin.",
+        },
+        { status: 500 }
+      );
     }
 
     const authHeader = req.headers.get("authorization") || "";
