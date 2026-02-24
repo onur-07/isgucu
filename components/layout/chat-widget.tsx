@@ -8,7 +8,7 @@ import { useAuth } from "@/components/auth/auth-context";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
-import { usernameFold, usernameKey } from "@/lib/utils";
+import { sanitizeMessage, usernameFold, usernameKey } from "@/lib/utils";
 
 type InboxItem = {
     otherUsername: string;
@@ -372,6 +372,12 @@ export function ChatWidget() {
         const trimmed = text.trim();
         if (!trimmed) return;
 
+        const mod = sanitizeMessage(trimmed);
+        if (!mod.allowed) {
+            setError(mod.reason || "Bu içerik gönderilemez");
+            return;
+        }
+
         setSending(true);
         setError("");
 
@@ -379,7 +385,7 @@ export function ChatWidget() {
         const payload = {
             sender_username: meKey,
             receiver_username: otherKey,
-            text: trimmed,
+            text: mod.cleanedText || trimmed,
             read: false,
         };
 
@@ -388,7 +394,7 @@ export function ChatWidget() {
             id: tempId,
             sender_username: meKey,
             receiver_username: otherKey,
-            text: trimmed,
+            text: mod.cleanedText || trimmed,
             read: true,
             created_at: new Date().toISOString(),
         };
@@ -477,6 +483,14 @@ export function ChatWidget() {
         if (!Number.isFinite(price) || price <= 0 || !Number.isFinite(days) || days <= 0) {
             setError("Teklif için fiyat ve teslim günü gir.");
             return;
+        }
+
+        if (offerNote.trim()) {
+            const noteMod = sanitizeMessage(offerNote.trim());
+            if (!noteMod.allowed) {
+                setError(noteMod.reason || "Bu içerik gönderilemez");
+                return;
+            }
         }
 
         setSending(true);

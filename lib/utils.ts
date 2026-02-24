@@ -50,14 +50,19 @@ export function sanitizeMessage(text: string): { allowed: boolean; reason?: stri
   let cleaned = text;
   const lower = text.toLowerCase();
 
+  // Normalize for robust detection (spaces / dots / dashes / emojis / etc.)
+  const digitsOnly = text.replace(/\D/g, "");
+  const alnumOnly = text.replace(/[^a-zA-Z0-9]/g, "");
+
   // 1. Check for Phone Numbers (10 or more digits)
-  const normalizedForPhone = text.replace(/[\s\.\-\(\)\_\*]/g, "");
-  if (/\d{10,}/.test(normalizedForPhone)) {
+  // Use digits-only to catch "0 5xx ..." or "+90 5xx ..." with separators.
+  if (digitsOnly.length >= 10) {
     return { allowed: false, reason: "Güvenlik nedeniyle telefon numarası paylaşımı yasaktır." };
   }
 
   // 2. Check for IBAN
-  if (/TR\d{24}/i.test(normalizedForPhone)) {
+  // Accept formats like "TR12 0006 1005 ..." (spaces) by removing non-alnum.
+  if (/TR\d{24}/i.test(alnumOnly)) {
     return { allowed: false, reason: "Güvenlik nedeniyle IBAN paylaşımı yasaktır." };
   }
 

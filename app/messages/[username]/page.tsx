@@ -546,6 +546,14 @@ export default function MessageThreadPage() {
             return;
         }
 
+        if (offerNote.trim()) {
+            const mod = sanitizeMessage(offerNote.trim());
+            if (!mod.allowed) {
+                setError(mod.reason || "Bu içerik gönderilemez");
+                return;
+            }
+        }
+
         setSending(true);
         setError("");
         try {
