@@ -15,9 +15,28 @@ type ChatMessage = {
     sender_username: string;
     receiver_username: string;
     text: string | null;
+    file_data?: any;
     read: boolean | null;
     created_at: string;
 };
+
+type OfferRow = {
+    id: string | number;
+    sender_id: string;
+    receiver_id: string;
+    sender_username: string;
+    receiver_username: string;
+    message: string | null;
+    price: number | string;
+    delivery_days: number | string;
+    status: "pending" | "accepted" | "rejected" | "cancelled" | string;
+    created_at: string;
+    responded_at: string | null;
+};
+
+type TimelineItem =
+    | { type: "message"; id: string; at: number; data: ChatMessage }
+    | { type: "offer"; id: string; at: number; data: OfferRow };
 
 export default function MessageThreadPage() {
     const router = useRouter();
@@ -34,11 +53,19 @@ export default function MessageThreadPage() {
     }, [params?.username]);
 
     const [messages, setMessages] = useState<ChatMessage[]>([]);
+    const [offers, setOffers] = useState<OfferRow[]>([]);
     const [text, setText] = useState<string>("");
     const [error, setError] = useState<string>("");
     const [sending, setSending] = useState<boolean>(false);
     const [pageLoading, setPageLoading] = useState<boolean>(true);
     const [realtimeReady, setRealtimeReady] = useState<boolean>(false);
+
+    const [otherUserId, setOtherUserId] = useState<string>("");
+    const [offerOpen, setOfferOpen] = useState<boolean>(false);
+    const [offerPrice, setOfferPrice] = useState<string>("");
+    const [offerDays, setOfferDays] = useState<string>("");
+    const [offerNote, setOfferNote] = useState<string>("");
+    const fileInputRef = useRef<HTMLInputElement | null>(null);
 
     const listRef = useRef<HTMLDivElement | null>(null);
     const scrollRafRef = useRef<number | null>(null);
@@ -58,7 +85,7 @@ export default function MessageThreadPage() {
     };
 
     const insertMessageRest = async (
-        payload: { sender_username: string; receiver_username: string; text: string; read: boolean },
+        payload: { sender_username: string; receiver_username: string; text?: string | null; file_data?: any; read: boolean },
         timeoutMs: number = 15000
     ) => {
         const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
@@ -180,6 +207,8 @@ export default function MessageThreadPage() {
         const run = async () => {
             if (!meFold || !otherFold) {
                 setMessages([]);
+                setOffers([]);
+                setOtherUserId("");
                 setPageLoading(false);
                 return;
             }
@@ -188,26 +217,57 @@ export default function MessageThreadPage() {
             setError("");
 
             try {
-                const res = (await withTimeout(
-                    supabase
-                        .from("messages")
-                        .select("id, sender_username, receiver_username, text, read, created_at")
-                        .or(threadOr)
-                        .order("created_at", { ascending: true })
-                        .limit(500),
-                    12000,
-                    "Mesaj geçmişi"
-                )) as any;
+                const [msgRes, offerRes, otherProfileRes] = await Promise.all([
+                    withTimeout(
+                        supabase
+                            .from("messages")
+                            .select("id, sender_username, receiver_username, text, file_data, read, created_at")
+                            .or(threadOr)
+                            .order("created_at", { ascending: true })
+                            .limit(200),
+                        12000,
+                        "Mesaj geçmişi"
+                    ),
+                    withTimeout(
+                        supabase
+                            .from("offers")
+                            .select("id, sender_id, receiver_id, sender_username, receiver_username, message, price, delivery_days, status, created_at, responded_at")
+                            .or(
+                                `and(sender_username.ilike.${meFold},receiver_username.ilike.${otherFold}),and(sender_username.ilike.${otherFold},receiver_username.ilike.${meFold}),and(sender_username.ilike.${meKey},receiver_username.ilike.${otherKey}),and(sender_username.ilike.${otherKey},receiver_username.ilike.${meKey}),and(sender_username.ilike.${meFold},receiver_username.ilike.${otherKey}),and(sender_username.ilike.${otherKey},receiver_username.ilike.${meFold}),and(sender_username.ilike.${meKey},receiver_username.ilike.${otherFold}),and(sender_username.ilike.${otherFold},receiver_username.ilike.${meKey})`
+                            )
+                            .order("created_at", { ascending: true })
+                            .limit(100),
+                        12000,
+                        "Teklifler"
+                    ),
+                    withTimeout(
+                        supabase
+                            .from("profiles")
+                            .select("id, username")
+                            .or(`username.ilike.${otherFold},username.ilike.${otherKey}`)
+                            .limit(1)
+                            .maybeSingle(),
+                        8000,
+                        "Kullanıcı"
+                    ),
+                ]);
 
-                const data = res?.data;
-                const fetchError = res?.error;
-                if (fetchError) {
-                    setError(fetchError.message);
+                const msgs = (msgRes as any)?.data;
+                const msgErr = (msgRes as any)?.error;
+                if (msgErr) {
+                    setError(msgErr.message);
                     setMessages([]);
+                    setOffers([]);
                     return;
                 }
+                setMessages((msgs || []) as any);
 
-                setMessages((data || []) as any);
+                const offersData = (offerRes as any)?.data;
+                const offerErr = (offerRes as any)?.error;
+                if (!offerErr) setOffers((offersData || []) as any);
+
+                const otherProfile = (otherProfileRes as any)?.data;
+                if (otherProfile?.id) setOtherUserId(String(otherProfile.id));
 
                 supabase
                     .from("messages")
@@ -219,6 +279,7 @@ export default function MessageThreadPage() {
             } catch (err: any) {
                 setError(err?.message ? String(err.message) : "Mesajlar yüklenemedi");
                 setMessages([]);
+                setOffers([]);
             } finally {
                 setPageLoading(false);
             }
@@ -236,7 +297,7 @@ export default function MessageThreadPage() {
                 const res = (await withTimeout(
                     supabase
                         .from("messages")
-                        .select("id, sender_username, receiver_username, text, read, created_at")
+                        .select("id, sender_username, receiver_username, text, file_data, read, created_at")
                         .or(threadOr)
                         .order("created_at", { ascending: true })
                         .limit(200),
@@ -381,6 +442,7 @@ export default function MessageThreadPage() {
             sender_username: meKey,
             receiver_username: otherKey,
             text: payload.text,
+            file_data: null,
             read: true,
             created_at: new Date().toISOString(),
         };
@@ -426,7 +488,7 @@ export default function MessageThreadPage() {
             setTimeout(() => {
                 supabase
                     .from("messages")
-                    .select("id, sender_username, receiver_username, text, read, created_at")
+                    .select("id, sender_username, receiver_username, text, file_data, read, created_at")
                     .or(threadOr)
                     .order("created_at", { ascending: true })
                     .limit(500)
@@ -439,7 +501,7 @@ export default function MessageThreadPage() {
             setTimeout(() => {
                 supabase
                     .from("messages")
-                    .select("id, sender_username, receiver_username, text, read, created_at")
+                    .select("id, sender_username, receiver_username, text, file_data, read, created_at")
                     .or(threadOr)
                     .order("created_at", { ascending: true })
                     .limit(500)
@@ -454,6 +516,171 @@ export default function MessageThreadPage() {
             setSending(false);
         }
     };
+
+    const refreshOffers = async () => {
+        if (!meFold || !otherFold) return;
+        const res = (await withTimeout(
+            supabase
+                .from("offers")
+                .select("id, sender_id, receiver_id, sender_username, receiver_username, message, price, delivery_days, status, created_at, responded_at")
+                .or(
+                    `and(sender_username.ilike.${meFold},receiver_username.ilike.${otherFold}),and(sender_username.ilike.${otherFold},receiver_username.ilike.${meFold}),and(sender_username.ilike.${meKey},receiver_username.ilike.${otherKey}),and(sender_username.ilike.${otherKey},receiver_username.ilike.${meKey}),and(sender_username.ilike.${meFold},receiver_username.ilike.${otherKey}),and(sender_username.ilike.${otherKey},receiver_username.ilike.${meFold}),and(sender_username.ilike.${meKey},receiver_username.ilike.${otherFold}),and(sender_username.ilike.${otherFold},receiver_username.ilike.${meKey})`
+                )
+                .order("created_at", { ascending: true })
+                .limit(100),
+            12000,
+            "Teklifler"
+        )) as any;
+
+        if (!res?.error && Array.isArray(res?.data)) setOffers(res.data as any);
+    };
+
+    const handleSendOffer = async () => {
+        if (!user?.id || !otherUserId || !meKey || !otherKey) return;
+
+        const price = Number(String(offerPrice || "").replace(",", "."));
+        const days = Number(String(offerDays || "").trim());
+        if (!Number.isFinite(price) || price <= 0 || !Number.isFinite(days) || days <= 0) {
+            setError("Teklif için fiyat ve teslim günü gir.");
+            return;
+        }
+
+        setSending(true);
+        setError("");
+        try {
+            const payload = {
+                gig_id: null,
+                sender_id: user.id,
+                receiver_id: otherUserId,
+                sender_username: meKey,
+                receiver_username: otherKey,
+                message: offerNote.trim() || null,
+                price,
+                delivery_days: days,
+                extras: null,
+                status: "pending",
+            };
+
+            const res = (await withTimeout(
+                supabase.from("offers").insert([payload]).select("id").maybeSingle(),
+                15000,
+                "Teklif gönderme"
+            )) as any;
+
+            if (res?.error) throw res.error;
+            setOfferOpen(false);
+            setOfferPrice("");
+            setOfferDays("");
+            setOfferNote("");
+            await refreshOffers();
+        } catch (e: any) {
+            setError(e?.message ? String(e.message) : "Teklif gönderilemedi");
+        } finally {
+            setSending(false);
+        }
+    };
+
+    const handleRespondOffer = async (offerId: string | number, status: "accepted" | "rejected") => {
+        setSending(true);
+        setError("");
+        try {
+            const res = (await withTimeout(
+                supabase.from("offers").update({ status, responded_at: new Date().toISOString() }).eq("id", offerId),
+                15000,
+                "Teklif yanıt"
+            )) as any;
+            if (res?.error) throw res.error;
+            await refreshOffers();
+        } catch (e: any) {
+            setError(e?.message ? String(e.message) : "Teklif güncellenemedi");
+        } finally {
+            setSending(false);
+        }
+    };
+
+    const handlePickFile = () => {
+        fileInputRef.current?.click();
+    };
+
+    const handleUploadFile = async (file: File) => {
+        if (!meKey || !otherKey) return;
+        setSending(true);
+        setError("");
+
+        const tempId = `temp-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+        const optimistic: ChatMessage = {
+            id: tempId,
+            sender_username: meKey,
+            receiver_username: otherKey,
+            text: file.name,
+            file_data: { name: file.name, size: file.size, contentType: file.type, uploading: true },
+            read: true,
+            created_at: new Date().toISOString(),
+        };
+
+        setMessages((prev) => [...prev, optimistic]);
+
+        try {
+            const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_").slice(0, 80) || "file";
+            const path = `threads/${meKey}__${otherKey}/${Date.now()}_${safeName}`;
+
+            const bytes = new Uint8Array(await file.arrayBuffer());
+            const up = await withTimeout(
+                supabase.storage.from("chat-files").upload(path, bytes, { contentType: file.type || "application/octet-stream" }),
+                20000,
+                "Dosya yükleme"
+            );
+
+            if ((up as any)?.error) throw (up as any).error;
+
+            const { data: pub } = supabase.storage.from("chat-files").getPublicUrl(path);
+            const url = String((pub as any)?.publicUrl || "");
+            if (!url) throw new Error("Dosya URL alınamadı");
+
+            const payload = {
+                sender_username: meKey,
+                receiver_username: otherKey,
+                text: null,
+                file_data: {
+                    name: file.name,
+                    size: file.size,
+                    contentType: file.type || "application/octet-stream",
+                    url,
+                    path,
+                },
+                read: false,
+            };
+
+            const ok = await withTimeout(insertMessageRest(payload as any, 20000), 20000, "Dosya mesajı");
+            if (!ok) throw new Error("Dosya mesajı gönderilemedi");
+
+            setError("");
+        } catch (e: any) {
+            setMessages((prev) => prev.filter((m) => String(m.id) !== String(tempId)));
+            const msg = e?.message ? String(e.message) : "Dosya gönderilemedi";
+            if (msg.toLowerCase().includes("not found") || msg.toLowerCase().includes("bucket")) {
+                setError("Dosya gönderilemedi: Supabase Storage'da 'chat-files' bucket yok. Supabase -> Storage -> New bucket: chat-files (Public) oluştur.");
+            } else {
+                setError(msg);
+            }
+        } finally {
+            setSending(false);
+        }
+    };
+
+    const timeline = useMemo(() => {
+        const items: TimelineItem[] = [];
+        for (const m of messages) {
+            const at = new Date(String(m.created_at || 0)).getTime() || 0;
+            items.push({ type: "message", id: `m-${String(m.id)}`, at, data: m });
+        }
+        for (const o of offers) {
+            const at = new Date(String(o.created_at || 0)).getTime() || 0;
+            items.push({ type: "offer", id: `o-${String(o.id)}`, at, data: o });
+        }
+        items.sort((a, b) => a.at - b.at);
+        return items;
+    }, [messages, offers]);
 
     if (loading || pageLoading) {
         return (
@@ -488,17 +715,99 @@ export default function MessageThreadPage() {
 
             <Card className="p-0 overflow-hidden">
                 <div ref={listRef} className="h-[60vh] overflow-auto p-4 space-y-3 bg-white">
-                    {messages.length === 0 ? (
+                    {timeline.length === 0 ? (
                         <div className="text-sm text-gray-500 font-semibold">Henüz mesaj yok.</div>
                     ) : (
-                        messages.map((m) => {
-                            const mine = usernameKey(m.sender_username) === meKey;
+                        timeline.map((it) => {
+                            if (it.type === "message") {
+                                const m = it.data;
+                                const mine = usernameKey(m.sender_username) === meKey;
+                                const fd = (m as any)?.file_data;
+                                const isFile = !!fd?.url;
+                                return (
+                                    <div key={it.id} className={`flex ${mine ? "justify-end" : "justify-start"}`}>
+                                        <div className={`max-w-[85%] rounded-2xl px-4 py-3 ${mine ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-900"}`}>
+                                            {isFile ? (
+                                                <div>
+                                                    <div className="text-sm font-black">Dosya</div>
+                                                    <a
+                                                        className={`text-sm font-semibold underline break-all ${mine ? "text-white" : "text-blue-600"}`}
+                                                        href={String(fd.url)}
+                                                        target="_blank"
+                                                        rel="noreferrer"
+                                                    >
+                                                        {String(fd.name || "dosya")}
+                                                    </a>
+                                                    <div className={`text-[10px] font-bold mt-2 ${mine ? "text-blue-100" : "text-gray-400"}`}>
+                                                        {m.created_at ? new Date(m.created_at).toLocaleString("tr-TR") : ""}
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <>
+                                                    <div className="text-sm font-semibold whitespace-pre-wrap break-words">{m.text || ""}</div>
+                                                    <div className={`text-[10px] font-bold mt-2 ${mine ? "text-blue-100" : "text-gray-400"}`}>
+                                                        {m.created_at ? new Date(m.created_at).toLocaleString("tr-TR") : ""}
+                                                    </div>
+                                                </>
+                                            )}
+                                        </div>
+                                    </div>
+                                );
+                            }
+
+                            const o = it.data;
+                            const mine = usernameKey(o.sender_username) === meKey;
+                            const receiverIsMe = String(o.receiver_id || "") === String(user?.id || "");
+                            const pending = String(o.status) === "pending";
+
                             return (
-                                <div key={String(m.id)} className={`flex ${mine ? "justify-end" : "justify-start"}`}>
-                                    <div className={`max-w-[80%] rounded-2xl px-4 py-3 ${mine ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-900"}`}>
-                                        <div className="text-sm font-semibold whitespace-pre-wrap break-words">{m.text || ""}</div>
-                                        <div className={`text-[10px] font-bold mt-2 ${mine ? "text-blue-100" : "text-gray-400"}`}>
-                                            {m.created_at ? new Date(m.created_at).toLocaleString("tr-TR") : ""}
+                                <div key={it.id} className={`flex ${mine ? "justify-end" : "justify-start"}`}>
+                                    <div className={`max-w-[92%] rounded-2xl px-4 py-3 border ${mine ? "bg-blue-50 border-blue-100" : "bg-white border-gray-200"}`}>
+                                        <div className="flex items-center justify-between gap-3">
+                                            <div className="text-xs font-black uppercase tracking-widest text-gray-500">Teklif</div>
+                                            <div
+                                                className={`text-[10px] font-black uppercase tracking-widest ${
+                                                    o.status === "accepted"
+                                                        ? "text-emerald-600"
+                                                        : o.status === "rejected"
+                                                        ? "text-red-600"
+                                                        : "text-gray-500"
+                                                }`}
+                                            >
+                                                {String(o.status || "pending")}
+                                            </div>
+                                        </div>
+
+                                        <div className="mt-2 grid grid-cols-2 gap-2">
+                                            <div className="rounded-xl bg-gray-50 p-3">
+                                                <div className="text-[10px] font-black uppercase tracking-widest text-gray-400">Fiyat</div>
+                                                <div className="text-sm font-black text-gray-900">{String(o.price)} ₺</div>
+                                            </div>
+                                            <div className="rounded-xl bg-gray-50 p-3">
+                                                <div className="text-[10px] font-black uppercase tracking-widest text-gray-400">Teslim</div>
+                                                <div className="text-sm font-black text-gray-900">{String(o.delivery_days)} gün</div>
+                                            </div>
+                                        </div>
+
+                                        {o.message && <div className="mt-2 text-sm font-semibold text-gray-700 whitespace-pre-wrap break-words">{o.message}</div>}
+
+                                        {pending && receiverIsMe && (
+                                            <div className="mt-3 flex gap-2 justify-end">
+                                                <Button
+                                                    disabled={sending}
+                                                    onClick={() => handleRespondOffer(o.id, "rejected")}
+                                                    className="bg-gray-200 hover:bg-gray-300 text-gray-900"
+                                                >
+                                                    Reddet
+                                                </Button>
+                                                <Button disabled={sending} onClick={() => handleRespondOffer(o.id, "accepted")} className="bg-emerald-600 hover:bg-emerald-700 text-white">
+                                                    Kabul Et
+                                                </Button>
+                                            </div>
+                                        )}
+
+                                        <div className="text-[10px] font-bold mt-2 text-gray-400">
+                                            {o.created_at ? new Date(o.created_at).toLocaleString("tr-TR") : ""}
                                         </div>
                                     </div>
                                 </div>
@@ -509,6 +818,86 @@ export default function MessageThreadPage() {
 
                 <div className="border-t bg-gray-50 p-4">
                     <div className="grid gap-3">
+                        {offerOpen && (
+                            <div className="rounded-2xl border bg-white p-4">
+                                <div className="flex items-center justify-between gap-3">
+                                    <div className="text-xs font-black uppercase tracking-widest text-gray-500">Teklif gönder</div>
+                                    <Button
+                                        disabled={sending}
+                                        onClick={() => setOfferOpen(false)}
+                                        className="bg-gray-200 hover:bg-gray-300 text-gray-900"
+                                    >
+                                        Kapat
+                                    </Button>
+                                </div>
+                                <div className="mt-3 grid grid-cols-2 gap-3">
+                                    <input
+                                        value={offerPrice}
+                                        onChange={(e) => setOfferPrice(e.target.value)}
+                                        placeholder="Fiyat (₺)"
+                                        className="h-10 rounded-xl border px-3 text-sm font-semibold"
+                                        disabled={sending}
+                                    />
+                                    <input
+                                        value={offerDays}
+                                        onChange={(e) => setOfferDays(e.target.value)}
+                                        placeholder="Teslim (gün)"
+                                        className="h-10 rounded-xl border px-3 text-sm font-semibold"
+                                        disabled={sending}
+                                    />
+                                </div>
+                                <Textarea
+                                    value={offerNote}
+                                    onChange={(e) => setOfferNote(e.target.value)}
+                                    placeholder="Not (opsiyonel)"
+                                    className="mt-3 min-h-[80px] resize-none bg-white"
+                                    disabled={sending}
+                                />
+                                <div className="mt-3 flex justify-end gap-2">
+                                    <Button
+                                        disabled={sending}
+                                        onClick={handleSendOffer}
+                                        className="bg-blue-600 hover:bg-blue-700 text-white"
+                                    >
+                                        Teklifi Gönder
+                                    </Button>
+                                </div>
+                            </div>
+                        )}
+
+                        <input
+                            ref={fileInputRef}
+                            type="file"
+                            className="hidden"
+                            onChange={(e) => {
+                                const f = e.target.files?.[0];
+                                if (f) handleUploadFile(f);
+                                e.currentTarget.value = "";
+                            }}
+                        />
+
+                        <div className="flex items-center justify-between gap-2">
+                            <div className="flex gap-2">
+                                <Button
+                                    disabled={sending}
+                                    onClick={handlePickFile}
+                                    className="bg-gray-200 hover:bg-gray-300 text-gray-900"
+                                >
+                                    Dosya
+                                </Button>
+                                <Button
+                                    disabled={sending || !otherUserId}
+                                    onClick={() => setOfferOpen((v) => !v)}
+                                    className="bg-gray-200 hover:bg-gray-300 text-gray-900"
+                                >
+                                    Teklif
+                                </Button>
+                            </div>
+                            <div className="text-[10px] font-black uppercase tracking-widest text-gray-400">
+                                {otherUserId ? "" : "Kullanıcı bulunamadı"}
+                            </div>
+                        </div>
+
                         <Textarea
                             value={text}
                             onChange={(e) => setText(e.target.value)}
