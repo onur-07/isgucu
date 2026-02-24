@@ -23,6 +23,8 @@ export default function MessagesPage() {
     const [error, setError] = useState<string>("");
     const [pageLoading, setPageLoading] = useState<boolean>(true);
 
+    const inFlightRef = useMemo(() => ({ running: false }), []);
+
     const withTimeout = async <T,>(p: PromiseLike<T>, ms: number, label: string): Promise<T> => {
         let timeoutId: ReturnType<typeof setTimeout> | undefined;
         try {
@@ -65,9 +67,12 @@ export default function MessagesPage() {
         let intervalId: ReturnType<typeof setInterval> | null = null;
 
         const run = async (opts?: { silent?: boolean }) => {
+            if (inFlightRef.running) return;
+            inFlightRef.running = true;
             if (!user?.username) {
                 setItems([]);
                 setPageLoading(false);
+                inFlightRef.running = false;
                 return;
             }
 
@@ -87,8 +92,8 @@ export default function MessagesPage() {
                             `sender_username.ilike.${meKey},receiver_username.ilike.${meKey},sender_username.ilike.${meFold},receiver_username.ilike.${meFold}`
                         )
                         .order("created_at", { ascending: false })
-                        .limit(250),
-                    12000,
+                        .limit(120),
+                    8000,
                     "Mesajlar"
                 )) as any;
 
@@ -140,7 +145,8 @@ export default function MessagesPage() {
                 setError(err?.message ? String(err.message) : "Mesajlar yüklenemedi");
                 setItems([]);
             } finally {
-                if (!cancelled && !opts?.silent) setPageLoading(false);
+                if (!cancelled) setPageLoading(false);
+                inFlightRef.running = false;
             }
         };
 
@@ -159,7 +165,7 @@ export default function MessagesPage() {
                 })
                 .subscribe();
 
-            intervalId = setInterval(() => run({ silent: true }), 5000);
+            intervalId = setInterval(() => run({ silent: true }), 15000);
         }
 
         return () => {

@@ -32,30 +32,44 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const [loading, setLoading] = useState(true);
     const router = useRouter();
 
+    const withTimeout = async <T,>(p: PromiseLike<T>, ms: number, label: string): Promise<T> => {
+        let timeoutId: ReturnType<typeof setTimeout> | undefined;
+        try {
+            return await Promise.race([
+                Promise.resolve(p),
+                new Promise<T>((_, reject) => {
+                    timeoutId = setTimeout(() => reject(new Error(`${label} zaman aşımına uğradı (${ms}ms)`)), ms);
+                }),
+            ]);
+        } finally {
+            if (timeoutId) clearTimeout(timeoutId);
+        }
+    };
+
     useEffect(() => {
         const checkUser = async () => {
             try {
-                const { data: { session } } = await supabase.auth.getSession();
+                const { data: { session } } = await withTimeout(supabase.auth.getSession(), 8000, "Oturum");
 
                 if (session?.user) {
                     console.log("AuthContext: Oturum bulundu, profil çekiliyor...");
                     const authEmail = session.user.email || "";
-                    const { data: profile, error } = await supabase
-                        .from('profiles')
-                        .select('*')
-                        .eq('id', session.user.id)
-                        .maybeSingle();
+                    const { data: profile, error } = await withTimeout(
+                        supabase.from('profiles').select('*').eq('id', session.user.id).maybeSingle(),
+                        8000,
+                        "Profil"
+                    );
 
                     if (error) console.error("AuthContext: Profil çekme hatası:", error);
 
                     let resolvedProfile: any = profile;
 
                     if (!resolvedProfile && authEmail) {
-                        const byEmail = await supabase
-                            .from('profiles')
-                            .select('*')
-                            .eq('email', authEmail)
-                            .maybeSingle();
+                        const byEmail = await withTimeout(
+                            supabase.from('profiles').select('*').eq('email', authEmail).maybeSingle(),
+                            8000,
+                            "Profil (email)"
+                        );
                         if (byEmail?.data) resolvedProfile = byEmail.data;
                     }
 
@@ -165,11 +179,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             console.log("AuthContext: Auth Değişimi:", event);
             if (event === 'SIGNED_IN' && session) {
                 const authEmail = session.user.email || "";
-                const { data: profile } = await supabase
-                    .from('profiles')
-                    .select('*')
-                    .eq('id', session.user.id)
-                    .maybeSingle();
+                const { data: profile } = await withTimeout(
+                    supabase.from('profiles').select('*').eq('id', session.user.id).maybeSingle(),
+                    8000,
+                    "Profil (SIGNED_IN)"
+                );
 
                 let resolvedProfile: any = profile;
                 if (!resolvedProfile && authEmail) {
