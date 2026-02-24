@@ -46,8 +46,7 @@ export function LoginForm() {
         }
     };
 
-    const handleSubmit = async (e: FormEvent) => {
-        e.preventDefault();
+    const submitLogin = async () => {
         setError("");
         setLoading(true);
 
@@ -194,6 +193,12 @@ export function LoginForm() {
         }
     };
 
+    const handleSubmit = async (e: FormEvent) => {
+        e.preventDefault();
+        if (loadingRef.current) return;
+        await submitLogin();
+    };
+
     return (
         <form className="space-y-6" onSubmit={handleSubmit}>
             <div className="text-center">
@@ -245,7 +250,11 @@ export function LoginForm() {
             </div>
 
             <Button
-                type="submit"
+                type="button"
+                onClick={() => {
+                    if (loadingRef.current) return;
+                    submitLogin();
+                }}
                 disabled={loading}
                 className="w-full h-14 text-white bg-blue-600 hover:bg-blue-700 rounded-2xl font-black uppercase tracking-widest shadow-xl shadow-blue-100 transition-all hover:scale-[1.02] active:scale-95"
             >
