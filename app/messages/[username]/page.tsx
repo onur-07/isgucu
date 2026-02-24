@@ -84,6 +84,53 @@ export default function MessageThreadPage() {
         }
     };
 
+    const handleAdminClearThread = async () => {
+        if (!user || user.role !== "admin") return;
+        if (!meKey || !otherKey) return;
+
+        const ok = window.confirm("Bu konuşmadaki tüm mesajları silmek istiyor musun? Bu işlem geri alınamaz.");
+        if (!ok) return;
+
+        setSending(true);
+        setError("");
+        try {
+            const { data, error: sessErr } = await supabase.auth.getSession();
+            if (sessErr) throw sessErr;
+            const token = data?.session?.access_token;
+            if (!token) throw new Error("Oturum bulunamadı");
+
+            const res = await fetch("/api/admin/messages/clear", {
+                method: "POST",
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ a: meKey, b: otherKey }),
+            });
+
+            if (!res.ok) {
+                const txt = await res.text().catch(() => "");
+                throw new Error(txt || `HTTP ${res.status}`);
+            }
+
+            setMessages([]);
+            setOffers((prev) => prev);
+
+            // Best-effort refresh after delete
+            const r = await supabase
+                .from("messages")
+                .select("id, sender_username, receiver_username, text, file_data, read, created_at")
+                .or(threadOr)
+                .order("created_at", { ascending: true })
+                .limit(200);
+            if (!r?.error && Array.isArray((r as any)?.data)) setMessages((r as any).data);
+        } catch (e: any) {
+            setError(e?.message ? String(e.message) : "Temizleme başarısız");
+        } finally {
+            setSending(false);
+        }
+    };
+
     const insertMessageRest = async (
         payload: { sender_username: string; receiver_username: string; text?: string | null; file_data?: any; read: boolean },
         timeoutMs: number = 15000
@@ -704,10 +751,19 @@ export default function MessageThreadPage() {
     return (
         <div className="container py-10">
             <div className="flex items-center justify-between gap-4 mb-6">
-                <div className="min-w-0">
+                <div className="flex items-center gap-3 min-w-0">
                     <div className="text-xs text-gray-500 font-bold uppercase tracking-widest">Sohbet</div>
                     <h1 className="text-2xl font-bold tracking-tight truncate">{otherUsername}</h1>
                 </div>
+                {user?.role === "admin" && (
+                    <Button
+                        disabled={sending}
+                        onClick={handleAdminClearThread}
+                        className="bg-red-600 hover:bg-red-700 text-white"
+                    >
+                        Konuşmayı Temizle
+                    </Button>
+                )}
                 <div className={`text-[10px] font-black uppercase tracking-widest ${realtimeReady ? "text-emerald-600" : "text-gray-400"}`}>
                     {realtimeReady ? "Canlı: Açık" : "Canlı: Kapalı"}
                 </div>
