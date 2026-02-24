@@ -1,0 +1,41 @@
+name: Supabase Backup (GitHub Artifact)
+
+on:
+  schedule:
+    - cron: "0 2 * * *"
+    - cron: "0 14 * * *"
+  workflow_dispatch:
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install PostgreSQL client
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+
+      - name: Create database dump
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          ts=$(date -u +"%Y%m%d_%H%M%S")
+          file="supabase_backup_${ts}.dump"
+          pg_dump "$SUPABASE_DB_URL" --format=c --no-owner --no-acl --file "$file"
+          gzip -9 "$file"
+          echo "BACKUP_FILE=${file}.gz" >> $GITHUB_ENV
+
+      - name: Upload backup artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: supabase-backup
+          path: ${{ env.BACKUP_FILE }}
+          retention-days: 14
+
+      - name: Cleanup
+        if: always()
+        run: |
+          rm -f supabase_backup_*.dump.gz || true
