@@ -62,6 +62,20 @@ export function sanitizeMessage(text: string): { allowed: boolean; reason?: stri
   const digitsOnly = text.replace(/\D/g, "");
   const alnumOnly = text.replace(/[^a-zA-Z0-9]/g, "");
 
+  // 0. Check for Full Name Sharing (e.g. "Ahmet Yılmaz")
+  // Block only when the whole message looks like a name: 2-3 words, each capitalized, letters only.
+  const nameTokens = String(text || "")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((t) => t.replace(/[^a-zA-ZçğıöşüÇĞİÖŞÜ]/g, ""))
+    .filter(Boolean);
+  const isNameToken = (t: string) => /^[A-ZÇĞİÖŞÜ][a-zçğıöşü]+$/.test(t);
+  const looksLikeFullName = nameTokens.length >= 2 && nameTokens.length <= 3 && nameTokens.every(isNameToken);
+  if (looksLikeFullName) {
+    return { allowed: false, reason: "Güvenlik nedeniyle isim-soyisim paylaşımı yasaktır." };
+  }
+
   // 1. Check for Phone Numbers (10 or more digits)
   // Only block common TR mobile formats to avoid blocking prices like "100000".
   // Matches:
