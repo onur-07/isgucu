@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
+import { usernameFold } from "@/lib/utils";
 
 export function LoginForm() {
     const [identifier, setIdentifier] = useState(""); // email or username
@@ -19,6 +20,17 @@ export function LoginForm() {
     useEffect(() => {
         loadingRef.current = loading;
     }, [loading]);
+
+    useEffect(() => {
+        let cancelled = false;
+        supabase.auth.getSession().then(({ data }) => {
+            if (cancelled) return;
+            if (data?.session) router.push("/");
+        });
+        return () => {
+            cancelled = true;
+        };
+    }, [router]);
 
     const withTimeout = async <T,>(p: PromiseLike<T>, ms: number, label: string): Promise<T> => {
         let timeoutId: ReturnType<typeof setTimeout> | undefined;
@@ -64,11 +76,12 @@ export function LoginForm() {
 
             // 1. Kullanıcı adı ise e-postayı bul
             if (!identifierNormalized.includes("@")) {
+                const folded = usernameFold(identifierNormalized);
                 const profileRes = (await withTimeout(
                     supabase
                         .from('profiles')
                         .select('email')
-                        .eq('username', identifierNormalized)
+                        .or(`username.eq.${identifierNormalized},username.ilike.${identifierNormalized},username.ilike.${folded}`)
                         .maybeSingle(),
                     10000,
                     "Kullanıcı profili"
