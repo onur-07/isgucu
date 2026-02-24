@@ -11,7 +11,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { displayUsername, sanitizeMessage, usernameFold, usernameKey } from "@/lib/utils";
 
 type InboxItem = {
-    otherUsername: string;
+    otherKey: string;
+    otherRaw: string;
     lastText: string;
     lastAt: string;
     unreadCount: number;
@@ -186,12 +187,15 @@ export function ChatWidget() {
                 const otherKey = sender === meKey ? receiver : sender;
                 if (!otherKey) continue;
 
+                const otherRaw = sender === meKey ? receiverRaw : senderRaw;
+
                 const isUnread = receiver === meKey && !m?.read;
                 if (isUnread) unread += 1;
 
                 if (!byOther.has(otherKey)) {
                     byOther.set(otherKey, {
-                        otherUsername: otherKey,
+                        otherKey,
+                        otherRaw,
                         lastText: String(m?.text || "(dosya/teklif)"),
                         lastAt: String(m?.created_at || ""),
                         unreadCount: isUnread ? 1 : 0,
@@ -209,7 +213,7 @@ export function ChatWidget() {
             prevUnreadRef.current = unread;
             if (unread > prev) {
                 const latest = nextItems.find((x) => x.unreadCount > 0);
-                if (latest) showToast(latest.otherUsername, latest.lastText);
+                if (latest) showToast(latest.otherRaw, latest.lastText);
             }
         } finally {
             inboxInFlight.current = false;
@@ -345,19 +349,16 @@ export function ChatWidget() {
         if (!items.length) return;
         let cancelled = false;
 
-        const missing = items
-            .map((x) => usernameKey(x.otherUsername))
-            .filter(Boolean)
-            .filter((k) => !avatarMap[k]);
+        const missing = items.map((x) => x.otherKey).filter(Boolean).filter((k) => !avatarMap[k]);
         if (missing.length === 0) return;
 
         const run = async () => {
             const unique = Array.from(new Set(missing)).slice(0, 50);
             const ors = unique
-                .flatMap((u) => {
-                    const k = usernameKey(u);
-                    const f = usernameFold(u);
-                    return [`username.ilike.${k}`, `username.ilike.${f}`];
+                .flatMap((k) => {
+                    const raw = items.find((x) => x.otherKey === k)?.otherRaw || k;
+                    const f = usernameFold(raw);
+                    return [`username.ilike.${raw}`, `username.ilike.${k}`, `username.ilike.${f}`];
                 })
                 .join(",");
 
@@ -616,28 +617,28 @@ export function ChatWidget() {
                                     <div className="p-2 grid gap-2">
                                         {items.map((c) => (
                                             <button
-                                                key={c.otherUsername}
-                                                onClick={() => setActiveOther(c.otherUsername)}
+                                                key={c.otherKey}
+                                                onClick={() => setActiveOther(c.otherRaw)}
                                                 className={`text-left rounded-xl p-2 border transition-colors ${
-                                                    activeOther === c.otherUsername ? "bg-blue-50 border-blue-100" : "bg-white hover:bg-gray-50 border-gray-100"
+                                                    usernameKey(activeOther) === c.otherKey ? "bg-blue-50 border-blue-100" : "bg-white hover:bg-gray-50 border-gray-100"
                                                 }`}
                                             >
                                                 <div className="flex items-center justify-between gap-2">
                                                     <div className="flex items-center gap-2 min-w-0">
                                                         <div className="h-8 w-8 rounded-full bg-gray-100 border flex items-center justify-center overflow-hidden shrink-0">
-                                                            {avatarMap[usernameKey(c.otherUsername)] ? (
+                                                            {avatarMap[c.otherKey] ? (
                                                                 <img
-                                                                    src={avatarMap[usernameKey(c.otherUsername)]}
+                                                                    src={avatarMap[c.otherKey]}
                                                                     alt=""
                                                                     className="h-full w-full object-cover"
                                                                 />
                                                             ) : (
                                                                 <div className="text-[10px] font-black text-gray-600">
-                                                                    {displayUsername(c.otherUsername).charAt(0).toUpperCase()}
+                                                                    {displayUsername(c.otherRaw).charAt(0).toUpperCase()}
                                                                 </div>
                                                             )}
                                                         </div>
-                                                        <div className="text-xs font-black text-gray-900 truncate">{displayUsername(c.otherUsername)}</div>
+                                                        <div className="text-xs font-black text-gray-900 truncate">{displayUsername(c.otherRaw)}</div>
                                                     </div>
                                                     {c.unreadCount > 0 && (
                                                         <div className="h-5 min-w-5 px-1 bg-red-500 text-white text-[10px] font-black rounded-full flex items-center justify-center">
