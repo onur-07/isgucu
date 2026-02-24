@@ -55,8 +55,19 @@ export function sanitizeMessage(text: string): { allowed: boolean; reason?: stri
   const alnumOnly = text.replace(/[^a-zA-Z0-9]/g, "");
 
   // 1. Check for Phone Numbers (10 or more digits)
-  // Use digits-only to catch "0 5xx ..." or "+90 5xx ..." with separators.
-  if (digitsOnly.length >= 10) {
+  // Only block common TR mobile formats to avoid blocking prices like "100000".
+  // Matches:
+  // - 05xxxxxxxxx (11 digits)
+  // - 5xxxxxxxxx  (10 digits)
+  // - 905xxxxxxxxx (12 digits)
+  // - 00905xxxxxxxxx (14 digits)
+  const looksLikeTrMobile =
+    /^05\d{9}$/.test(digitsOnly) ||
+    /^5\d{9}$/.test(digitsOnly) ||
+    /^905\d{9}$/.test(digitsOnly) ||
+    /^00905\d{9}$/.test(digitsOnly);
+
+  if (looksLikeTrMobile) {
     return { allowed: false, reason: "Güvenlik nedeniyle telefon numarası paylaşımı yasaktır." };
   }
 
