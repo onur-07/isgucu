@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -193,14 +193,15 @@ export function LoginForm() {
         }
     };
 
-    const handleSubmit = async (e: FormEvent) => {
+    const onEnter = (e: KeyboardEvent<HTMLInputElement>) => {
+        if (e.key !== "Enter") return;
         e.preventDefault();
         if (loadingRef.current) return;
-        await submitLogin();
+        submitLogin();
     };
 
     return (
-        <form className="space-y-6" onSubmit={handleSubmit}>
+        <div className="space-y-6">
             <div className="text-center">
                 <h2 className="text-3xl font-bold tracking-tight text-gray-900 uppercase">
                     Giriş Yap
@@ -224,7 +225,9 @@ export function LoginForm() {
 
             <div className="space-y-4">
                 <div className="space-y-2">
-                    <Label htmlFor="identifier" className="text-[10px] font-black uppercase text-gray-400">Kullanıcı Adı / E-posta</Label>
+                    <Label htmlFor="identifier" className="text-[10px] font-black uppercase text-gray-400">
+                        Kullanıcı Adı / E-posta
+                    </Label>
                     <Input
                         id="identifier"
                         type="text"
@@ -232,11 +235,15 @@ export function LoginForm() {
                         className="h-14 rounded-2xl bg-gray-50 border-gray-100 font-bold text-sm"
                         value={identifier}
                         onChange={(e) => setIdentifier(e.target.value)}
-                        placeholder="Kullanıcı adınız veya e-postanız"
+                        onKeyDown={onEnter}
+                        placeholder="Kullanıcı adı veya e-posta"
                     />
                 </div>
+
                 <div className="space-y-2">
-                    <Label htmlFor="password" id="password-label" className="text-[10px] font-black uppercase text-gray-400">Şifre</Label>
+                    <Label htmlFor="password" className="font-black text-xs uppercase tracking-widest text-gray-600">
+                        Şifre
+                    </Label>
                     <Input
                         id="password"
                         type="password"
@@ -244,6 +251,7 @@ export function LoginForm() {
                         className="h-14 rounded-2xl bg-gray-50 border-gray-100 font-bold text-sm"
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
+                        onKeyDown={onEnter}
                         placeholder="••••••••"
                     />
                 </div>
@@ -262,13 +270,10 @@ export function LoginForm() {
             </Button>
 
             <div className="text-center">
-                <Link
-                    href="/forgot-password"
-                    className="text-[10px] font-black uppercase text-gray-400 hover:text-blue-600"
-                >
+                <Link href="/forgot-password" className="text-[10px] font-black uppercase text-gray-400 hover:text-blue-600">
                     Şifremi Unuttum
                 </Link>
             </div>
-        </form>
+        </div>
     );
 }
