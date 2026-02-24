@@ -4,6 +4,7 @@ import { useAuth } from "@/components/auth/auth-context";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Bell, MessageCircle, Star, Briefcase, Trash2 } from "lucide-react";
+import { usernameKey } from "@/lib/utils";
 
 interface Notification {
     id: string;
@@ -22,8 +23,18 @@ const iconMap = {
 };
 
 function loadNotifications(username: string): Notification[] {
-    const raw = localStorage.getItem(`isgucu_notifications_${username}`);
+    const normKey = `isgucu_notifications_${usernameKey(username)}`;
+    const legacyKey = `isgucu_notifications_${username}`;
+
+    const raw = localStorage.getItem(normKey);
     if (raw) return JSON.parse(raw);
+
+    // Migration: older versions stored by raw username. Move once to normalized key.
+    const legacyRaw = localStorage.getItem(legacyKey);
+    if (legacyRaw) {
+        localStorage.setItem(normKey, legacyRaw);
+        return JSON.parse(legacyRaw);
+    }
 
     // First time: create a welcome notification
     const defaultNotifs: Notification[] = [
@@ -36,12 +47,17 @@ function loadNotifications(username: string): Notification[] {
             read: false,
         },
     ];
-    localStorage.setItem(`isgucu_notifications_${username}`, JSON.stringify(defaultNotifs));
+    localStorage.setItem(normKey, JSON.stringify(defaultNotifs));
     return defaultNotifs;
 }
 
 function saveNotifications(username: string, notifs: Notification[]) {
-    localStorage.setItem(`isgucu_notifications_${username}`, JSON.stringify(notifs));
+    const normKey = `isgucu_notifications_${usernameKey(username)}`;
+    const legacyKey = `isgucu_notifications_${username}`;
+    localStorage.setItem(normKey, JSON.stringify(notifs));
+    try {
+        localStorage.removeItem(legacyKey);
+    } catch {}
     // Trigger custom event for Header
     window.dispatchEvent(new Event("storage_updated"));
 }

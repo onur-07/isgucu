@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState, useEffect } from "react";
-import { maskFullName } from "@/lib/utils";
+import { maskFullName, usernameKey } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/components/auth/auth-context";
 import { Menu, X, Bell, MessageCircle, User, ChevronDown, Headphones } from "lucide-react";
@@ -21,8 +21,20 @@ export function Header() {
 
     const updateCounts = () => {
         if (!user) return;
-        const key = `isgucu_notifications_${user.username}`;
-        const raw = localStorage.getItem(key);
+        const key = `isgucu_notifications_${usernameKey(user.username)}`;
+        const legacyKey = `isgucu_notifications_${user.username}`;
+
+        let raw = localStorage.getItem(key);
+        if (!raw) {
+            const legacyRaw = localStorage.getItem(legacyKey);
+            if (legacyRaw) {
+                localStorage.setItem(key, legacyRaw);
+                try {
+                    localStorage.removeItem(legacyKey);
+                } catch {}
+                raw = legacyRaw;
+            }
+        }
 
         if (!raw) {
             // First time: Seed default notifications

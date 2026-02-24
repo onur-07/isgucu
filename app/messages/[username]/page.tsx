@@ -272,8 +272,9 @@ export default function MessageThreadPage() {
                 supabase
                     .from("messages")
                     .update({ read: true })
-                    .or(`receiver_username.ilike.${meFold},receiver_username.ilike.${meKey}`)
-                    .or(`sender_username.ilike.${otherFold},sender_username.ilike.${otherKey}`)
+                    .or(
+                        `and(receiver_username.ilike.${meKey},sender_username.ilike.${otherKey}),and(receiver_username.ilike.${meFold},sender_username.ilike.${otherFold})`
+                    )
                     .eq("read", false)
                     .then(() => {});
             } catch (err: any) {
