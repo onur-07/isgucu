@@ -62,6 +62,7 @@ export function ChatWidget() {
     const [activeOtherId, setActiveOtherId] = useState<string>("");
     const [messages, setMessages] = useState<ChatMessage[]>([]);
     const [offers, setOffers] = useState<OfferRow[]>([]);
+    const [avatarMap, setAvatarMap] = useState<Record<string, string>>({});
     const [text, setText] = useState("");
     const [error, setError] = useState("");
     const [sending, setSending] = useState(false);
@@ -341,6 +342,52 @@ export function ChatWidget() {
     }, [activeOther]);
 
     useEffect(() => {
+        if (!items.length) return;
+        let cancelled = false;
+
+        const missing = items
+            .map((x) => usernameKey(x.otherUsername))
+            .filter(Boolean)
+            .filter((k) => !avatarMap[k]);
+        if (missing.length === 0) return;
+
+        const run = async () => {
+            const unique = Array.from(new Set(missing)).slice(0, 50);
+            const ors = unique
+                .flatMap((u) => {
+                    const k = usernameKey(u);
+                    const f = usernameFold(u);
+                    return [`username.ilike.${k}`, `username.ilike.${f}`];
+                })
+                .join(",");
+
+            const res = await supabase
+                .from("profiles")
+                .select("username, avatar_url")
+                .or(ors)
+                .limit(50);
+
+            if (cancelled) return;
+            if (res?.error || !Array.isArray((res as any)?.data)) return;
+
+            setAvatarMap((prev) => {
+                const next = { ...prev };
+                for (const row of (res as any).data) {
+                    const key = usernameKey(String(row?.username || ""));
+                    const url = String(row?.avatar_url || "");
+                    if (key && url) next[key] = url;
+                }
+                return next;
+            });
+        };
+
+        run();
+        return () => {
+            cancelled = true;
+        };
+    }, [items]);
+
+    useEffect(() => {
         if (!open) return;
         if (!activeOther) return;
         const id = window.setTimeout(() => {
@@ -576,7 +623,22 @@ export function ChatWidget() {
                                                 }`}
                                             >
                                                 <div className="flex items-center justify-between gap-2">
-                                                    <div className="text-xs font-black text-gray-900 truncate">{displayUsername(c.otherUsername)}</div>
+                                                    <div className="flex items-center gap-2 min-w-0">
+                                                        <div className="h-8 w-8 rounded-full bg-gray-100 border flex items-center justify-center overflow-hidden shrink-0">
+                                                            {avatarMap[usernameKey(c.otherUsername)] ? (
+                                                                <img
+                                                                    src={avatarMap[usernameKey(c.otherUsername)]}
+                                                                    alt=""
+                                                                    className="h-full w-full object-cover"
+                                                                />
+                                                            ) : (
+                                                                <div className="text-[10px] font-black text-gray-600">
+                                                                    {displayUsername(c.otherUsername).charAt(0).toUpperCase()}
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                        <div className="text-xs font-black text-gray-900 truncate">{displayUsername(c.otherUsername)}</div>
+                                                    </div>
                                                     {c.unreadCount > 0 && (
                                                         <div className="h-5 min-w-5 px-1 bg-red-500 text-white text-[10px] font-black rounded-full flex items-center justify-center">
                                                             {c.unreadCount}

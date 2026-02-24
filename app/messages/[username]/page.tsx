@@ -54,6 +54,8 @@ export default function MessageThreadPage() {
 
     const [messages, setMessages] = useState<ChatMessage[]>([]);
     const [offers, setOffers] = useState<OfferRow[]>([]);
+    const [myAvatar, setMyAvatar] = useState<string>("");
+    const [otherAvatar, setOtherAvatar] = useState<string>("");
     const [text, setText] = useState<string>("");
     const [error, setError] = useState<string>("");
     const [sending, setSending] = useState<boolean>(false);
@@ -204,6 +206,39 @@ export default function MessageThreadPage() {
     const otherFold = usernameFold(otherUsername || "");
     const meKey = usernameKey(user?.username || "");
     const otherKey = usernameKey(otherUsername || "");
+
+    useEffect(() => {
+        if (!meKey || !otherKey || !meFold || !otherFold) return;
+        let cancelled = false;
+
+        const or = [
+            `username.ilike.${meKey}`,
+            `username.ilike.${meFold}`,
+            `username.ilike.${otherKey}`,
+            `username.ilike.${otherFold}`,
+        ].join(",");
+
+        supabase
+            .from("profiles")
+            .select("username, avatar_url")
+            .or(or)
+            .limit(4)
+            .then((res: any) => {
+                if (cancelled) return;
+                if (res?.error || !Array.isArray(res?.data)) return;
+                for (const row of res.data) {
+                    const u = usernameKey(String(row?.username || ""));
+                    const url = String(row?.avatar_url || "");
+                    if (!u || !url) continue;
+                    if (u === meKey) setMyAvatar(url);
+                    if (u === otherKey) setOtherAvatar(url);
+                }
+            });
+
+        return () => {
+            cancelled = true;
+        };
+    }, [meKey, otherKey, meFold, otherFold]);
 
     const threadOr = useMemo(() => {
         const combos: Array<[string, string]> = [
@@ -784,7 +819,7 @@ export default function MessageThreadPage() {
             )}
 
             <Card className="p-0 overflow-hidden">
-                <div ref={listRef} className="h-[60vh] overflow-auto p-4 space-y-3 bg-white">
+                <div ref={listRef} className="h-[60vh] overflow-auto p-4 space-y-3 bg-gray-50">
                     {timeline.length === 0 ? (
                         <div className="text-sm text-gray-500 font-semibold">Henüz mesaj yok.</div>
                     ) : (
@@ -796,7 +831,17 @@ export default function MessageThreadPage() {
                                 const isFile = !!fd?.url;
                                 return (
                                     <div key={it.id} className={`flex ${mine ? "justify-end" : "justify-start"}`}>
-                                        <div className={`max-w-[85%] rounded-2xl px-4 py-3 ${mine ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-900"}`}>
+                                        {!mine && (
+                                            <div className="mr-2 mt-1 h-9 w-9 rounded-full bg-white border flex items-center justify-center overflow-hidden shrink-0">
+                                                {otherAvatar ? (
+                                                    <img src={otherAvatar} alt="" className="h-full w-full object-cover" />
+                                                ) : (
+                                                    <div className="text-[10px] font-black text-gray-600">{displayUsername(otherUsername).charAt(0).toUpperCase()}</div>
+                                                )}
+                                            </div>
+                                        )}
+
+                                        <div className={`max-w-[78%] rounded-2xl px-4 py-3 shadow-sm ${mine ? "bg-blue-600 text-white" : "bg-white border text-gray-900"}`}>
                                             {isFile ? (
                                                 <div>
                                                     <div className="text-sm font-black">Dosya</div>
@@ -821,6 +866,16 @@ export default function MessageThreadPage() {
                                                 </>
                                             )}
                                         </div>
+
+                                        {mine && (
+                                            <div className="ml-2 mt-1 h-9 w-9 rounded-full bg-white border border-blue-100 flex items-center justify-center overflow-hidden shrink-0">
+                                                {myAvatar ? (
+                                                    <img src={myAvatar} alt="" className="h-full w-full object-cover" />
+                                                ) : (
+                                                    <div className="text-[10px] font-black text-blue-700">{displayUsername(user?.username).charAt(0).toUpperCase()}</div>
+                                                )}
+                                            </div>
+                                        )}
                                     </div>
                                 );
                             }
