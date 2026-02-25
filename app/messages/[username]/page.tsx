@@ -602,7 +602,26 @@ export default function MessageThreadPage() {
             }, 2500);
         } catch (err: any) {
             setMessages((prev) => prev.filter((m) => String(m.id) !== String(tempId)));
-            setError(friendlySupabaseError(err, "Mesaj gönderilemedi"));
+            const friendly = friendlySupabaseError(err, "Mesaj gönderilemedi");
+            setError(friendly);
+
+            // Best-effort: notify admin (support ticket) on PII attempts
+            try {
+                const msg = String(err?.message || "").toLowerCase();
+                if (msg.includes("pii_blocked")) {
+                    const { data } = await supabase.auth.getSession();
+                    const token = data?.session?.access_token;
+                    if (token) {
+                        fetch("/api/security/pii-attempt", {
+                            method: "POST",
+                            headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+                            body: JSON.stringify({ kind: msg.includes("phone") ? "phone" : msg.includes("iban") ? "iban" : msg.includes("email") ? "email" : "pii", other: otherUsername, path: `/messages/${otherUsername}` }),
+                        }).catch(() => {});
+                    }
+                }
+            } catch {
+                // ignore
+            }
         } finally {
             setSending(false);
         }

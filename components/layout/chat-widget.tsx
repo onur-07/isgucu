@@ -454,7 +454,25 @@ export function ChatWidget() {
             setError("");
         } catch (e: any) {
             setMessages((prev) => prev.filter((m) => String(m.id) !== String(tempId)));
-            setError(friendlySupabaseError(e, "Mesaj gönderilemedi"));
+            const friendly = friendlySupabaseError(e, "Mesaj gönderilemedi");
+            setError(friendly);
+
+            try {
+                const msg = String(e?.message || "").toLowerCase();
+                if (msg.includes("pii_blocked")) {
+                    const { data } = await supabase.auth.getSession();
+                    const token = data?.session?.access_token;
+                    if (token) {
+                        fetch("/api/security/pii-attempt", {
+                            method: "POST",
+                            headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+                            body: JSON.stringify({ kind: msg.includes("phone") ? "phone" : msg.includes("iban") ? "iban" : msg.includes("email") ? "email" : "pii", other: activeOther, path: "(widget)" }),
+                        }).catch(() => {});
+                    }
+                }
+            } catch {
+                // ignore
+            }
         } finally {
             setSending(false);
         }
@@ -515,7 +533,25 @@ export function ChatWidget() {
             if (msg.toLowerCase().includes("not found") || msg.toLowerCase().includes("bucket")) {
                 setError("Dosya gönderilemedi: Supabase Storage'da 'chat-files' bucket yok. Supabase -> Storage -> New bucket: chat-files (Public) oluştur.");
             } else {
-                setError(friendlySupabaseError(e, msg));
+                const friendly = friendlySupabaseError(e, msg);
+                setError(friendly);
+
+                try {
+                    const low = String(e?.message || "").toLowerCase();
+                    if (low.includes("pii_blocked")) {
+                        const { data } = await supabase.auth.getSession();
+                        const token = data?.session?.access_token;
+                        if (token) {
+                            fetch("/api/security/pii-attempt", {
+                                method: "POST",
+                                headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+                                body: JSON.stringify({ kind: low.includes("phone") ? "phone" : low.includes("iban") ? "iban" : low.includes("email") ? "email" : "pii", other: activeOther, path: "(widget-file)" }),
+                            }).catch(() => {});
+                        }
+                    }
+                } catch {
+                    // ignore
+                }
             }
         } finally {
             setSending(false);
@@ -570,7 +606,25 @@ export function ChatWidget() {
             setOfferNote("");
             await fetchThread(activeOther);
         } catch (e: any) {
-            setError(friendlySupabaseError(e, "Teklif gönderilemedi"));
+            const friendly = friendlySupabaseError(e, "Teklif gönderilemedi");
+            setError(friendly);
+
+            try {
+                const msg = String(e?.message || "").toLowerCase();
+                if (msg.includes("pii_blocked")) {
+                    const { data } = await supabase.auth.getSession();
+                    const token = data?.session?.access_token;
+                    if (token) {
+                        fetch("/api/security/pii-attempt", {
+                            method: "POST",
+                            headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+                            body: JSON.stringify({ kind: msg.includes("phone") ? "phone" : msg.includes("iban") ? "iban" : msg.includes("email") ? "email" : "pii", other: activeOther, path: "(widget-offer)" }),
+                        }).catch(() => {});
+                    }
+                }
+            } catch {
+                // ignore
+            }
         } finally {
             setSending(false);
         }
