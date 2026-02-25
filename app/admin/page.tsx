@@ -33,6 +33,7 @@ export default function AdminPage() {
     const [totalUsersCount, setTotalUsersCount] = useState(0);
     const [activeTab, setActiveTab] = useState<"overview" | "users" | "support" | "categories" | "deletions">("overview");
     const [tickets, setTickets] = useState<SupportTicket[]>([]);
+    const [usernameToId, setUsernameToId] = useState<Record<string, string>>({});
     const [replyInputs, setReplyInputs] = useState<Record<string, string>>({});
     const [replySuccess, setReplySuccess] = useState<string | null>(null);
     const [deletionRequests, setDeletionRequests] = useState<any[]>([]);
@@ -45,6 +46,42 @@ export default function AdminPage() {
                 setTimeout(() => reject(new Error(`timeout:${label}`)), ms)
             ),
         ]);
+    };
+
+    const parseSecurityMeta = (message: string) => {
+        const rows = String(message || "").split("\n");
+        const grab = (key: string) => {
+            const found = rows.find((r) => r.startsWith(`${key}:`));
+            return found ? found.slice(key.length + 1).trim() : "";
+        };
+        const callerId = grab("CALLER_ID");
+        const callerUsername = grab("CALLER_USERNAME");
+        const callerRole = grab("CALLER_ROLE");
+        const otherId = grab("OTHER_ID");
+        const otherUsername = grab("OTHER_USERNAME");
+        const otherRole = grab("OTHER_ROLE");
+        return { callerId, callerUsername, callerRole, otherId, otherUsername, otherRole };
+    };
+
+    const callModeration = async (payload: Record<string, any>) => {
+        const { data: sessionData, error: sessionErr } = await supabase.auth.getSession();
+        if (sessionErr || !sessionData?.session?.access_token) {
+            throw new Error("Oturum alinamadi. Lutfen tekrar giris yapin.");
+        }
+
+        const resp = await fetch("/api/admin/moderation", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${sessionData.session.access_token}`,
+            },
+            body: JSON.stringify(payload),
+        });
+        const json = await resp.json().catch(() => ({}));
+        if (!resp.ok) {
+            throw new Error(String((json as any)?.details || (json as any)?.error || resp.status));
+        }
+        return json;
     };
 
     const fetchUsersFromAdminApi = async (): Promise<PlatformUser[]> => {
@@ -125,10 +162,25 @@ export default function AdminPage() {
             if (ticketsRes.status === 'fulfilled') {
                 const t = ticketsRes.value as any;
                 if (t?.error) console.error("AdminPage: Destek talebi çekme hatası:", t.error);
-                setTickets(t?.data || []);
+                const ticketRows: SupportTicket[] = t?.data || [];
+                setTickets(ticketRows);
+                const usernames = Array.from(new Set(ticketRows.map((x) => String(x.from_user || "").trim()).filter(Boolean)));
+                if (usernames.length > 0) {
+                    const { data: profileRows } = await supabase.from("profiles").select("id, username").in("username", usernames);
+                    const nextMap: Record<string, string> = {};
+                    for (const row of profileRows || []) {
+                        const k = String((row as any)?.username || "");
+                        const id = String((row as any)?.id || "");
+                        if (k && id) nextMap[k] = id;
+                    }
+                    setUsernameToId(nextMap);
+                } else {
+                    setUsernameToId({});
+                }
             } else {
                 console.error("AdminPage: Tickets load failed:", ticketsRes.reason);
                 setTickets([]);
+                setUsernameToId({});
             }
 
             if (deletionsRes.status === 'fulfilled') {
@@ -315,6 +367,29 @@ export default function AdminPage() {
     const closeTicket = async (ticketId: string) => {
         await supabase.from('support_tickets').update({ status: 'closed' }).eq('id', ticketId);
         loadData();
+    };
+
+    const handleDeactivateFreelancerGigs = async (freelancerId: string) => {
+        if (!freelancerId) return;
+        if (!confirm("Freelancer kullanicisinin tum aktif ilanlarini pasife almak istediginize emin misiniz?")) return;
+        try {
+            await callModeration({ action: "deactivate_user_gigs", targetUserId: freelancerId });
+            alert("Freelancer ilanlari pasife alindi.");
+        } catch (e: any) {
+            alert("Islem basarisiz: " + String(e?.message || e));
+        }
+    };
+
+    const handleBanEmployer = async (employerId: string) => {
+        if (!employerId) return;
+        if (!confirm("Musteri hesabini engellemek istediginize emin misiniz?")) return;
+        try {
+            await callModeration({ action: "set_user_ban", targetUserId: employerId, banned: true });
+            alert("Musteri hesabi engellendi.");
+            loadData({ fetchUsers: true });
+        } catch (e: any) {
+            alert("Islem basarisiz: " + String(e?.message || e));
+        }
     };
 
     // Auth hâlâ yükleniyor — bekle
@@ -585,7 +660,12 @@ export default function AdminPage() {
                     </div>
 
                     <div className="space-y-6">
-                        {tickets.map(ticket => (
+                        {tickets.map(ticket => {
+                            const sec = parseSecurityMeta(ticket.message);
+                            const fromUserId = sec.callerId || usernameToId[ticket.from_user] || "";
+                            const freelancerId = sec.callerRole === "freelancer" ? sec.callerId : sec.otherRole === "freelancer" ? sec.otherId : "";
+                            const employerId = sec.callerRole === "employer" ? sec.callerId : sec.otherRole === "employer" ? sec.otherId : "";
+                            return (
                             <div key={ticket.id} className={`bg-white border rounded-[2rem] overflow-hidden shadow-sm transition-all ${ticket.status === 'open' ? 'border-l-8 border-l-orange-500' : 'border-l-8 border-l-emerald-500'}`}>
                                 <div className="p-8">
                                     <div className="flex items-start justify-between gap-4 mb-6">
@@ -594,8 +674,25 @@ export default function AdminPage() {
                                                 {ticket.from_user.charAt(0)}
                                             </div>
                                             <div>
-                                                <p className="font-black text-gray-900 uppercase tracking-tight">{ticket.from_user}</p>
+                                                <p className="font-black text-gray-900 uppercase tracking-tight">
+                                                    {fromUserId ? (
+                                                        <Link href={`/admin/users/${fromUserId}`} className="hover:underline text-blue-700">
+                                                            {ticket.from_user}
+                                                        </Link>
+                                                    ) : (
+                                                        ticket.from_user
+                                                    )}
+                                                </p>
                                                 <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">{ticket.from_email} • {new Date(ticket.created_at).toLocaleString("tr-TR")}</p>
+                                                {sec.otherUsername && (
+                                                    <p className="text-[10px] text-gray-500 font-black uppercase tracking-widest mt-1">
+                                                        Hedef: {sec.otherId ? (
+                                                            <Link href={`/admin/users/${sec.otherId}`} className="text-blue-700 hover:underline">
+                                                                {sec.otherUsername}
+                                                            </Link>
+                                                        ) : sec.otherUsername}
+                                                    </p>
+                                                )}
                                             </div>
                                         </div>
                                         <div className="flex items-center gap-2">
@@ -610,6 +707,28 @@ export default function AdminPage() {
                                         <div className="bg-gray-50 border border-gray-100 p-6 rounded-2xl text-sm font-bold text-gray-600 leading-relaxed shadow-inner">
                                             {ticket.message}
                                         </div>
+                                        {(freelancerId || employerId) && (
+                                            <div className="mt-4 flex flex-wrap gap-2">
+                                                {freelancerId && (
+                                                    <Button
+                                                        variant="outline"
+                                                        className="h-10 px-4 text-[10px] font-black uppercase rounded-xl bg-orange-50 text-orange-700 border-orange-200 hover:bg-orange-100"
+                                                        onClick={() => handleDeactivateFreelancerGigs(freelancerId)}
+                                                    >
+                                                        Freelancer ilanlarini pasife al
+                                                    </Button>
+                                                )}
+                                                {employerId && (
+                                                    <Button
+                                                        variant="outline"
+                                                        className="h-10 px-4 text-[10px] font-black uppercase rounded-xl bg-red-50 text-red-700 border-red-200 hover:bg-red-100"
+                                                        onClick={() => handleBanEmployer(employerId)}
+                                                    >
+                                                        Musteriyi engelle
+                                                    </Button>
+                                                )}
+                                            </div>
+                                        )}
                                     </div>
 
                                     {ticket.reply && (
@@ -640,7 +759,8 @@ export default function AdminPage() {
                                     )}
                                 </div>
                             </div>
-                        ))}
+                            );
+                        })}
                     </div>
                 </div>
             )}

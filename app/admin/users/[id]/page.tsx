@@ -145,6 +145,38 @@ export default function AdminUserDetailPage() {
         }
     };
 
+    const callModeration = async (payload: Record<string, any>) => {
+        const { data: sessionData, error: sessionErr } = await supabase.auth.getSession();
+        if (sessionErr || !sessionData?.session?.access_token) {
+            throw new Error("Oturum alinamadi.");
+        }
+
+        const resp = await fetch("/api/admin/moderation", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${sessionData.session.access_token}`,
+            },
+            body: JSON.stringify(payload),
+        });
+        const json = await resp.json().catch(() => ({}));
+        if (!resp.ok) {
+            throw new Error(String((json as any)?.details || (json as any)?.error || resp.status));
+        }
+    };
+
+    const handleDeactivateGig = async (gigId: number) => {
+        if (!confirm("Bu freelancer ilanini pasife almak istediginize emin misiniz?")) return;
+        try {
+            await callModeration({ action: "set_gig_active", gigId, active: false });
+            setGigs((prev) =>
+                (prev || []).map((g: any) => (Number(g?.id) === Number(gigId) ? { ...g, is_active: false } : g))
+            );
+        } catch (e: any) {
+            alert("Islem basarisiz: " + String(e?.message || e));
+        }
+    };
+
     if (authLoading || loading) return (
         <div className="h-screen flex items-center justify-center bg-gray-50 uppercase font-black text-xs tracking-widest animate-pulse">
             Kullanıcı Bilgileri Yükleniyor...
@@ -446,6 +478,17 @@ export default function AdminUserDetailPage() {
                                         <div className="flex items-center justify-between mt-3">
                                             <span className="text-sm font-black text-emerald-600">₺{gig.price}</span>
                                             <span className="text-[10px] text-gray-400">{formatDate(gig.created_at)}</span>
+                                        </div>
+                                        <div className="mt-3">
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                className="h-9 px-3 text-[10px] font-black uppercase rounded-xl border-orange-200 text-orange-700 hover:bg-orange-50"
+                                                disabled={!gig?.is_active}
+                                                onClick={() => handleDeactivateGig(Number(gig.id))}
+                                            >
+                                                {gig?.is_active ? "Pasife Al" : "Pasif"}
+                                            </Button>
                                         </div>
                                     </div>
                                 ))}

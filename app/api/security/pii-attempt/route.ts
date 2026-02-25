@@ -2,6 +2,16 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
 
+function warningTextForRole(role: string) {
+  if (role === "freelancer") {
+    return "Uyaridir: Lutfen IBAN, telefon ve mail bilgisi vermeyiniz. Devam edilmesi durumunda ilanlariniz pasif hale getirilecektir.";
+  }
+  if (role === "employer") {
+    return "Uyaridir: Lutfen IBAN, telefon ve mail bilgisi vermeyiniz. Devam edilmesi durumunda hesabiniz engellenecektir.";
+  }
+  return "Uyaridir: Lutfen IBAN, telefon ve mail bilgisi vermeyiniz. Devam edilmesi durumunda hesabiniza yaptirim uygulanacaktir.";
+}
+
 export async function POST(req: Request) {
   try {
     const supabaseAdmin = getSupabaseAdmin();
@@ -9,7 +19,8 @@ export async function POST(req: Request) {
       return NextResponse.json(
         {
           error: "missing_service_role",
-          details: "SUPABASE_SERVICE_ROLE_KEY ortam değişkeni eksik. Vercel Project Settings -> Environment Variables bölümüne ekleyin.",
+          details:
+            "SUPABASE_SERVICE_ROLE_KEY ortam degiskeni eksik. Vercel Project Settings -> Environment Variables bolumune ekleyin.",
         },
         { status: 500 }
       );
@@ -46,35 +57,80 @@ export async function POST(req: Request) {
 
     const { data: callerProfile } = await supabaseAdmin
       .from("profiles")
-      .select("username")
+      .select("username, role")
       .eq("id", callerId)
       .maybeSingle();
 
     const callerUsername = String(callerProfile?.username || "(unknown)");
+    const callerRole = String(callerProfile?.role || "guest");
 
-    // Rate limit: 1 ticket per 10 minutes per user
-    const { data: lastTicket } = await supabaseAdmin
-      .from("support_tickets")
-      .select("id, created_at")
-      .eq("from_user", callerUsername)
-      .eq("category", "security")
-      .eq("subject", "PII Attempt")
-      .order("created_at", { ascending: false })
-      .limit(1)
+    const otherKey = other.toLowerCase();
+    const { data: otherProfile } = await supabaseAdmin
+      .from("profiles")
+      .select("id, username, role, email")
+      .ilike("username", otherKey)
       .maybeSingle();
 
-    if (lastTicket?.created_at) {
-      const lastAt = new Date(String(lastTicket.created_at)).getTime();
-      if (Number.isFinite(lastAt) && Date.now() - lastAt < 10 * 60 * 1000) {
-        return NextResponse.json({ ok: true, throttled: true });
-      }
+    const otherId = String(otherProfile?.id || "");
+    const otherUsername = String(otherProfile?.username || other || "");
+    const otherRole = String(otherProfile?.role || "guest");
+    const otherEmail = String(otherProfile?.email || "");
+
+    const systemMessages: Array<{
+      sender_username: string;
+      receiver_username: string;
+      text: string;
+      read: boolean;
+    }> = [];
+
+    if (callerUsername && callerUsername !== "(unknown)") {
+      systemMessages.push({
+        sender_username: "sistem",
+        receiver_username: callerUsername.toLowerCase(),
+        text: warningTextForRole(callerRole),
+        read: false,
+      });
     }
+
+    if (otherUsername) {
+      systemMessages.push({
+        sender_username: "sistem",
+        receiver_username: otherUsername.toLowerCase(),
+        text: warningTextForRole(otherRole),
+        read: false,
+      });
+    }
+
+    if (systemMessages.length > 0) {
+      await supabaseAdmin.from("messages").insert(systemMessages);
+    }
+
+    const pair = [callerUsername.toLowerCase(), otherKey].sort().join("|");
+    const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+
+    const { count: repeatCount } = await supabaseAdmin
+      .from("support_tickets")
+      .select("id", { count: "exact", head: true })
+      .eq("category", "security")
+      .eq("from_user", callerUsername)
+      .gte("created_at", since)
+      .ilike("message", `%PAIR:${pair}%`);
+
+    const isRepeat = Number(repeatCount || 0) > 0;
 
     const msg = [
       `PII denemesi engellendi: ${kind}`,
-      `Kullanıcı: ${callerUsername} (${callerEmail || "no-email"})`,
-      other ? `Hedef: ${other}` : "",
+      `Kullanici: ${callerUsername} (${callerEmail || "no-email"})`,
+      otherUsername ? `Hedef: ${otherUsername} (${otherEmail || "no-email"})` : "",
       path ? `Sayfa: ${path}` : "",
+      `Tekrar deneme: ${isRepeat ? "evet" : "hayir"}`,
+      `CALLER_ID:${callerId}`,
+      `CALLER_USERNAME:${callerUsername}`,
+      `CALLER_ROLE:${callerRole}`,
+      otherId ? `OTHER_ID:${otherId}` : "",
+      otherUsername ? `OTHER_USERNAME:${otherUsername}` : "",
+      `OTHER_ROLE:${otherRole}`,
+      `PAIR:${pair}`,
       `Zaman: ${new Date().toISOString()}`,
     ]
       .filter(Boolean)
@@ -86,7 +142,7 @@ export async function POST(req: Request) {
         {
           from_user: callerUsername,
           from_email: callerEmail,
-          subject: "PII Attempt",
+          subject: isRepeat ? "PII Repeat Attempt" : "PII Attempt",
           category: "security",
           message: msg,
           status: "open",
@@ -99,7 +155,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "insert_failed", details: ins.error.message }, { status: 500 });
     }
 
-    return NextResponse.json({ ok: true, id: ins?.data?.id || null });
+    return NextResponse.json({ ok: true, id: ins?.data?.id || null, repeat: isRepeat });
   } catch (err: any) {
     return NextResponse.json(
       { error: "unexpected", details: err?.message ? String(err.message) : String(err) },
