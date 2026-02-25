@@ -98,7 +98,7 @@ function AdminPageContent() {
     const fetchUsersFromAdminApi = async (): Promise<PlatformUser[]> => {
         const { data: sessionData, error: sessionErr } = await supabase.auth.getSession();
         if (sessionErr || !sessionData?.session?.access_token) {
-            throw new Error("Oturum alÄ±namadÄ±. LÃ¼tfen tekrar giriÅŸ yapÄ±n.");
+            throw new Error("Oturum alınamadı. Lütfen tekrar giriş yapın.");
         }
 
         const resp = await fetch(`/api/admin/users?t=${Date.now()}`,
@@ -128,12 +128,12 @@ function AdminPageContent() {
     };
 
     const loadData = async (opts?: { fetchUsers?: boolean }) => {
-        console.log("AdminPage: Veri Ã§ekme iÅŸlemi baÅŸladÄ±...");
+        console.log("AdminPage: Veri çekme işlemi başladı...");
         try {
             const fetchUsers = !!opts?.fetchUsers;
 
-            // 1) HÄ±zlÄ± sayÄ±m + istatistikler + destek + silme talepleri paralel
-            console.log("AdminPage: Ä°statistikler / talepler / sayÄ±mlar isteniyor...");
+            // 1) Hızlı sayım + istatistikler + destek + silme talepleri paralel
+            console.log("AdminPage: İstatistikler / talepler / sayımlar isteniyor...");
             const results = await Promise.allSettled([
                 withTimeout(getPlatformStats(), 7000, "platformStats"),
                 withTimeout(supabase.from('profiles').select('*', { count: 'exact', head: true }), 7000, "profilesCount"),
@@ -172,7 +172,7 @@ function AdminPageContent() {
 
             if (ticketsRes.status === 'fulfilled') {
                 const t = ticketsRes.value as any;
-                if (t?.error) console.error("AdminPage: Destek talebi Ã§ekme hatasÄ±:", t.error);
+                if (t?.error) console.error("AdminPage: Destek talebi çekme hatası:", t.error);
                 const ticketRows: SupportTicket[] = t?.data || [];
                 setTickets(ticketRows);
                 const usernames = Array.from(new Set(ticketRows.map((x) => String(x.from_user || "").trim()).filter(Boolean)));
@@ -196,40 +196,40 @@ function AdminPageContent() {
 
             if (deletionsRes.status === 'fulfilled') {
                 const d = deletionsRes.value as any;
-                if (d?.error) console.error("AdminPage: Silme talepleri Ã§ekme hatasÄ±:", d.error);
+                if (d?.error) console.error("AdminPage: Silme talepleri çekme hatası:", d.error);
                 setDeletionRequests(d?.data || []);
             } else {
                 console.error("AdminPage: Deletions load failed:", deletionsRes.reason);
                 setDeletionRequests([]);
             }
 
-            // 2) KullanÄ±cÄ±lar listesi sadece gerektiÄŸinde
+            // 2) Kullanıcılar listesi sadece gerektiğinde
             if (fetchUsers) {
-                console.log("AdminPage: KullanÄ±cÄ±lar listesi isteniyor...");
+                console.log("AdminPage: Kullanıcılar listesi isteniyor...");
                 try {
                     const uData = await withTimeout(fetchUsersFromAdminApi(), 10000, "usersListApi");
-                    console.log("AdminPage: KullanÄ±cÄ±lar (api):", uData?.length || 0);
+                    console.log("AdminPage: Kullanıcılar (api):", uData?.length || 0);
                     setUsers(uData || []);
                     setUsersSource("api");
                 } catch (e) {
                     console.warn("AdminPage: users api failed, falling back to profiles:", e);
                     const uData = await withTimeout(getAllUsers(), 10000, "usersList");
-                    console.log("AdminPage: KullanÄ±cÄ±lar (fallback):", uData?.length || 0);
+                    console.log("AdminPage: Kullanıcılar (fallback):", uData?.length || 0);
                     setUsers(uData || []);
                     setUsersSource("fallback");
                 }
             }
 
         } catch (err) {
-            console.error("AdminPage: Veri yÃ¼kleme sÄ±rasÄ±nda kritik hata:", err);
+            console.error("AdminPage: Veri yükleme sırasında kritik hata:", err);
         } finally {
-            console.log("AdminPage: YÃ¼kleme bitti.");
+            console.log("AdminPage: Yükleme bitti.");
             setLoading(false);
         }
     };
 
     const handleApproveDeletion = async (requestId: string, targetUserId: string) => {
-        if (!confirm("BU HESABI KALICI OLARAK SÄ°LMEK Ä°STEDÄ°ÄÄ°NÄ°ZE EMÄ°N MÄ°SÄ°Z? Bu iÅŸlem geri alÄ±namaz.")) return;
+        if (!confirm("BU HESABI KALICI OLARAK SİLMEK İSTEDİĞİNİZE EMİN MİSİNİZ? Bu işlem geri alınamaz.")) return;
 
         // 1. Mark request as approved
         await supabase.from('account_deletion_requests').update({ status: 'approved' }).eq('id', requestId);
@@ -238,7 +238,7 @@ function AdminPageContent() {
         const { error } = await supabase.from('profiles').delete().eq('id', targetUserId);
 
         if (!error) {
-            alert("Hesap baÅŸarÄ±yla silindi.");
+            alert("Hesap başarıyla silindi.");
             loadData();
         } else {
             alert("Hata: " + error.message);
@@ -251,19 +251,19 @@ function AdminPageContent() {
         if (authLoading) return;
 
         if (!user) {
-            console.log("AdminPage: KullanÄ±cÄ± yok, login'e gidiliyor.");
+            console.log("AdminPage: Kullanıcı yok, login'e gidiliyor.");
             router.push("/login");
             return;
         }
 
         if (user.role !== "admin") {
-            console.log("AdminPage: YETKÄ°SÄ°Z GÄ°RÄ°Å! Rol:", user.role);
-            alert("Bu sayfaya eriÅŸim yetkiniz yok. YÃ¶netici deÄŸilsiniz.");
+            console.log("AdminPage: YETKİSİZ GİRİŞ! Rol:", user.role);
+            alert("Bu sayfaya erişim yetkiniz yok. Yönetici değilsiniz.");
             router.push("/");
             return;
         }
 
-        console.log("AdminPage: Veriler yÃ¼kleniyor...");
+        console.log("AdminPage: Veriler yükleniyor...");
         loadData({ fetchUsers: false });
     }, [user, router, authLoading]);
 
@@ -296,7 +296,7 @@ function AdminPageContent() {
     };
 
     const handleDelete = async (u: PlatformUser) => {
-        if (!u.id || !confirm(`${u.username} kullanÄ±cÄ±sÄ±nÄ± silmek istediÄŸinize emin misiniz?`)) return;
+        if (!u.id || !confirm(`${u.username} kullanıcısını silmek istediğinize emin misiniz?`)) return;
         await deleteUserAccount(u.id);
         loadData();
     };
@@ -304,18 +304,18 @@ function AdminPageContent() {
     const handleUpdate = async (u: PlatformUser, field: "email" | "password" | "username") => {
         const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
         if (!u.id || !uuidRegex.test(u.id)) {
-            alert(`GeÃ§ersiz kullanÄ±cÄ± ID (UUID deÄŸil): ${String(u.id)}`);
+            alert(`Geçersiz kullanıcı ID (UUID değil): ${String(u.id)}`);
             return;
         }
         const newValue = prompt(
-            `${u.username} iÃ§in yeni ${field}:`,
+            `${u.username} için yeni ${field}:`,
             field === "email" ? u.email : field === "username" ? u.username : ""
         );
         if (newValue && u.id) {
             if (field === "password" || field === "email" || field === "username") {
                 const { data: sessionData, error: sessionErr } = await supabase.auth.getSession();
                 if (sessionErr || !sessionData?.session?.access_token) {
-                    alert("Oturum alÄ±namadÄ±. LÃ¼tfen tekrar giriÅŸ yapÄ±n.");
+                    alert("Oturum alınamadı. Lütfen tekrar giriş yapın.");
                     return;
                 }
 
@@ -342,17 +342,17 @@ function AdminPageContent() {
                     const received = Object.prototype.hasOwnProperty.call(json || {}, "received")
                         ? ` (gelen id: ${String((json as any).received)})`
                         : "";
-                    const label = field === "password" ? "Åifre" : "E-posta";
-                    alert(label + " gÃ¼ncelleme baÅŸarÄ±sÄ±z: " + (json?.details || json?.error || resp.status) + received + ` (ui id: ${u.id})`);
+                    const label = field === "password" ? "Şifre" : "E-posta";
+                    alert(label + " güncelleme başarısız: " + (json?.details || json?.error || resp.status) + received + ` (ui id: ${u.id})`);
                     return;
                 }
 
                 const authEmail = json?.email ? String(json.email) : "";
                 if (field === "password") {
-                    alert("Åifre gÃ¼ncellendi." + (authEmail ? ` GiriÅŸ iÃ§in e-posta: ${authEmail}` : ""));
+                    alert("Şifre güncellendi." + (authEmail ? ` Giriş için e-posta: ${authEmail}` : ""));
                 } else {
-                    const label = field === "email" ? "E-posta" : "KullanÄ±cÄ± adÄ±";
-                    alert(label + " gÃ¼ncellendi." + (field === "email" && authEmail ? ` Yeni e-posta: ${authEmail}` : ""));
+                    const label = field === "email" ? "E-posta" : "Kullanıcı adı";
+                    alert(label + " güncellendi." + (field === "email" && authEmail ? ` Yeni e-posta: ${authEmail}` : ""));
                 }
                 loadData({ fetchUsers: true });
                 return;
@@ -360,7 +360,7 @@ function AdminPageContent() {
 
             const res = await updateUserInfo(u.id, { [field]: newValue });
             if ((res as any)?.ok === false) {
-                alert("GÃ¼ncelleme baÅŸarÄ±sÄ±z: " + (((res as any)?.error?.message) || "RLS/izin hatasÄ±"));
+                alert("Güncelleme başarısız: " + (((res as any)?.error?.message) || "RLS/izin hatası"));
                 return;
             }
 
@@ -418,24 +418,24 @@ function AdminPageContent() {
         }
     };
 
-    // Auth hÃ¢lÃ¢ yÃ¼kleniyor â€” bekle
+    // Auth hâlâ yükleniyor - bekle
     if (authLoading) return (
         <div className="h-screen flex items-center justify-center bg-gray-50 uppercase font-black text-xs tracking-widest animate-pulse">
             Oturum Kontrol Ediliyor...
         </div>
     );
 
-    // Auth yÃ¼klendi ama user yok veya admin deÄŸil â€” useEffect zaten yÃ¶nlendirecek
+    // Auth yüklendi ama user yok veya admin değil - useEffect zaten yönlendirecek
     if (!user || user.role !== "admin") return (
         <div className="h-screen flex items-center justify-center bg-gray-50 uppercase font-black text-xs tracking-widest animate-pulse">
             Yetki Kontrol Ediliyor...
         </div>
     );
 
-    // Admin verisi yÃ¼kleniyor
+    // Admin verisi yükleniyor
     if (loading) return (
         <div className="h-screen flex items-center justify-center bg-gray-50 uppercase font-black text-xs tracking-widest animate-pulse">
-            Veriler YÃ¼kleniyor...
+            Veriler Yükleniyor...
         </div>
     );
 
@@ -445,20 +445,20 @@ function AdminPageContent() {
         <div className="container mx-auto px-4 py-8 max-w-6xl">
             <div className="mb-8">
                 <h1 className="text-3xl font-bold tracking-tight font-heading flex items-center gap-3 uppercase">
-                    <Shield className="h-8 w-8 text-red-600" /> YÃ¶netim Paneli
+                    <Shield className="h-8 w-8 text-red-600" /> Yönetim Paneli
                 </h1>
-                <p className="text-[10px] text-gray-400 font-bold mt-1">HoÅŸ geldiniz, {user.username}. Platform yÃ¶netim alanÄ±.</p>
+                <p className="text-[10px] text-gray-400 font-bold mt-1">Hoş geldiniz, {user.username}. Platform yönetim alanı.</p>
             </div>
 
             {/* Tabs */}
             <div className="flex gap-2 mb-8 border-b">
                 {[
-                    { key: "overview" as const, label: "ğŸ“Š Genel BakÄ±ÅŸ", count: null },
-                    { key: "users" as const, label: "ğŸ‘¥ Ãœyeler", count: totalUsersCount },
-                    { key: "support" as const, label: "ğŸ§ Destek", count: openTicketsCount > 0 ? openTicketsCount : null },
-                    { key: "deletions" as const, label: "âš ï¸ Silme Talepleri", count: deletionRequests.length > 0 ? deletionRequests.length : null },
-                    { key: "categories" as const, label: "ğŸ“‚ Kategoriler", count: null },
-                    { key: "site_settings" as const, label: "âš™ï¸ Site AyarlarÄ±", count: null },
+                    { key: "overview" as const, label: "📊 Genel Bakış", count: null },
+                    { key: "users" as const, label: "👥 Üyeler", count: totalUsersCount },
+                    { key: "support" as const, label: "🎧 Destek", count: openTicketsCount > 0 ? openTicketsCount : null },
+                    { key: "deletions" as const, label: "⚠️ Silme Talepleri", count: deletionRequests.length > 0 ? deletionRequests.length : null },
+                    { key: "categories" as const, label: "📂 Kategoriler", count: null },
+                    { key: "site_settings" as const, label: "⚙️ Site Ayarları", count: null },
                 ].map(tab => (
                     tab.key === "categories" ? (
                         <Link
@@ -865,13 +865,13 @@ function AdminPageContent() {
                     <div className="bg-white border rounded-[2.5rem] p-10 shadow-sm border-slate-100">
                         <div className="flex items-center justify-between mb-8 pb-4 border-b">
                             <div>
-                                <h3 className="text-2xl font-black text-slate-900 uppercase">Genel Site YapÄ±landÄ±rmasÄ±</h3>
-                                <p className="text-[10px] text-slate-400 font-bold uppercase mt-1">Sitenin ismini, logosunu ve temel bilgilerini buradan yÃ¶netin.</p>
+                                <h3 className="text-2xl font-black text-slate-900 uppercase">Genel Site Yapılandırması</h3>
+                                <p className="text-[10px] text-slate-400 font-bold uppercase mt-1">Sitenin ismini, logosunu ve temel bilgilerini buradan yönetin.</p>
                             </div>
                             <Button
                                 onClick={() => {
                                     saveSiteConfig(siteConfig);
-                                    alert("Site ayarlarÄ± baÅŸarÄ±yla kaydedildi ve tÃ¼m kullanÄ±cÄ±lara yansÄ±tÄ±ldÄ±!");
+                                    alert("Site ayarları başarıyla kaydedildi ve tüm kullanıcılara yansıtıldı!");
                                 }}
                                 className="bg-blue-600 hover:bg-blue-700 text-white font-black rounded-xl px-10 h-14"
                             >
@@ -882,7 +882,7 @@ function AdminPageContent() {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
                             <div className="space-y-6">
                                 <div className="space-y-2">
-                                    <label className="text-[10px] font-black uppercase text-slate-400 ml-2">Site Ä°smi</label>
+                                    <label className="text-[10px] font-black uppercase text-slate-400 ml-2">Site İsmi</label>
                                     <Input
                                         value={siteConfig.siteName}
                                         onChange={(e) => setSiteConfig({ ...siteConfig, siteName: e.target.value })}
@@ -900,7 +900,7 @@ function AdminPageContent() {
                             </div>
                             <div className="space-y-6">
                                 <div className="space-y-2">
-                                    <label className="text-[10px] font-black uppercase text-slate-400 ml-2">Ä°letiÅŸim E-postasÄ±</label>
+                                    <label className="text-[10px] font-black uppercase text-slate-400 ml-2">İletişim E-postası</label>
                                     <Input
                                         value={siteConfig.contactEmail}
                                         onChange={(e) => setSiteConfig({ ...siteConfig, contactEmail: e.target.value })}
@@ -908,7 +908,7 @@ function AdminPageContent() {
                                     />
                                 </div>
                                 <div className="space-y-2">
-                                    <label className="text-[10px] font-black uppercase text-slate-400 ml-2">Ä°letiÅŸim Telefonu</label>
+                                    <label className="text-[10px] font-black uppercase text-slate-400 ml-2">İletişim Telefonu</label>
                                     <Input
                                         value={siteConfig.contactPhone}
                                         onChange={(e) => setSiteConfig({ ...siteConfig, contactPhone: e.target.value })}
@@ -922,7 +922,7 @@ function AdminPageContent() {
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                         <div className="bg-white border rounded-[2.5rem] p-10 shadow-sm border-slate-100">
                             <h3 className="text-xl font-black text-slate-900 uppercase mb-6 flex items-center gap-3">
-                                <Layout className="w-6 h-6 text-blue-600" /> Ãœst MenÃ¼ (Header)
+                                <Layout className="w-6 h-6 text-blue-600" /> Üst Menü (Header)
                             </h3>
                             <div className="space-y-4">
                                 {siteConfig.headerLinks.map((link, i) => (
@@ -934,7 +934,7 @@ function AdminPageContent() {
                                                 next[i].label = e.target.value;
                                                 setSiteConfig({ ...siteConfig, headerLinks: next });
                                             }}
-                                            placeholder="MenÃ¼ AdÄ±"
+                                            placeholder="Menü Adı"
                                             className="flex-1 bg-white border-slate-200 font-bold"
                                         />
                                         <Input
@@ -967,14 +967,14 @@ function AdminPageContent() {
                                         setSiteConfig({ ...siteConfig, headerLinks: [...siteConfig.headerLinks, { label: "Yeni Link", href: "/" }] });
                                     }}
                                 >
-                                    <Plus className="w-4 h-4 mr-2" /> Yeni MenÃ¼ Ã–ÄŸesi Ekle
+                                    <Plus className="w-4 h-4 mr-2" /> Yeni Menü Öğesi Ekle
                                 </Button>
                             </div>
                         </div>
 
                         <div className="bg-white border rounded-[2.5rem] p-10 shadow-sm border-slate-100">
                             <h3 className="text-xl font-black text-slate-900 uppercase mb-6 flex items-center gap-3">
-                                <Palette className="w-6 h-6 text-purple-600" /> Alt MenÃ¼ (Footer)
+                                <Palette className="w-6 h-6 text-purple-600" /> Alt Menü (Footer)
                             </h3>
                             <div className="space-y-4">
                                 {siteConfig.footerLinks.map((link, i) => (
@@ -1017,7 +1017,7 @@ function AdminPageContent() {
                                         setSiteConfig({ ...siteConfig, footerLinks: [...siteConfig.footerLinks, { label: "Yeni Link", href: "/" }] });
                                     }}
                                 >
-                                    <Plus className="w-4 h-4 mr-2" /> Yeni MenÃ¼ Ã–ÄŸesi Ekle
+                                    <Plus className="w-4 h-4 mr-2" /> Yeni Menü Öğesi Ekle
                                 </Button>
                             </div>
                         </div>
@@ -1026,8 +1026,8 @@ function AdminPageContent() {
                     <div className="bg-slate-900 rounded-[3rem] p-12 text-white shadow-2xl relative overflow-hidden">
                         <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-10">
                             <div className="max-w-xl">
-                                <h3 className="text-3xl font-black uppercase italic mb-4">Duyuru YÃ¶netimi</h3>
-                                <p className="text-white/60 font-medium leading-relaxed">Sitenin en Ã¼stÃ¼nde kurumsal bir duyuru bandÄ± yayÄ±nlayarak Ã¶nemli geliÅŸmeleri bildirin.</p>
+                                <h3 className="text-3xl font-black uppercase italic mb-4">Duyuru Yönetimi</h3>
+                                <p className="text-white/60 font-medium leading-relaxed">Sitenin en üstünde kurumsal bir duyuru bandı yayınlayarak önemli gelişmeleri bildirin.</p>
 
                                 <div className="mt-8 space-y-6">
                                     <div className="flex items-center gap-4">
@@ -1037,7 +1037,7 @@ function AdminPageContent() {
                                             onChange={(e) => setSiteConfig({ ...siteConfig, announcement: { ...siteConfig.announcement, enabled: e.target.checked } })}
                                             className="w-6 h-6 rounded accent-blue-600"
                                         />
-                                        <span className="font-bold uppercase text-[10px] tracking-widest">Duyuruyu AktifleÅŸtir</span>
+                                        <span className="font-bold uppercase text-[10px] tracking-widest">Duyuruyu Aktifleştir</span>
                                     </div>
                                     <Textarea
                                         value={siteConfig.announcement.text}
@@ -1048,7 +1048,7 @@ function AdminPageContent() {
                                 </div>
                             </div>
                             <div className="w-full md:w-[320px] bg-white/5 backdrop-blur-xl border border-white/10 p-8 rounded-[2.5rem]">
-                                <h4 className="text-[10px] font-black uppercase tracking-widest text-white/40 mb-6">Tema SeÃ§imi</h4>
+                                <h4 className="text-[10px] font-black uppercase tracking-widest text-white/40 mb-6">Tema Seçimi</h4>
                                 <div className="grid grid-cols-2 gap-4">
                                     {["blue", "red", "orange", "slate"].map((t) => (
                                         <button
@@ -1073,8 +1073,9 @@ function AdminPageContent() {
 
 export default function AdminPage() {
     return (
-        <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><p>YÃ¼kleniyor...</p></div>}>
+        <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><p>Yükleniyor...</p></div>}>
             <AdminPageContent />
         </Suspense>
     );
 }
+
