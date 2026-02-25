@@ -12,8 +12,10 @@ export default function PostGigPage() {
     useEffect(() => {
         if (!loading && !isAuthenticated) {
             router.push("/login");
+        } else if (!loading && isAuthenticated && user?.role !== "freelancer") {
+            router.push("/");
         }
-    }, [isAuthenticated, loading, router]);
+    }, [isAuthenticated, loading, user, router]);
 
     if (loading) return null;
     if (!isAuthenticated) return null;

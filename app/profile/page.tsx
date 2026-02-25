@@ -190,7 +190,7 @@ export default function ProfilePage() {
 
         fetchProfile();
         fetchUserJobs();
-        if (user?.role === "freelancer" || user?.role === "admin") {
+        if (user?.role === "freelancer") {
             (async () => {
                 setGigsLoading(true);
                 try {
@@ -550,8 +550,8 @@ export default function ProfilePage() {
         setProfile((prev) => ({ ...prev, skills: prev.skills.filter((s) => s !== skill) }));
     };
 
-    const isFreelancer = user?.role === "freelancer" || user?.role === "admin";
-    const isEmployer = user?.role === "employer" || user?.role === "admin";
+    const isFreelancer = user?.role === "freelancer";
+    const isEmployer = user?.role === "employer";
     const memberSince = profile.createdAt
         ? formatDistance(new Date(profile.createdAt), new Date(), { addSuffix: true, locale: tr })
         : "Yeni Üye";

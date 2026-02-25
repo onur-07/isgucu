@@ -452,7 +452,7 @@ export function GigPostingForm() {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
-        if (user?.role !== "freelancer" && user?.role !== "admin") {
+        if (user?.role !== "freelancer") {
             alert("Hizmet ilanı vermek için Freelancer hesabına sahip olmalısınız.");
             return;
         }
