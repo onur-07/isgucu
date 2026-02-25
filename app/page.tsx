@@ -26,7 +26,7 @@ export default function Home() {
   const router = useRouter();
   const [query, setQuery] = useState("");
   const rotatingHeroWords = useMemo(
-    () => ["Freelancerlık", "İş Proje Yaptırmak", "Doğru Uzmanı Bulmak"],
+    () => ["Freelancerlık", "Proje Yaptırmak", "Doğru Uzmanı Bulmak"],
     []
   );
   const [activeHeroWordIndex, setActiveHeroWordIndex] = useState(0);
@@ -34,7 +34,7 @@ export default function Home() {
   const categories = useMemo(
     () =>
       CATEGORIES.map((cat) =>
-        cat.slug === "web-tasarim" ? { ...cat, title: "Yapay Zeka" } : cat
+        cat.slug === "web-tasarim" ? { ...cat, title: "Yapay Zeka", icon: "🧠" } : cat
       ),
     []
   );
@@ -146,15 +146,17 @@ export default function Home() {
   return (
     <div className="flex flex-col min-h-screen">
       {/* Hero Section */}
-      <section className="relative w-full py-24 md:py-32 lg:py-40 overflow-hidden">
+      <section className="relative w-full py-16 md:py-20 lg:py-24 overflow-hidden">
         <div className="absolute inset-0 -z-10 bg-white">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_var(--tw-gradient-stops))] from-blue-100/40 via-transparent to-transparent"></div>
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom_left,_var(--tw-gradient-stops))] from-indigo-100/40 via-transparent to-transparent"></div>
           <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-full max-w-[1200px] bg-[url('/grid.svg')] opacity-[0.04]"></div>
+          <div className="absolute -top-12 -left-12 h-48 w-48 rounded-full bg-blue-200/25 blur-3xl" />
+          <div className="absolute -bottom-16 -right-10 h-56 w-56 rounded-full bg-cyan-200/30 blur-3xl" />
         </div>
 
-        <div className="container mx-auto px-4 md:px-6 flex flex-col items-center justify-center text-center space-y-10 relative z-10">
-          <p className="text-base md:text-lg font-black tracking-tight">
+        <div className="container mx-auto px-4 md:px-6 flex flex-col items-center justify-center text-center space-y-6 relative z-10">
+          <p className="text-xl md:text-3xl font-black tracking-tight leading-tight">
             <span className="text-black">Burada </span>
             <span
               key={rotatingHeroWords[activeHeroWordIndex]}
@@ -162,7 +164,7 @@ export default function Home() {
             >
               {rotatingHeroWords[activeHeroWordIndex]}
             </span>
-            <span className="text-black"> çok kolay</span>
+            <span className="text-black"> daha kolay</span>
           </p>
 
           <div className="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 border-transparent bg-blue-50 text-blue-700 hover:bg-blue-100 mb-4">
@@ -176,6 +178,22 @@ export default function Home() {
           <p className="max-w-[800px] text-gray-600 text-base md:text-lg font-semibold leading-relaxed">
             Türkiye’nin freelancer pazarı: Hizmet bul, ilan ver, güvenle çalış. İster freelancer ol, ister iş veren olarak en doğru uzmanı seç.
           </p>
+
+          <div className="w-full max-w-4xl rounded-3xl border border-blue-100 bg-gradient-to-r from-blue-50 via-white to-cyan-50 px-6 py-5 shadow-sm">
+            <h2 className="text-lg md:text-2xl font-black text-gray-900">
+              Freelancer Platformu: Proje Yaptırma, İş Bulma ve Uzman Freelancer Hizmetleri
+            </h2>
+            <p className="mt-2 text-sm md:text-base font-semibold text-gray-600">
+              Web tasarım, yapay zeka, logo tasarım, video düzenleme ve içerik üretimi dahil yüzlerce hizmette hızlı eşleşme, güvenli ödeme ve şeffaf süreç sunuyoruz.
+            </p>
+            <div className="mt-3 flex flex-wrap justify-center gap-2">
+              {["freelancer platformu", "proje yaptırma", "uzman freelancer", "hizmet ilanı", "güvenli ödeme"].map((item) => (
+                <span key={item} className="rounded-full border border-blue-200 bg-white px-3 py-1 text-xs font-bold text-blue-700">
+                  {item}
+                </span>
+              ))}
+            </div>
+          </div>
 
           <form
             className="w-full max-w-2xl"
