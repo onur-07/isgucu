@@ -42,15 +42,34 @@ export function JobList({ limit, onTotalChange }: { limit?: number; onTotalChang
                 if (dbData && dbData.length > 0) {
                     const userIds = Array.from(new Set(dbData.map(j => j.user_id).filter(Boolean)));
                     if (userIds.length > 0) {
-                        const { data: profiles } = await supabase
+                        // Try matching by id (UUID)
+                        const { data: profilesById } = await supabase
                             .from('profiles')
                             .select('id, username, avatar_url, full_name')
                             .in('id', userIds);
 
-                        if (profiles) {
-                            profiles.forEach(p => {
+                        if (profilesById) {
+                            profilesById.forEach(p => {
                                 profileMap[p.id] = p;
                             });
+                        }
+
+                        // For any unmatched user_ids, try matching by username
+                        const unmatchedIds = userIds.filter(uid => !profileMap[uid]);
+                        if (unmatchedIds.length > 0) {
+                            const { data: profilesByUsername } = await supabase
+                                .from('profiles')
+                                .select('id, username, avatar_url, full_name')
+                                .in('username', unmatchedIds);
+
+                            if (profilesByUsername) {
+                                profilesByUsername.forEach(p => {
+                                    // Map by the username so we can find it by user_id later
+                                    profileMap[p.username] = p;
+                                    // Also map case-insensitive
+                                    profileMap[p.username.toLowerCase()] = p;
+                                });
+                            }
                         }
                     }
                 }
@@ -63,16 +82,20 @@ export function JobList({ limit, onTotalChange }: { limit?: number; onTotalChang
                     budget: j.budget,
                     createdAt: j.created_at,
                     user_id: j.user_id,
-                    owner: profileMap[j.user_id] ? {
-                        username: profileMap[j.user_id].username,
-                        avatar_url: profileMap[j.user_id].avatar_url,
-                        full_name: profileMap[j.user_id].full_name
+                    owner: (profileMap[j.user_id] || profileMap[String(j.user_id).toLowerCase()]) ? {
+                        username: (profileMap[j.user_id] || profileMap[String(j.user_id).toLowerCase()]).username,
+                        avatar_url: (profileMap[j.user_id] || profileMap[String(j.user_id).toLowerCase()]).avatar_url,
+                        full_name: (profileMap[j.user_id] || profileMap[String(j.user_id).toLowerCase()]).full_name
                     } : null
                 }));
 
                 const normalizedLocalJobs: Job[] = localJobs.map((j: any) => ({
                     ...j,
-                    owner: null // Mock local storage jobs don't have profile joins
+                    owner: (profileMap[j.user_id] || profileMap[String(j.user_id).toLowerCase()]) ? {
+                        username: (profileMap[j.user_id] || profileMap[String(j.user_id).toLowerCase()]).username,
+                        avatar_url: (profileMap[j.user_id] || profileMap[String(j.user_id).toLowerCase()]).avatar_url,
+                        full_name: (profileMap[j.user_id] || profileMap[String(j.user_id).toLowerCase()]).full_name
+                    } : null
                 }));
 
                 const mergedJobs = [...normalizedDbJobs, ...normalizedLocalJobs];

@@ -11,7 +11,6 @@ import {
     Send,
     MessageCircle,
     ChevronLeft,
-    DollarSign,
     Calendar,
     User,
     ShieldCheck,
@@ -93,12 +92,30 @@ export default function JobDetailPage() {
                 let finalJob: JobDetail | null = null;
 
                 if (row) {
-                    // 2. Fetch Owner Profile separately for better reliability
-                    const { data: profileData } = await supabase
+                    // 2. Fetch Owner Profile - try by ID first, then by username
+                    let profileData: any = null;
+
+                    // Try UUID match first
+                    const { data: byId } = await supabase
                         .from('profiles')
                         .select('id, username, full_name, avatar_url')
                         .eq('id', row.user_id)
                         .maybeSingle();
+
+                    if (byId) {
+                        profileData = byId;
+                    } else {
+                        // user_id might be a username string, try matching by username
+                        const { data: byUsername } = await supabase
+                            .from('profiles')
+                            .select('id, username, full_name, avatar_url')
+                            .ilike('username', row.user_id)
+                            .maybeSingle();
+
+                        if (byUsername) {
+                            profileData = byUsername;
+                        }
+                    }
 
                     finalJob = {
                         id: row.id,
@@ -130,9 +147,32 @@ export default function JobDetailPage() {
                     );
 
                     if (localRow) {
+                        // Try to fetch profile for local job's user_id too
+                        let localProfile: any = null;
+                        const localUserId = String(localRow.user_id || "");
+
+                        if (localUserId) {
+                            const { data: byId2 } = await supabase
+                                .from('profiles')
+                                .select('id, username, full_name, avatar_url')
+                                .eq('id', localUserId)
+                                .maybeSingle();
+
+                            if (byId2) {
+                                localProfile = byId2;
+                            } else {
+                                const { data: byUn2 } = await supabase
+                                    .from('profiles')
+                                    .select('id, username, full_name, avatar_url')
+                                    .ilike('username', localUserId)
+                                    .maybeSingle();
+                                if (byUn2) localProfile = byUn2;
+                            }
+                        }
+
                         finalJob = {
                             id: localRow.id,
-                            userId: String(localRow.user_id || ""),
+                            userId: localUserId,
                             title: String(localRow.title || ""),
                             description: String(localRow.description || ""),
                             category: String(localRow.category || ""),
@@ -140,7 +180,12 @@ export default function JobDetailPage() {
                             createdAt: String(localRow.created_at || localRow.createdAt || new Date().toISOString()),
                             status: String(localRow.status || "open"),
                             attachments: localRow.attachments || [],
-                            owner: null
+                            owner: localProfile ? {
+                                id: localProfile.id,
+                                username: localProfile.username,
+                                fullName: localProfile.full_name,
+                                avatarUrl: localProfile.avatar_url
+                            } : null
                         };
                     }
                 }
@@ -294,7 +339,7 @@ export default function JobDetailPage() {
     }
 
     const isOwner = user && usernameKey(user.username) === usernameKey(job.owner?.username || job.userId);
-    const canBid = user && (user.role === "freelancer" || user.role === "admin") && !isOwner;
+    const canBid = user && user.role === "freelancer" && !isOwner;
 
     return (
         <div className="min-h-screen bg-[#f8fafc] pb-24">
@@ -348,7 +393,7 @@ export default function JobDetailPage() {
                                 </div>
                                 <div className="flex items-center gap-2.5">
                                     <div className="h-10 w-10 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center">
-                                        <DollarSign className="h-5 w-5" />
+                                        <span className="text-lg font-black">₺</span>
                                     </div>
                                     <div>
                                         <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none">BÜTÇE ARALIĞI</p>
@@ -378,17 +423,34 @@ export default function JobDetailPage() {
                                     <div className="mt-12 space-y-4">
                                         <h4 className="text-[11px] font-black text-slate-400 uppercase tracking-widest">EK DOSYALAR</h4>
                                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                            {job.attachments.map((file, i) => (
-                                                <div key={i} className="flex items-center gap-3 p-4 bg-slate-50 rounded-2xl border border-slate-100 group hover:border-blue-200 transition-colors cursor-pointer">
-                                                    <div className="h-10 w-10 bg-white rounded-xl shadow-sm flex items-center justify-center text-blue-600">
-                                                        <FileText className="h-5 w-5" />
-                                                    </div>
-                                                    <div className="flex-1 overflow-hidden">
-                                                        <p className="text-xs font-bold text-slate-700 truncate">{file.split('/').pop()}</p>
-                                                        <p className="text-[9px] font-bold text-slate-400 uppercase">Ek Dosya</p>
-                                                    </div>
-                                                </div>
-                                            ))}
+                                            {job.attachments.map((file, i) => {
+                                                const fileName = file.split('/').pop() || file;
+                                                const isUrl = file.startsWith('http') || file.startsWith('blob:');
+                                                const isImage = /\.(jpg|jpeg|png|gif|webp|svg|bmp)$/i.test(fileName);
+                                                return (
+                                                    <a
+                                                        key={i}
+                                                        href={isUrl ? file : '#'}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="flex items-center gap-3 p-4 bg-slate-50 rounded-2xl border border-slate-100 group hover:border-blue-200 transition-colors cursor-pointer"
+                                                    >
+                                                        {isImage && isUrl ? (
+                                                            <div className="h-10 w-10 rounded-xl overflow-hidden shadow-sm">
+                                                                <img src={file} alt={fileName} className="h-full w-full object-cover" />
+                                                            </div>
+                                                        ) : (
+                                                            <div className="h-10 w-10 bg-white rounded-xl shadow-sm flex items-center justify-center text-blue-600">
+                                                                <FileText className="h-5 w-5" />
+                                                            </div>
+                                                        )}
+                                                        <div className="flex-1 overflow-hidden">
+                                                            <p className="text-xs font-bold text-slate-700 truncate">{fileName}</p>
+                                                            <p className="text-[9px] font-bold text-slate-400 uppercase">{isImage ? 'Görsel' : 'Ek Dosya'}</p>
+                                                        </div>
+                                                    </a>
+                                                );
+                                            })}
                                         </div>
                                     </div>
                                 )}
@@ -458,7 +520,7 @@ export default function JobDetailPage() {
                                     <div className="space-y-2">
                                         <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">FİYAT (₺)</label>
                                         <div className="relative">
-                                            <DollarSign className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-300" />
+                                            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm font-black text-slate-300">₺</span>
                                             <Input
                                                 value={offerPrice}
                                                 onChange={(e) => setOfferPrice(e.target.value)}

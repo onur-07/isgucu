@@ -104,13 +104,24 @@ export function JobPostingForm() {
         setError(null);
 
         try {
-            // 1. Upload files to storage (simulation)
-            const uploadedUrls = [];
+            // 1. Upload files to Supabase Storage
+            const uploadedUrls: string[] = [];
             for (const file of attachments) {
-                // In a real scenario:
-                // const { data, error } = await supabase.storage.from('job-attachments').upload(`${Date.now()}-${file.name}`, file);
-                // if (data) uploadedUrls.push(data.path);
-                uploadedUrls.push(`pseudo-path/${file.name}`);
+                const filePath = `${user.id}/${Date.now()}-${file.name}`;
+                const { data: uploadData, error: uploadError } = await supabase.storage
+                    .from('job-attachments')
+                    .upload(filePath, file);
+
+                if (uploadError) {
+                    console.error("File upload error:", uploadError);
+                    // Use Object URL as fallback for local preview
+                    uploadedUrls.push(URL.createObjectURL(file));
+                } else {
+                    const { data: { publicUrl } } = supabase.storage
+                        .from('job-attachments')
+                        .getPublicUrl(filePath);
+                    uploadedUrls.push(publicUrl);
+                }
             }
 
             // 2. Insert job into DB
