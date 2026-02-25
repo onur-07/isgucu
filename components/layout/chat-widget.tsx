@@ -335,7 +335,25 @@ export function ChatWidget() {
                         setMessages((prev) => {
                             const exists = prev.some((m) => String(m.id) === String(row?.id));
                             if (exists) return prev;
-                            return [...prev, row as ChatMessage];
+
+                            const rowSender = usernameKey(String(row?.sender_username || ""));
+                            const rowReceiver = usernameKey(String(row?.receiver_username || ""));
+                            const rowText = String(row?.text || "");
+                            const rowAt = new Date(String(row?.created_at || 0)).getTime() || Date.now();
+
+                            const withoutTempDup = prev.filter((m) => {
+                                const isTemp = String(m.id || "").startsWith("temp-");
+                                if (!isTemp) return true;
+                                const sameUsers =
+                                    usernameKey(String(m?.sender_username || "")) === rowSender &&
+                                    usernameKey(String(m?.receiver_username || "")) === rowReceiver;
+                                const sameText = String(m?.text || "") === rowText;
+                                const mAt = new Date(String(m?.created_at || 0)).getTime() || 0;
+                                const closeInTime = Math.abs(mAt - rowAt) <= 15000;
+                                return !(sameUsers && sameText && closeInTime);
+                            });
+
+                            return [...withoutTempDup, row as ChatMessage];
                         });
                         if (receiver === meKey) {
                             supabase.from("messages").update({ read: true }).eq("id", row?.id).then(() => {
