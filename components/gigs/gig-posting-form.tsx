@@ -50,6 +50,23 @@ const getMergedServiceTypes = () => {
     return merged;
 };
 
+const buildServiceTypeFallback = (subCategory: string) => {
+    const safeSub = String(subCategory || "Hizmet").trim() || "Hizmet";
+    return [
+        `${safeSub} Dan\u0131\u015fmanl\u0131\u011f\u0131`,
+        `${safeSub} \u00d6zel Projesi`,
+        `${safeSub} Teknik Deste\u011fi`,
+        `${safeSub} Analiz ve Raporlama`,
+    ];
+};
+
+const getServiceTypesForSubCategory = (subCategory: string) => {
+    const merged = getMergedServiceTypes();
+    const direct = merged[subCategory];
+    if (Array.isArray(direct) && direct.length > 0) return direct;
+    return buildServiceTypeFallback(subCategory);
+};
+
 
 const CATEGORY_ADDONS: Record<string, ExtraItem[]> = {
     yazilim: [
@@ -653,7 +670,7 @@ export function GigPostingForm() {
                                 <SelectValue placeholder="Bir hizmet türü seçiniz..." />
                             </SelectTrigger>
                             <SelectContent className="rounded-2xl border-4 border-gray-50">
-                                {(getMergedServiceTypes()[formData.subCategory] || getMergedServiceTypes().default).map((type) => (
+                                {getServiceTypesForSubCategory(formData.subCategory).map((type) => (
                                     <SelectItem key={type} value={type} className="py-4 font-bold">{type}</SelectItem>
                                 ))}
                             </SelectContent>

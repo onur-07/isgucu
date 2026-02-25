@@ -73,5 +73,5 @@ export const SERVICE_TYPES_DATA: Record<string, string[]> = {
     // Ses
     "Seslendirme": ["Reklam Seslendirmesi", "Kitap Seslendirmesi", "Santral Seslendirme", "Dublaj", "Oyun Karakteri"],
 
-    "default": ["Freelance Dan��manl�k", "�zel Freelancer Projesi", "Teknik Uygulama Deste�i", "Analiz ve Raporlama"]
+    "default": ["Freelance Dan\u0131\u015fmanl\u0131k", "\u00d6zel Freelancer Projesi", "Teknik Uygulama Deste\u011fi", "Analiz ve Raporlama"]
 };

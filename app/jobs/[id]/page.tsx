@@ -424,21 +424,27 @@ export default function JobDetailPage() {
                                         <h4 className="text-[11px] font-black text-slate-400 uppercase tracking-widest">EK DOSYALAR</h4>
                                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                             {job.attachments.map((file, i) => {
-                                                const fileName = file.split('/').pop() || file;
-                                                const isUrl = file.startsWith('http') || file.startsWith('blob:');
+                                                const rawFile = String(file || "").trim();
+                                                const fileName = rawFile.split('/').pop() || rawFile;
+                                                const isDirectUrl = rawFile.startsWith('http') || rawFile.startsWith('blob:');
+                                                const storagePublicUrl = !isDirectUrl && rawFile
+                                                    ? supabase.storage.from("job-attachments").getPublicUrl(rawFile).data.publicUrl
+                                                    : "";
+                                                const finalUrl = isDirectUrl ? rawFile : storagePublicUrl;
+                                                const canOpen = Boolean(finalUrl);
                                                 const isImage = /\.(jpg|jpeg|png|gif|webp|svg|bmp)$/i.test(fileName);
                                                 return (
                                                     <a
                                                         key={i}
-                                                        href={isUrl ? file : "javascript:void(0)"}
+                                                        href={canOpen ? finalUrl : "javascript:void(0)"}
                                                         target="_blank"
                                                         rel="noopener noreferrer"
-                                                        onClick={(e) => { if (!isUrl) e.preventDefault(); }}
+                                                        onClick={(e) => { if (!canOpen) e.preventDefault(); }}
                                                         className="flex items-center gap-3 p-4 bg-slate-50 rounded-2xl border border-slate-100 group hover:border-blue-200 transition-colors cursor-pointer"
                                                     >
-                                                        {isImage && isUrl ? (
+                                                        {isImage && canOpen ? (
                                                             <div className="h-10 w-10 rounded-xl overflow-hidden shadow-sm">
-                                                                <img src={file} alt={fileName} className="h-full w-full object-cover" />
+                                                                <img src={finalUrl} alt={fileName} className="h-full w-full object-cover" />
                                                             </div>
                                                         ) : (
                                                             <div className="h-10 w-10 bg-white rounded-xl shadow-sm flex items-center justify-center text-blue-600">
