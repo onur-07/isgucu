@@ -2,7 +2,8 @@
 
 import { useAuth } from "@/components/auth/auth-context";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { useEffect, useState, Suspense } from "react";
 import { getAllUsers, getPlatformStats, toggleBanUser, deleteUserAccount, updateUserInfo, type PlatformUser, type PlatformStats } from "@/lib/data-service";
 import { Users, Briefcase, TrendingUp, Shield, Trash2, Headphones, MessageCircle, CheckCircle2, Clock, Send, Settings, Globe, Layout, Palette, Plus, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -25,9 +26,10 @@ interface SupportTicket {
     replied_at?: string;
 }
 
-export default function AdminPage() {
+function AdminPageContent() {
     const { user, loading: authLoading } = useAuth();
     const router = useRouter();
+    const searchParams = useSearchParams();
     const [users, setUsers] = useState<PlatformUser[]>([]);
     const [usersSource, setUsersSource] = useState<"api" | "fallback" | "">("");
     const [stats, setStats] = useState<PlatformStats | null>(null);
@@ -40,6 +42,12 @@ export default function AdminPage() {
     const [replySuccess, setReplySuccess] = useState<string | null>(null);
     const [deletionRequests, setDeletionRequests] = useState<any[]>([]);
     const [siteConfig, setSiteConfig] = useState<SiteConfig>(getSiteConfig());
+
+    const parseTabFromUrl = (raw: string | null) => {
+        const v = String(raw || "").trim();
+        if (v === "overview" || v === "users" || v === "support" || v === "deletions" || v === "site_settings") return v;
+        return null;
+    };
 
     const withTimeout = async <T,>(p: PromiseLike<T>, ms: number, label: string): Promise<T> => {
         const wrapped = Promise.resolve(p as any as Promise<T>);
@@ -258,6 +266,21 @@ export default function AdminPage() {
         console.log("AdminPage: Veriler yükleniyor...");
         loadData({ fetchUsers: false });
     }, [user, router, authLoading]);
+
+    useEffect(() => {
+        const next = parseTabFromUrl(searchParams.get("tab"));
+        if (!next) return;
+        if (activeTab === next) return;
+        setActiveTab(next);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [searchParams]);
+
+    useEffect(() => {
+        const current = parseTabFromUrl(searchParams.get("tab"));
+        if (current === activeTab) return;
+        router.replace(`/admin?tab=${activeTab}`);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [activeTab]);
 
     useEffect(() => {
         if (!user || user.role !== 'admin') return;
@@ -721,5 +744,13 @@ export default function AdminPage() {
                 </div>
             )}
         </div>
+    );
+}
+
+export default function AdminPage() {
+    return (
+        <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><p>Yükleniyor...</p></div>}>
+            <AdminPageContent />
+        </Suspense>
     );
 }
