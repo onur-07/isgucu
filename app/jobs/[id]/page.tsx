@@ -430,9 +430,10 @@ export default function JobDetailPage() {
                                                 return (
                                                     <a
                                                         key={i}
-                                                        href={isUrl ? file : '#'}
+                                                        href={isUrl ? file : "javascript:void(0)"}
                                                         target="_blank"
                                                         rel="noopener noreferrer"
+                                                        onClick={(e) => { if (!isUrl) e.preventDefault(); }}
                                                         className="flex items-center gap-3 p-4 bg-slate-50 rounded-2xl border border-slate-100 group hover:border-blue-200 transition-colors cursor-pointer"
                                                     >
                                                         {isImage && isUrl ? (

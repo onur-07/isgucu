@@ -965,14 +965,14 @@ export default function MessageThreadPage() {
 
                                         {pending && receiverIsMe && (
                                             <div className="mt-3 flex gap-2 justify-end">
-                                                <Button
+                                                <Button type="button"
                                                     disabled={sending}
                                                     onClick={() => handleRespondOffer(o.id, "rejected")}
                                                     className="bg-gray-200 hover:bg-gray-300 text-gray-900"
                                                 >
                                                     Reddet
                                                 </Button>
-                                                <Button disabled={sending} onClick={() => handleRespondOffer(o.id, "accepted")} className="bg-emerald-600 hover:bg-emerald-700 text-white">
+                                                <Button type="button" disabled={sending} onClick={() => handleRespondOffer(o.id, "accepted")} className="bg-emerald-600 hover:bg-emerald-700 text-white">
                                                     Kabul Et
                                                 </Button>
                                             </div>
@@ -994,7 +994,7 @@ export default function MessageThreadPage() {
                             <div className="rounded-2xl border bg-white p-4">
                                 <div className="flex items-center justify-between gap-3">
                                     <div className="text-xs font-black uppercase tracking-widest text-gray-500">Teklif gönder</div>
-                                    <Button
+                                    <Button type="button"
                                         disabled={sending}
                                         onClick={() => setOfferOpen(false)}
                                         className="bg-gray-200 hover:bg-gray-300 text-gray-900"
@@ -1026,7 +1026,7 @@ export default function MessageThreadPage() {
                                     disabled={sending}
                                 />
                                 <div className="mt-3 flex justify-end gap-2">
-                                    <Button
+                                    <Button type="button"
                                         disabled={sending}
                                         onClick={handleSendOffer}
                                         className="bg-blue-600 hover:bg-blue-700 text-white"
@@ -1050,14 +1050,14 @@ export default function MessageThreadPage() {
 
                         <div className="flex items-center justify-between gap-2">
                             <div className="flex gap-2">
-                                <Button
+                                <Button type="button"
                                     disabled={sending}
                                     onClick={handlePickFile}
                                     className="bg-gray-200 hover:bg-gray-300 text-gray-900"
                                 >
                                     Dosya
                                 </Button>
-                                <Button
+                                <Button type="button"
                                     disabled={sending || !otherUserId}
                                     onClick={() => setOfferOpen((v) => !v)}
                                     className="bg-gray-200 hover:bg-gray-300 text-gray-900"
@@ -1079,7 +1079,7 @@ export default function MessageThreadPage() {
                             disabled={sending}
                         />
                         <div className="flex justify-end">
-                            <Button onClick={handleSend} disabled={sending || !text.trim()} className="bg-blue-600 hover:bg-blue-700 text-white">
+                            <Button type="button" onClick={handleSend} disabled={sending || !text.trim()} className="bg-blue-600 hover:bg-blue-700 text-white">
                                 {sending ? "Gönderiliyor..." : "Gönder"}
                             </Button>
                         </div>

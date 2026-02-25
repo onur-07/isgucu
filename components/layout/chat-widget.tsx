@@ -811,7 +811,7 @@ export function ChatWidget() {
                                             <div className="rounded-2xl border bg-white p-3">
                                                 <div className="flex items-center justify-between gap-2">
                                                     <div className="text-[10px] font-black uppercase tracking-widest text-gray-400">Teklif</div>
-                                                    <Button onClick={() => setOfferOpen(false)} disabled={sending} className="bg-gray-200 hover:bg-gray-300 text-gray-900">
+                                                    <Button type="button" onClick={() => setOfferOpen(false)} disabled={sending} className="bg-gray-200 hover:bg-gray-300 text-gray-900">
                                                         Kapat
                                                     </Button>
                                                 </div>
@@ -839,7 +839,7 @@ export function ChatWidget() {
                                                     disabled={sending}
                                                 />
                                                 <div className="mt-2 flex justify-end">
-                                                    <Button onClick={handleSendOffer} disabled={sending || !activeOtherId} className="bg-blue-600 hover:bg-blue-700 text-white">
+                                                    <Button type="button" onClick={handleSendOffer} disabled={sending || !activeOtherId} className="bg-blue-600 hover:bg-blue-700 text-white">
                                                         Teklifi Gönder
                                                     </Button>
                                                 </div>
@@ -893,7 +893,7 @@ export function ChatWidget() {
                                             disabled={sending || !activeOther}
                                         />
                                         <div className="flex justify-end">
-                                            <Button
+                                            <Button type="button"
                                                 onClick={handleSend}
                                                 disabled={sending || !activeOther || !text.trim()}
                                                 className="bg-blue-600 hover:bg-blue-700 text-white"

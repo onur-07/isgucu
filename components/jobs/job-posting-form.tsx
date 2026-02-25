@@ -15,15 +15,15 @@ import {
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/components/auth/auth-context";
 import { supabase } from "@/lib/supabase";
+import { CATEGORIES_DETAILED as DEFAULT_CATEGORIES } from "@/lib/categories-data";
 import { AlertCircle, CheckCircle2, Upload, FileText, X, ShieldCheck, Loader2 } from "lucide-react";
 
-const CATEGORIES = [
-    "Yazılım & Mobil",
-    "Logo & Grafik",
-    "Web Tasarım",
-    "Video & Animasyon",
-    "Çeviri & İçerik",
-];
+const getMergedJobCategories = () => {
+    if (typeof window === "undefined") return DEFAULT_CATEGORIES.map((c) => c.title);
+    const adminData = JSON.parse(localStorage.getItem("isgucu_admin_categories") || "[]");
+    const merged = [...DEFAULT_CATEGORIES, ...adminData] as Array<{ title?: string }>;
+    return Array.from(new Set(merged.map((c) => String(c?.title || "").trim()).filter(Boolean)));
+};
 
 export function JobPostingForm() {
     const router = useRouter();
@@ -42,6 +42,7 @@ export function JobPostingForm() {
     });
 
     const [attachments, setAttachments] = useState<File[]>([]);
+    const categories = getMergedJobCategories();
 
     const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const files = Array.from(e.target.files || []);
@@ -222,7 +223,7 @@ export function JobPostingForm() {
                                 <SelectValue placeholder="Kategori seçiniz" />
                             </SelectTrigger>
                             <SelectContent className="rounded-2xl border-slate-100 shadow-2xl">
-                                {CATEGORIES.map((cat) => (
+                                {categories.map((cat) => (
                                     <SelectItem key={cat} value={cat} className="rounded-xl py-3 font-bold text-slate-700 focus:bg-blue-50 focus:text-blue-600">
                                         {cat}
                                     </SelectItem>
