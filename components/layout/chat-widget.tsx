@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import { Handshake, MessageCircle, Paperclip, X } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/components/auth/auth-context";
@@ -278,6 +278,15 @@ export function ChatWidget() {
             }
             const otherProfile = (otherProfileRes as any)?.data;
             setActiveOtherId(otherProfile?.id ? String(otherProfile.id) : "");
+            await supabase
+                .from("messages")
+                .update({ read: true })
+                .or(
+                    `and(receiver_username.ilike.${meKey},sender_username.ilike.${otherKey}),and(receiver_username.ilike.${meFold},sender_username.ilike.${otherFold})`
+                )
+                .eq("read", false);
+            setItems((prev) => prev.map((x) => (x.otherKey === otherKey ? { ...x, unreadCount: 0 } : x)));
+            fetchInbox();
             setTimeout(scrollToBottom, 0);
         } finally {
             threadInFlight.current = false;
@@ -328,6 +337,11 @@ export function ChatWidget() {
                             if (exists) return prev;
                             return [...prev, row as ChatMessage];
                         });
+                        if (receiver === meKey) {
+                            supabase.from("messages").update({ read: true }).eq("id", row?.id).then(() => {
+                                fetchInbox();
+                            });
+                        }
                         setTimeout(scrollToBottom, 0);
                     }
                 }
@@ -476,6 +490,13 @@ export function ChatWidget() {
         } finally {
             setSending(false);
         }
+    };
+
+    const handleComposerKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
+        if (e.key !== "Enter" || e.shiftKey) return;
+        e.preventDefault();
+        if (sending || !activeOther || !text.trim()) return;
+        void handleSend();
     };
 
     const handlePickFile = () => {
@@ -848,6 +869,7 @@ export function ChatWidget() {
                                             ref={composerRef}
                                             value={text}
                                             onChange={(e) => setText(e.target.value)}
+                                            onKeyDown={handleComposerKeyDown}
                                             placeholder={activeOther ? "Mesaj yaz..." : "Önce konuşma seç"}
                                             className="min-h-[60px] resize-none bg-white"
                                             disabled={sending || !activeOther}

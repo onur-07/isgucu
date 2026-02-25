@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
@@ -627,6 +627,13 @@ export default function MessageThreadPage() {
         }
     };
 
+    const handleComposerKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
+        if (e.key !== "Enter" || e.shiftKey) return;
+        e.preventDefault();
+        if (sending || !text.trim()) return;
+        void handleSend();
+    };
+
     const refreshOffers = async () => {
         if (!meFold || !otherFold) return;
         const res = (await withTimeout(
@@ -1045,6 +1052,7 @@ export default function MessageThreadPage() {
                         <Textarea
                             value={text}
                             onChange={(e) => setText(e.target.value)}
+                            onKeyDown={handleComposerKeyDown}
                             placeholder="Mesaj yaz..."
                             className="min-h-[90px] resize-none bg-white"
                             disabled={sending}
