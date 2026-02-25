@@ -81,6 +81,58 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: true });
     }
 
+    if (action === "delete_gig") {
+      const gigId = Number(body?.gigId);
+      if (!Number.isFinite(gigId) || gigId <= 0) return NextResponse.json({ error: "invalid_gig_id" }, { status: 400 });
+
+      const { error } = await supabaseAdmin
+        .from("gigs")
+        .delete()
+        .eq("id", gigId);
+
+      if (error) return NextResponse.json({ error: "gig_delete_failed", details: error.message }, { status: 500 });
+      return NextResponse.json({ ok: true });
+    }
+
+    if (action === "delete_user_gigs") {
+      const targetUserId = String(body?.targetUserId || "");
+      if (!isUuid(targetUserId)) return NextResponse.json({ error: "invalid_target_user_id" }, { status: 400 });
+
+      const { error } = await supabaseAdmin
+        .from("gigs")
+        .delete()
+        .eq("user_id", targetUserId);
+
+      if (error) return NextResponse.json({ error: "gigs_delete_failed", details: error.message }, { status: 500 });
+      return NextResponse.json({ ok: true });
+    }
+
+    if (action === "delete_job") {
+      const jobId = Number(body?.jobId);
+      if (!Number.isFinite(jobId) || jobId <= 0) return NextResponse.json({ error: "invalid_job_id" }, { status: 400 });
+
+      const { error } = await supabaseAdmin
+        .from("jobs")
+        .delete()
+        .eq("id", jobId);
+
+      if (error) return NextResponse.json({ error: "job_delete_failed", details: error.message }, { status: 500 });
+      return NextResponse.json({ ok: true });
+    }
+
+    if (action === "delete_user_jobs") {
+      const targetUserId = String(body?.targetUserId || "");
+      if (!isUuid(targetUserId)) return NextResponse.json({ error: "invalid_target_user_id" }, { status: 400 });
+
+      const { error } = await supabaseAdmin
+        .from("jobs")
+        .delete()
+        .eq("user_id", targetUserId);
+
+      if (error) return NextResponse.json({ error: "jobs_delete_failed", details: error.message }, { status: 500 });
+      return NextResponse.json({ ok: true });
+    }
+
     return NextResponse.json({ error: "unknown_action" }, { status: 400 });
   } catch (e: any) {
     return NextResponse.json({ error: "server_error", details: e?.message || String(e) }, { status: 500 });

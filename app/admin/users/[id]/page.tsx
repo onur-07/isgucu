@@ -177,6 +177,59 @@ export default function AdminUserDetailPage() {
         }
     };
 
+    const handleDeactivateAllGigs = async () => {
+        if (!detail?.id) return;
+        if (!confirm("Bu kullanicinin tum aktif freelancer ilanlarini pasife almak istediginize emin misiniz?")) return;
+        try {
+            await callModeration({ action: "deactivate_user_gigs", targetUserId: detail.id });
+            setGigs((prev) => (prev || []).map((g: any) => ({ ...g, is_active: false })));
+        } catch (e: any) {
+            alert("Islem basarisiz: " + String(e?.message || e));
+        }
+    };
+
+    const handleDeleteGig = async (gigId: number) => {
+        if (!confirm("Bu freelancer ilani kalici olarak silinecek. Emin misiniz?")) return;
+        try {
+            await callModeration({ action: "delete_gig", gigId });
+            setGigs((prev) => (prev || []).filter((g: any) => Number(g?.id) !== Number(gigId)));
+        } catch (e: any) {
+            alert("Silme islemi basarisiz: " + String(e?.message || e));
+        }
+    };
+
+    const handleDeleteAllGigs = async () => {
+        if (!detail?.id) return;
+        if (!confirm("Bu kullanicinin tum freelancer ilanlari kalici olarak silinecek. Emin misiniz?")) return;
+        try {
+            await callModeration({ action: "delete_user_gigs", targetUserId: detail.id });
+            setGigs([]);
+        } catch (e: any) {
+            alert("Silme islemi basarisiz: " + String(e?.message || e));
+        }
+    };
+
+    const handleDeleteJob = async (jobId: number) => {
+        if (!confirm("Bu is ilani kalici olarak silinecek. Emin misiniz?")) return;
+        try {
+            await callModeration({ action: "delete_job", jobId });
+            setJobs((prev) => (prev || []).filter((j: any) => Number(j?.id) !== Number(jobId)));
+        } catch (e: any) {
+            alert("Silme islemi basarisiz: " + String(e?.message || e));
+        }
+    };
+
+    const handleDeleteAllJobs = async () => {
+        if (!detail?.id) return;
+        if (!confirm("Bu kullanicinin tum is ilanlari kalici olarak silinecek. Emin misiniz?")) return;
+        try {
+            await callModeration({ action: "delete_user_jobs", targetUserId: detail.id });
+            setJobs([]);
+        } catch (e: any) {
+            alert("Silme islemi basarisiz: " + String(e?.message || e));
+        }
+    };
+
     if (authLoading || loading) return (
         <div className="h-screen flex items-center justify-center bg-gray-50 uppercase font-black text-xs tracking-widest animate-pulse">
             Kullanıcı Bilgileri Yükleniyor...
@@ -350,7 +403,7 @@ export default function AdminUserDetailPage() {
                     {/* Contact & Financial Info */}
                     <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
                         <h3 className="text-sm font-black uppercase tracking-wider text-gray-800 mb-4 flex items-center gap-2">
-                            <CreditCard className="h-4 w-4 text-blue-600" /> İletişim & Finansal Bilgiler
+                            <CreditCard className="h-4 w-4 text-blue-600" /> Iletisim & Finansal Bilgiler
                         </h3>
                         <div className="space-y-4">
                             {[
@@ -464,9 +517,31 @@ export default function AdminUserDetailPage() {
                 <div className="space-y-6">
                     {/* Gigs */}
                     <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
-                        <h3 className="text-sm font-black uppercase tracking-wider text-gray-800 mb-4 flex items-center gap-2">
-                            <Briefcase className="h-4 w-4 text-blue-600" /> Freelancer Hizmetleri ({gigs.length})
-                        </h3>
+                        <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+                            <h3 className="text-sm font-black uppercase tracking-wider text-gray-800 flex items-center gap-2">
+                                <Briefcase className="h-4 w-4 text-blue-600" /> Freelancer Hizmetleri ({gigs.length})
+                            </h3>
+                            <div className="flex flex-wrap gap-2">
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-9 px-3 text-[10px] font-black uppercase rounded-xl border-orange-200 text-orange-700 hover:bg-orange-50"
+                                    onClick={handleDeactivateAllGigs}
+                                    disabled={gigs.length === 0}
+                                >
+                                    Tumunu Pasife Al
+                                </Button>
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-9 px-3 text-[10px] font-black uppercase rounded-xl border-red-200 text-red-700 hover:bg-red-50"
+                                    onClick={handleDeleteAllGigs}
+                                    disabled={gigs.length === 0}
+                                >
+                                    Tumunu Sil
+                                </Button>
+                            </div>
+                        </div>
                         {gigs.length === 0 ? (
                             <p className="text-center text-gray-400 py-8 uppercase text-xs font-bold">Hizmet bulunamadı.</p>
                         ) : (
@@ -480,15 +555,25 @@ export default function AdminUserDetailPage() {
                                             <span className="text-[10px] text-gray-400">{formatDate(gig.created_at)}</span>
                                         </div>
                                         <div className="mt-3">
-                                            <Button
-                                                variant="outline"
-                                                size="sm"
-                                                className="h-9 px-3 text-[10px] font-black uppercase rounded-xl border-orange-200 text-orange-700 hover:bg-orange-50"
-                                                disabled={!gig?.is_active}
-                                                onClick={() => handleDeactivateGig(Number(gig.id))}
-                                            >
-                                                {gig?.is_active ? "Pasife Al" : "Pasif"}
-                                            </Button>
+                                            <div className="flex flex-wrap gap-2">
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    className="h-9 px-3 text-[10px] font-black uppercase rounded-xl border-orange-200 text-orange-700 hover:bg-orange-50"
+                                                    disabled={!gig?.is_active}
+                                                    onClick={() => handleDeactivateGig(Number(gig.id))}
+                                                >
+                                                    {gig?.is_active ? "Pasife Al" : "Pasif"}
+                                                </Button>
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    className="h-9 px-3 text-[10px] font-black uppercase rounded-xl border-red-200 text-red-700 hover:bg-red-50"
+                                                    onClick={() => handleDeleteGig(Number(gig.id))}
+                                                >
+                                                    Sil
+                                                </Button>
+                                            </div>
                                         </div>
                                     </div>
                                 ))}
@@ -498,9 +583,20 @@ export default function AdminUserDetailPage() {
 
                     {/* Jobs */}
                     <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
-                        <h3 className="text-sm font-black uppercase tracking-wider text-gray-800 mb-4 flex items-center gap-2">
-                            <Briefcase className="h-4 w-4 text-orange-600" /> Yayınlanan İş İlanları ({jobs.length})
-                        </h3>
+                        <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+                            <h3 className="text-sm font-black uppercase tracking-wider text-gray-800 flex items-center gap-2">
+                                <Briefcase className="h-4 w-4 text-orange-600" /> Yayinlanan Is Ilanlari ({jobs.length})
+                            </h3>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-9 px-3 text-[10px] font-black uppercase rounded-xl border-red-200 text-red-700 hover:bg-red-50"
+                                onClick={handleDeleteAllJobs}
+                                disabled={jobs.length === 0}
+                            >
+                                Tumunu Sil
+                            </Button>
+                        </div>
                         {jobs.length === 0 ? (
                             <p className="text-center text-gray-400 py-8 uppercase text-xs font-bold">İş ilanı bulunamadı.</p>
                         ) : (
@@ -512,6 +608,16 @@ export default function AdminUserDetailPage() {
                                         <div className="flex items-center justify-between mt-3">
                                             <span className="text-sm font-black text-orange-600">{job.budget}</span>
                                             <span className="text-[10px] text-gray-400">{formatDate(job.created_at)}</span>
+                                        </div>
+                                        <div className="mt-3">
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                className="h-9 px-3 text-[10px] font-black uppercase rounded-xl border-red-200 text-red-700 hover:bg-red-50"
+                                                onClick={() => handleDeleteJob(Number(job.id))}
+                                            >
+                                                Sil
+                                            </Button>
                                         </div>
                                     </div>
                                 ))}
