@@ -3,7 +3,7 @@ import { Instagram, Linkedin, Twitter, Github, Youtube, Mail, Phone, MapPin } fr
 
 export function Footer() {
     return (
-        <footer className="w-full bg-slate-900 text-slate-300">
+        <footer className="w-full bg-blue-950 text-blue-100/80">
             {/* Main Footer */}
             <div className="container mx-auto px-4 pt-20 pb-12">
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-12 lg:gap-8">
@@ -12,8 +12,8 @@ export function Footer() {
                         <Link href="/" className="flex items-center space-x-2 font-bold font-heading text-2xl text-white">
                             <span className="bg-blue-600 px-2 py-1 rounded text-white mr-1">İŞ</span>GÜCÜ
                         </Link>
-                        <p className="text-slate-400 max-w-sm leading-relaxed">
-                            Türkiye'nin en modern ve güvenilir freelancer pazaryeri. Yetenekli uzmanları ve vizyoner projeleri bir araya getiriyoruz. Hayallerinizi birlikte inşa edelim.
+                        <p className="text-blue-100/60 max-w-sm leading-relaxed font-medium">
+                            Türkiye'nin iş gücü potansiyelini dijital dünyaya taşıyoruz. Yetenek ve projenin en güvenli buluşma noktası.
                         </p>
                         <div className="flex space-x-4">
                             {[
@@ -26,7 +26,7 @@ export function Footer() {
                                     key={i}
                                     href={social.href}
                                     target="_blank"
-                                    className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center hover:bg-blue-600 hover:text-white transition-all duration-300"
+                                    className="w-10 h-10 rounded-full bg-blue-900/50 flex items-center justify-center hover:bg-blue-600 hover:text-white transition-all duration-300 border border-blue-800"
                                 >
                                     {social.icon}
                                 </a>
@@ -38,39 +38,39 @@ export function Footer() {
                     <div className="space-y-6">
                         <h3 className="text-white font-bold text-lg uppercase tracking-wider">Kurumsal</h3>
                         <ul className="space-y-4">
-                            <li><Link href="/about" className="hover:text-blue-500 transition-colors">Hakkımızda</Link></li>
-                            <li><Link href="/blog" className="hover:text-blue-500 transition-colors">Blog</Link></li>
-                            <li><Link href="/careers" className="hover:text-blue-500 transition-colors">Kariyer</Link></li>
-                            <li><Link href="/contact" className="hover:text-blue-500 transition-colors">İletişim</Link></li>
+                            <li><Link href="/about" className="hover:text-white transition-colors">Biz Kimiz?</Link></li>
+                            <li><Link href="/blog" className="hover:text-white transition-colors">Akademi / Blog</Link></li>
+                            <li><Link href="/careers" className="hover:text-white transition-colors">Kariyer</Link></li>
+                            <li><Link href="/contact" className="hover:text-white transition-colors">Bize Ulaşın</Link></li>
                         </ul>
                     </div>
 
                     {/* Support & Legal */}
                     <div className="space-y-6">
-                        <h3 className="text-white font-bold text-lg uppercase tracking-wider">Destek</h3>
+                        <h3 className="text-white font-bold text-lg uppercase tracking-wider">Güvenlik</h3>
                         <ul className="space-y-4">
-                            <li><Link href="/help" className="hover:text-blue-500 transition-colors">Yardım Merkezi</Link></li>
-                            <li><Link href="/rules" className="hover:text-blue-500 transition-colors">Kullanım Koşulları</Link></li>
-                            <li><Link href="/privacy" className="hover:text-blue-500 transition-colors">Gizlilik Politikası</Link></li>
-                            <li><Link href="/support" className="hover:text-blue-500 transition-colors">Müşteri Desteği</Link></li>
+                            <li><Link href="/help" className="hover:text-white transition-colors">Destek Merkezi</Link></li>
+                            <li><Link href="/rules" className="hover:text-white transition-colors">Platform Kuralları</Link></li>
+                            <li><Link href="/privacy" className="hover:text-white transition-colors">Veri Gizliliği</Link></li>
+                            <li><Link href="/support" className="hover:text-white transition-colors">İptal & İade</Link></li>
                         </ul>
                     </div>
 
                     {/* Contact Info */}
                     <div className="space-y-6">
-                        <h3 className="text-white font-bold text-lg uppercase tracking-wider">Bize Ulaşın</h3>
+                        <h3 className="text-white font-bold text-lg uppercase tracking-wider">İletişim</h3>
                         <ul className="space-y-4">
-                            <li className="flex items-center space-x-3 italic">
-                                <Mail className="w-5 h-5 text-blue-500" />
-                                <span>destek@isgucu.com</span>
+                            <li className="flex items-center space-x-3">
+                                <Mail className="w-5 h-5 text-blue-400" />
+                                <span>merhaba@isgucu.com</span>
                             </li>
                             <li className="flex items-center space-x-3">
-                                <Phone className="w-5 h-5 text-blue-500" />
-                                <span>+90 (212) 555 0101</span>
+                                <Phone className="w-5 h-5 text-blue-400" />
+                                <span>0850 555 0101</span>
                             </li>
                             <li className="flex items-start space-x-3">
-                                <MapPin className="w-5 h-5 text-blue-500 shrink-0" />
-                                <span>Levent, Büyükdere Cd. No:123, 34394 Şişli/İstanbul</span>
+                                <MapPin className="w-5 h-5 text-blue-400 shrink-0" />
+                                <span className="text-sm">Levent, Büyükdere Cad. No:199, İstanbul</span>
                             </li>
                         </ul>
                     </div>
@@ -78,14 +78,12 @@ export function Footer() {
             </div>
 
             {/* Bottom Bar */}
-            <div className="border-t border-slate-800 bg-slate-950/50 py-8">
-                <div className="container mx-auto px-4 flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0 text-sm">
-                    <p>© 2026 İşgücü Teknoloji A.Ş. Tüm hakları saklıdır.</p>
+            <div className="border-t border-blue-900/50 bg-blue-950 py-8">
+                <div className="container mx-auto px-4 flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0 text-xs font-semibold uppercase tracking-widest text-blue-400">
+                    <p>© 2026 İşgücü Teknoloji. Tüm Hakları Saklıdır.</p>
                     <div className="flex space-x-6">
-                        <span className="flex items-center space-x-1 cursor-default">
-                            <span>Türkiye</span>
-                        </span>
-                        <span>TL (₺)</span>
+                        <span className="cursor-default">Güvenli Ödeme SSL</span>
+                        <span>TR / TL</span>
                     </div>
                 </div>
             </div>

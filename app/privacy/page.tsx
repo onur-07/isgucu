@@ -1,50 +1,45 @@
 export default function PrivacyPage() {
     return (
-        <div className="min-h-screen bg-slate-50 py-16">
+        <div className="min-h-screen bg-white py-16">
             <div className="container mx-auto px-4 max-w-4xl">
-                <div className="bg-white rounded-2xl shadow-sm border p-8 md:p-12">
-                    <h1 className="text-4xl font-bold font-heading mb-8 text-slate-900 border-b pb-4">Gizlilik Politikası</h1>
+                <div className="bg-slate-50 rounded-[3rem] p-8 md:p-16 border border-slate-100 shadow-sm">
+                    <h1 className="text-4xl font-black font-heading mb-10 text-slate-900 border-b border-slate-200 pb-6 italic">Veri Gizliliği Manifestosu</h1>
 
-                    <div className="space-y-8 text-slate-700 leading-relaxed">
+                    <div className="space-y-10 text-slate-700 leading-relaxed font-medium">
                         <section>
-                            <h2 className="text-xl font-semibold text-slate-900 mb-3">1. Veri Toplama</h2>
-                            <p>İşgücü platformu olarak, size daha iyi hizmet verebilmek için üyelik sırasında ad, soyad, e-posta adresi ve profil bilgileriniz gibi temel verileri topluyoruz. Ayrıca platform kullanım alışkanlıklarınız ve tercihleriniz de anonim olarak analiz edilmektedir.</p>
+                            <h2 className="text-2xl font-bold text-slate-900 mb-4 flex items-center gap-2">
+                                <span className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center text-sm font-black">01</span>
+                                Neleri Emanet Alıyoruz?
+                            </h2>
+                            <p>İşgücü'ne katıldığınızda, size özel bir deneyim sunabilmemiz için temel kimlik ve iletişim bilgilerinizi bizimle paylaşırsınız. Yeteneklerinizi sergileyen portfolyo içerikleri ve platform içi etkinlik verileriniz, sistemimizi sizin için daha akıllı hale getirmek amacıyla şifrelenmiş olarak saklanır.</p>
                         </section>
 
                         <section>
-                            <h2 className="text-xl font-semibold text-slate-900 mb-3">2. Bilgilerin Kullanımı</h2>
-                            <p>Topladığımız bilgiler şu amaçlarla kullanılır:</p>
-                            <ul className="list-disc pl-6 mt-2 space-y-2">
-                                <li>Hesabınızın güvenliğini sağlamak ve doğrulamak.</li>
-                                <li>İş ilanları ve freelancer eşleşmelerini optimize etmek.</li>
-                                <li>Ödeme süreçlerini güvenli bir şekilde yönetmek.</li>
-                                <li>Sistem güncellemeleri ve önemli duyurular hakkında sizi bilgilendirmek.</li>
-                            </ul>
+                            <h2 className="text-2xl font-bold text-slate-900 mb-4 flex items-center gap-2">
+                                <span className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center text-sm font-black">02</span>
+                                Bilgilerinizi Nasıl Değerlendiriyoruz?
+                            </h2>
+                            <p>Verileriniz, İşgücü topluluğundaki eşleşme kalitesini artırmak, ödeme süreçlerinizi güvence altına almak ve platformun genel güvenliğini optimize etmek dışında hiçbir amaçla kullanılmaz. Yapay zeka algoritmalarımız, size en uygun işleri önermek için anonimleştirilmiş kullanım verilerinden destek alır.</p>
                         </section>
 
                         <section>
-                            <h2 className="text-xl font-semibold text-slate-900 mb-3">3. Veri Güvenliği</h2>
-                            <p>Verileriniz, endüstri standardı şifreleme yöntemleri (SSL) ile korunmaktadır. Kişisel bilgileriniz, yasal zorunluluklar haricinde asla üçüncü şahıslarla paylaşılmaz. Ödeme bilgileriniz doğrudan lisanslı ödeme aracıları tarafından işlenir.</p>
+                            <h2 className="text-2xl font-bold text-slate-900 mb-4 flex items-center gap-2">
+                                <span className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center text-sm font-black">03</span>
+                                Üçüncü Taraflar ve Tavizsiz Güvenlik
+                            </h2>
+                            <p>Kişisel verileriniz, sadece yasal merciler tarafından zorunlu kılınan hallerde veya ödeme altyapısı (SSL sertifikalı kuruluşlar) gibi hizmetin doğası gereği olan iş ortaklarımızla paylaşılır. 'İşgücü Veri Güvenliği Protokolü' uyarınca, bilgileriniz asla bir meta olarak satılmaz veya pazarlama amaçlı dışarıya sızdırılmaz.</p>
                         </section>
 
                         <section>
-                            <h2 className="text-xl font-semibold text-slate-900 mb-3">4. Kullanıcı Hakları (KVKK)</h2>
-                            <p>6698 sayılı Kişisel Verilerin Korunması Kanunu (KVKK) uyarınca;</p>
-                            <ul className="list-disc pl-6 mt-2 space-y-2">
-                                <li>Verilerinizin işlenip işlenmediğini öğrenme,</li>
-                                <li>Verileriniz işlenmişse bilgi talep etme,</li>
-                                <li>Eksik veya yanlış işlenen verilerin düzeltilmesini isteme,</li>
-                                <li>Verilerinizin silinmesini veya yok edilmesini isteme haklarına sahipsiniz.</li>
-                            </ul>
+                            <h2 className="text-2xl font-bold text-slate-900 mb-4 flex items-center gap-2">
+                                <span className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center text-sm font-black">04</span>
+                                Kontrol Tamamen Sizin Elinizde
+                            </h2>
+                            <p>KVKK haklarınız kapsamında; verilerinizin silinmesini talep etme, işlenme detaylarını öğrenme ve hatalı bilgilerin düzeltilmesini isteme haklarınız bizim için birer kullanıcı seçeneği değil, temel sorumluluğumuzdur. Hesabınızı kapattığınız anda, yasal saklama süreleri bitiminde tüm verileriniz sunucularımızdan kalıcı olarak temizlenir.</p>
                         </section>
 
-                        <section>
-                            <h2 className="text-xl font-semibold text-slate-900 mb-3">5. Çerezler (Cookies)</h2>
-                            <p>Deneyiminizi geliştirmek için çerezler kullanıyoruz. Tarayıcı ayarlarınızdan çerezleri yönetebilirsiniz ancak bu durum bazı site özelliklerinin çalışmasını etkileyebilir.</p>
-                        </section>
-
-                        <section className="pt-8 border-t">
-                            <p className="text-sm text-slate-500">Son güncelleme: 25 Şubat 2026. Sorularınız için destek ekibimizle iletişime geçebilirsiniz.</p>
+                        <section className="pt-10 border-t border-slate-200">
+                            <p className="text-sm text-slate-500 font-bold uppercase tracking-widest">Son Güncelleme: 25 Şubat 2026 • İşgücü Uyumluluk Masası</p>
                         </section>
                     </div>
                 </div>
