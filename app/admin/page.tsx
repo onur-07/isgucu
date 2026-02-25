@@ -704,7 +704,7 @@ export default function AdminPage() {
 
                                     <div className="mb-6">
                                         <h4 className="font-black text-gray-900 text-lg uppercase mb-3 tracking-tight">{ticket.subject}</h4>
-                                        <div className="bg-gray-50 border border-gray-100 p-6 rounded-2xl text-sm font-bold text-gray-600 leading-relaxed shadow-inner">
+                                        <div className="bg-gray-50 border border-gray-100 p-6 rounded-2xl text-sm font-bold text-gray-600 leading-relaxed shadow-inner whitespace-pre-wrap break-words">
                                             {ticket.message}
                                         </div>
                                         {(freelancerId || employerId) && (

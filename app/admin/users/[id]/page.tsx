@@ -540,7 +540,7 @@ export default function AdminUserDetailPage() {
                                                 <span className="text-[10px] text-gray-400 uppercase">{ticket.category}</span>
                                             </div>
                                             <h4 className="text-sm font-bold text-gray-800">{ticket.subject}</h4>
-                                            <p className="text-xs text-gray-500 mt-2 leading-relaxed">{ticket.message}</p>
+                                            <p className="text-xs text-gray-500 mt-2 leading-relaxed whitespace-pre-wrap break-words">{ticket.message}</p>
                                             {ticket.reply && (
                                                 <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-lg">
                                                     <div className="text-[10px] font-bold uppercase text-green-600 mb-1">Admin Yanıtı:</div>

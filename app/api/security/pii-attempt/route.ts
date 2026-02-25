@@ -12,6 +12,13 @@ function warningTextForRole(role: string) {
   return "Uyaridir: Lutfen IBAN, telefon ve mail bilgisi vermeyiniz. Devam edilmesi durumunda hesabiniza yaptirim uygulanacaktir.";
 }
 
+function kindLabel(kind: string) {
+  if (kind === "phone") return "Telefon numarasi";
+  if (kind === "iban") return "IBAN";
+  if (kind === "email") return "E-posta / iletisim bilgisi";
+  return "Kisisel bilgi";
+}
+
 export async function POST(req: Request) {
   try {
     const supabaseAdmin = getSupabaseAdmin();
@@ -119,11 +126,14 @@ export async function POST(req: Request) {
     const isRepeat = Number(repeatCount || 0) > 0;
 
     const msg = [
-      `PII denemesi engellendi: ${kind}`,
-      `Kullanici: ${callerUsername} (${callerEmail || "no-email"})`,
-      otherUsername ? `Hedef: ${otherUsername} (${otherEmail || "no-email"})` : "",
-      path ? `Sayfa: ${path}` : "",
-      `Tekrar deneme: ${isRepeat ? "evet" : "hayir"}`,
+      "YASAKLI ILETISIM BILGISI PAYLASIM DENEMESI ENGELLENDI",
+      `Ihlal turu: ${kindLabel(kind)}`,
+      `Ihlali yapan kullanici: ${callerUsername} (${callerEmail || "email yok"})`,
+      otherUsername ? `Karsi taraf: ${otherUsername} (${otherEmail || "email yok"})` : "",
+      `Kaynak sayfa: ${path || "-"}`,
+      `Son 24 saatte tekrar deneme: ${isRepeat ? "Evet" : "Hayir"}`,
+      "",
+      "Teknik detaylar (admin):",
       `CALLER_ID:${callerId}`,
       `CALLER_USERNAME:${callerUsername}`,
       `CALLER_ROLE:${callerRole}`,
@@ -142,7 +152,7 @@ export async function POST(req: Request) {
         {
           from_user: callerUsername,
           from_email: callerEmail,
-          subject: isRepeat ? "PII Repeat Attempt" : "PII Attempt",
+          subject: isRepeat ? "Yasakli Bilgi - Tekrar Deneme" : "Yasakli Bilgi Denemesi",
           category: "security",
           message: msg,
           status: "open",
