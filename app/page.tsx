@@ -9,6 +9,9 @@ import { Search, Star, ZapIcon, Sparkles, ShieldCheck, Briefcase, ArrowRight } f
 import { JobList } from "@/components/jobs/job-list";
 import { GigList } from "@/components/gigs/gig-list";
 import { useAuth } from "@/components/auth/auth-context";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { getBlogPosts } from "@/lib/blog-posts";
 
 const CATEGORIES = [
   { title: "Yazılım & Mobil", slug: "yazilim-mobil", icon: "💻", color: "text-blue-600", bg: "bg-blue-50" },
@@ -24,6 +27,7 @@ export default function Home() {
   const [query, setQuery] = useState("");
 
   const categories = useMemo(() => CATEGORIES, []);
+  const latestPosts = useMemo(() => getBlogPosts().slice(0, 3), []);
 
   if (loading) return null;
 
@@ -293,6 +297,63 @@ export default function Home() {
           </div>
 
           <JobList limit={6} />
+        </div>
+      </section>
+
+      {/* Blog */}
+      <section className="py-18 md:py-20 bg-gradient-to-b from-white to-slate-50">
+        <div className="container mx-auto px-4 md:px-6">
+          <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-10">
+            <div>
+              <h2 className="text-3xl md:text-4xl font-black font-heading tracking-tight text-gray-900">
+                Blog / Son Yazılar
+              </h2>
+              <p className="text-gray-600 font-semibold mt-2 max-w-2xl">
+                Freelancerlığa dair pratik ipuçları, vergi/finans notları ve İşgücü güncellemeleri.
+              </p>
+            </div>
+            <Link href="/blog" className="inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-blue-600 hover:underline">
+              Tüm Yazılar <ArrowRight className="h-3.5 w-3.5" />
+            </Link>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {latestPosts.map((post) => (
+              <Card key={post.slug} className="rounded-[2rem] overflow-hidden border-gray-100 hover:shadow-2xl transition-shadow">
+                <div className="relative">
+                  <img
+                    src={post.coverImage}
+                    alt={post.title}
+                    className="h-48 w-full object-cover"
+                    loading="lazy"
+                  />
+                  <div className="absolute top-4 left-4">
+                    <Badge variant="secondary" className="font-black">
+                      {post.category}
+                    </Badge>
+                  </div>
+                </div>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-xl font-black tracking-tight leading-snug">
+                    {post.title}
+                  </CardTitle>
+                  <div className="text-xs font-bold text-gray-500 mt-1">
+                    {post.readingMinutes} dk okuma
+                  </div>
+                </CardHeader>
+                <CardContent className="pt-0">
+                  <p className="text-sm font-semibold text-gray-600 leading-relaxed">
+                    {post.excerpt}
+                  </p>
+                </CardContent>
+                <CardFooter className="pt-0">
+                  <Link href={`/blog/${post.slug}`} className="w-full">
+                    <Button className="w-full rounded-2xl font-black">Yazıyı Oku</Button>
+                  </Link>
+                </CardFooter>
+              </Card>
+            ))}
+          </div>
         </div>
       </section>
 

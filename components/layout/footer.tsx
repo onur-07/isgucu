@@ -16,6 +16,7 @@ export function Footer() {
                 <div className="flex flex-col space-y-4">
                     <h3 className="font-semibold text-white">Kurumsal</h3>
                     <Link href="/about" className="text-sm text-white/70 hover:text-white">Hakkımızda</Link>
+                    <Link href="/blog" className="text-sm text-white/70 hover:text-white">Blog</Link>
                     <Link href="/contact" className="text-sm text-white/70 hover:text-white">İletişim</Link>
                     <Link href="/privacy" className="text-sm text-white/70 hover:text-white">Gizlilik Politikası</Link>
                 </div>

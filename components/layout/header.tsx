@@ -86,6 +86,7 @@ export function Header() {
     const navLinks = [
         { href: "/jobs", label: "İlanlar" },
         { href: "/freelancers", label: "Freelancerlar" },
+        { href: "/blog", label: "Blog" },
         { href: "/support", label: "Destek" },
     ];
 
