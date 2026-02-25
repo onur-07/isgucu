@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/components/auth/auth-context";
 import { displayUsername, friendlySupabaseError, sanitizeMessage, usernameFold, usernameKey } from "@/lib/utils";
@@ -40,6 +40,7 @@ type TimelineItem =
 
 export default function MessageThreadPage() {
     const router = useRouter();
+    const searchParams = useSearchParams();
     const params = useParams<{ username: string }>();
     const { user, loading } = useAuth();
 
@@ -68,6 +69,7 @@ export default function MessageThreadPage() {
     const [offerDays, setOfferDays] = useState<string>("");
     const [offerNote, setOfferNote] = useState<string>("");
     const fileInputRef = useRef<HTMLInputElement | null>(null);
+    const prefillKeyRef = useRef<string>("");
 
     const listRef = useRef<HTMLDivElement | null>(null);
     const scrollRafRef = useRef<number | null>(null);
@@ -633,6 +635,25 @@ export default function MessageThreadPage() {
         if (sending || !text.trim()) return;
         void handleSend();
     };
+
+    useEffect(() => {
+        const key = searchParams?.toString() || "";
+        if (!key || prefillKeyRef.current === key) return;
+
+        const qText = searchParams.get("text");
+        const qOfferPrice = searchParams.get("offerPrice");
+        const qOfferDays = searchParams.get("offerDays");
+        const qOfferNote = searchParams.get("offerNote");
+        const qOpenOffer = searchParams.get("openOffer");
+
+        if (qText && !text.trim()) setText(qText);
+        if (qOfferPrice) setOfferPrice(qOfferPrice);
+        if (qOfferDays) setOfferDays(qOfferDays);
+        if (qOfferNote) setOfferNote(qOfferNote);
+        if (qOpenOffer === "1" || qOfferPrice || qOfferDays || qOfferNote) setOfferOpen(true);
+
+        prefillKeyRef.current = key;
+    }, [searchParams, text]);
 
     const refreshOffers = async () => {
         if (!meFold || !otherFold) return;

@@ -1,7 +1,19 @@
+"use client";
+
 import Link from "next/link";
 import { Instagram, Linkedin, Twitter, Github, Youtube, Mail, Phone, MapPin } from "lucide-react";
+import { useState, useEffect } from "react";
+import { getSiteConfig } from "@/lib/site-config";
 
 export function Footer() {
+    const [siteConfig, setSiteConfig] = useState(getSiteConfig());
+
+    useEffect(() => {
+        const handleUpdate = () => setSiteConfig(getSiteConfig());
+        window.addEventListener("site_config_updated", handleUpdate);
+        return () => window.removeEventListener("site_config_updated", handleUpdate);
+    }, []);
+
     return (
         <footer className="w-full bg-blue-950 text-blue-100/80">
             {/* Main Footer */}
@@ -38,10 +50,9 @@ export function Footer() {
                     <div className="space-y-6">
                         <h3 className="text-white font-bold text-lg uppercase tracking-wider">Kurumsal</h3>
                         <ul className="space-y-4">
-                            <li><Link href="/about" className="hover:text-white transition-colors">Biz Kimiz?</Link></li>
-                            <li><Link href="/blog" className="hover:text-white transition-colors">Akademi / Blog</Link></li>
-                            <li><Link href="/careers" className="hover:text-white transition-colors">Kariyer</Link></li>
-                            <li><Link href="/contact" className="hover:text-white transition-colors">Bize Ulaşın</Link></li>
+                            {siteConfig.footerLinks.slice(0, 3).map(link => (
+                                <li key={link.href}><Link href={link.href} className="hover:text-white transition-colors">{link.label}</Link></li>
+                            ))}
                         </ul>
                     </div>
 
@@ -49,10 +60,9 @@ export function Footer() {
                     <div className="space-y-6">
                         <h3 className="text-white font-bold text-lg uppercase tracking-wider">Güvenlik</h3>
                         <ul className="space-y-4">
-                            <li><Link href="/help" className="hover:text-white transition-colors">Destek Merkezi</Link></li>
-                            <li><Link href="/rules" className="hover:text-white transition-colors">Platform Kuralları</Link></li>
-                            <li><Link href="/privacy" className="hover:text-white transition-colors">Veri Gizliliği</Link></li>
-                            <li><Link href="/support" className="hover:text-white transition-colors">İptal & İade</Link></li>
+                            {siteConfig.footerLinks.slice(3).map(link => (
+                                <li key={link.href}><Link href={link.href} className="hover:text-white transition-colors">{link.label}</Link></li>
+                            ))}
                         </ul>
                     </div>
 

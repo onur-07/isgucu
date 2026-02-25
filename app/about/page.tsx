@@ -1,13 +1,7 @@
-import { Users, Target, Rocket, ShieldCheck, Globe, Star } from "lucide-react";
+import { Globe, Star, ShieldCheck, Target, Rocket } from "lucide-react";
+import Image from "next/image";
 
 export default function AboutPage() {
-    const stats = [
-        { label: "Aktif Freelancer", value: "25,000+" },
-        { label: "Tamamlanan Proje", value: "150,000+" },
-        { label: "Müşteri Memnuniyeti", value: "%98" },
-        { label: "Global Erişim", value: "40+ Ülke" },
-    ];
-
     const values = [
         {
             icon: <ShieldCheck className="w-10 h-10 text-blue-600" />,
@@ -41,18 +35,6 @@ export default function AboutPage() {
                 </div>
             </div>
 
-            {/* Stats */}
-            <div className="container mx-auto px-4 -mt-16 relative z-20">
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-8">
-                    {stats.map((stat, i) => (
-                        <div key={i} className="bg-white rounded-3xl p-8 shadow-2xl border border-slate-100 text-center">
-                            <div className="text-3xl md:text-4xl font-black text-blue-600 mb-2 font-heading">{stat.value}</div>
-                            <div className="text-sm font-bold text-slate-500 uppercase tracking-widest">{stat.label}</div>
-                        </div>
-                    ))}
-                </div>
-            </div>
-
             {/* Story Section */}
             <div className="container mx-auto px-4 py-24">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-16 items-center">
@@ -76,11 +58,13 @@ export default function AboutPage() {
                     <div className="relative">
                         <div className="aspect-square bg-blue-50 rounded-[4rem] rotate-3 absolute inset-0 -z-10"></div>
                         <div className="aspect-square bg-slate-900 rounded-[4rem] overflow-hidden shadow-2xl transform transition-transform hover:-translate-y-4 duration-500 flex items-center justify-center p-12">
-                            <Globe className="w-full h-full text-blue-500/20" />
-                            <div className="absolute inset-0 flex flex-col items-center justify-center text-white text-center p-10">
-                                <Star className="w-16 h-16 text-yellow-400 mb-6 fill-yellow-400" />
-                                <div className="text-3xl font-black uppercase">Fark Yaratıyoruz</div>
-                            </div>
+                            <Image
+                                src="/logo.png"
+                                alt="İşgücü Logo"
+                                width={400}
+                                height={400}
+                                className="w-full h-auto object-contain opacity-80"
+                            />
                         </div>
                     </div>
                 </div>

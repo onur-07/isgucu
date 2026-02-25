@@ -6,6 +6,7 @@ import { maskFullName, usernameKey } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/components/auth/auth-context";
 import { Menu, X, Bell, MessageCircle, User, ChevronDown, Headphones } from "lucide-react";
+import { getSiteConfig } from "@/lib/site-config";
 
 export function Header() {
     const { user, logout, loading } = useAuth();
@@ -31,7 +32,7 @@ export function Header() {
                 localStorage.setItem(key, legacyRaw);
                 try {
                     localStorage.removeItem(legacyKey);
-                } catch {}
+                } catch { }
                 raw = legacyRaw;
             }
         }
@@ -73,22 +74,22 @@ export function Header() {
         }
     };
 
+    const [siteConfig, setSiteConfig] = useState(getSiteConfig());
+
     useEffect(() => {
         updateCounts();
+        const handleConfigUpdate = () => setSiteConfig(getSiteConfig());
         window.addEventListener("storage", updateCounts);
         window.addEventListener("storage_updated", updateCounts);
+        window.addEventListener("site_config_updated", handleConfigUpdate);
         return () => {
             window.removeEventListener("storage", updateCounts);
             window.removeEventListener("storage_updated", updateCounts);
+            window.removeEventListener("site_config_updated", handleConfigUpdate);
         };
     }, [user]);
 
-    const navLinks = [
-        { href: "/jobs", label: "İlanlar" },
-        { href: "/freelancers", label: "Freelancerlar" },
-        { href: "/blog", label: "Blog" },
-        { href: "/support", label: "Destek" },
-    ];
+    const navLinks = siteConfig.headerLinks;
 
     const roleLinks = user?.role === "employer"
         ? [{ href: "/post-job", label: "İş İlanı Ver", color: "text-blue-600 font-semibold" }]
