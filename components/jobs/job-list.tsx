@@ -20,15 +20,19 @@ export function JobList({ limit }: { limit?: number }) {
     useEffect(() => {
         const fetchJobs = async () => {
             try {
-                const { data, error } = await supabase
+                // Fetch from Supabase
+                const { data: dbData, error } = await supabase
                     .from('jobs')
                     .select('*')
                     .order('created_at', { ascending: false });
 
-                if (error) throw error;
+                // Fetch from LocalStorage (Mock/Fallback)
+                const localJobs = JSON.parse(localStorage.getItem("isgucu_jobs") || "[]");
 
-                if (data) {
-                    const formattedJobs = data.map((j: any) => ({
+                let mergedJobs: Job[] = [];
+
+                if (dbData) {
+                    const formattedDbJobs = dbData.map((j: any) => ({
                         id: j.id,
                         title: j.title,
                         description: j.description,
@@ -36,10 +40,28 @@ export function JobList({ limit }: { limit?: number }) {
                         budget: j.budget,
                         createdAt: j.created_at
                     }));
-                    setJobs(formattedJobs);
+                    mergedJobs = [...formattedDbJobs];
                 }
+
+                // Add local jobs that don't exist in DB (simple id check)
+                localJobs.forEach((lj: any) => {
+                    if (!mergedJobs.some(mj => mj.id === lj.id)) {
+                        mergedJobs.push({
+                            ...lj,
+                            createdAt: lj.created_at || lj.createdAt // Support both
+                        });
+                    }
+                });
+
+                // Sort by date
+                mergedJobs.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+                setJobs(mergedJobs);
             } catch (err) {
                 console.error("Jobs fetch error:", err);
+                // Fallback to only local storage on error
+                const localJobs = JSON.parse(localStorage.getItem("isgucu_jobs") || "[]");
+                setJobs(localJobs);
             } finally {
                 setLoading(false);
             }
