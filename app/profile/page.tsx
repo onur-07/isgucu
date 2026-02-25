@@ -168,11 +168,14 @@ export default function ProfilePage() {
             const { data } = await supabase
                 .from('jobs')
                 .select('*')
-                .eq('user_id', user.id)
+                .or(`user_id.eq.${user.id},user_id.eq.${user.username}`)
                 .order('created_at', { ascending: false });
 
             const localJobs = JSON.parse(localStorage.getItem("isgucu_jobs") || "[]");
-            const myLocalJobs = localJobs.filter((j: any) => String(j.user_id) === String(user.id));
+            const myLocalJobs = localJobs.filter((j: any) =>
+                String(j.user_id) === String(user.id) ||
+                String(j.user_id).toLowerCase() === String(user.username).toLowerCase()
+            );
 
             let allMyJobs = data ? [...data] : [];
             // Add local jobs that aren't in DB data
@@ -187,14 +190,14 @@ export default function ProfilePage() {
 
         fetchProfile();
         fetchUserJobs();
-        if (user?.role === "freelancer") {
+        if (user?.role === "freelancer" || user?.role === "admin") {
             (async () => {
                 setGigsLoading(true);
                 try {
                     const { data, error } = await supabase
                         .from('gigs')
                         .select('id, user_id, title, description, category, price, created_at, images, packages, is_active')
-                        .eq('user_id', user.id)
+                        .or(`user_id.eq.${user.id},user_id.eq.${user.username}`)
                         .order('created_at', { ascending: false });
 
                     if (error) {
@@ -217,11 +220,14 @@ export default function ProfilePage() {
         const { data } = await supabase
             .from('jobs')
             .select('*')
-            .eq('user_id', user.id)
+            .or(`user_id.eq.${user.id},user_id.eq.${user.username}`)
             .order('created_at', { ascending: false });
 
         const localJobs = JSON.parse(localStorage.getItem("isgucu_jobs") || "[]");
-        const myLocalJobs = localJobs.filter((j: any) => String(j.user_id) === String(user.id));
+        const myLocalJobs = localJobs.filter((j: any) =>
+            String(j.user_id) === String(user.id) ||
+            String(j.user_id).toLowerCase() === String(user.username).toLowerCase()
+        );
 
         let allMyJobs = data ? [...data] : [];
         myLocalJobs.forEach((lj: any) => {
@@ -286,7 +292,7 @@ export default function ProfilePage() {
             const { data, error } = await supabase
                 .from('gigs')
                 .select('id, user_id, title, description, category, price, created_at, images, packages, is_active')
-                .eq('user_id', user.id)
+                .or(`user_id.eq.${user.id},user_id.eq.${user.username}`)
                 .order('created_at', { ascending: false });
             if (error) {
                 console.error("Profil gigs refresh hatası:", error);
@@ -544,8 +550,8 @@ export default function ProfilePage() {
         setProfile((prev) => ({ ...prev, skills: prev.skills.filter((s) => s !== skill) }));
     };
 
-    const isFreelancer = user?.role === "freelancer";
-    const isEmployer = user?.role === "employer";
+    const isFreelancer = user?.role === "freelancer" || user?.role === "admin";
+    const isEmployer = user?.role === "employer" || user?.role === "admin";
     const memberSince = profile.createdAt
         ? formatDistance(new Date(profile.createdAt), new Date(), { addSuffix: true, locale: tr })
         : "Yeni Üye";
