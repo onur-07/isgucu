@@ -44,6 +44,8 @@ export function JobPostingForm() {
     const [attachments, setAttachments] = useState<File[]>([]);
     const categories = getMergedJobCategories();
 
+    const toObjectUrl = (file: File) => URL.createObjectURL(file);
+
     const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const files = Array.from(e.target.files || []);
         if (files.length === 0) return;
@@ -160,12 +162,13 @@ export function JobPostingForm() {
 
             // Fallback for local testing
             const existingJobs = JSON.parse(localStorage.getItem("isgucu_jobs") || "[]");
+            const localAttachmentUrls = attachments.map(toObjectUrl);
             const newJob = {
                 ...formData,
                 id: Date.now(),
                 created_at: new Date().toISOString(),
                 user_id: user.id || (user as any).username,
-                attachments: attachments.map(f => f.name)
+                attachments: localAttachmentUrls
             };
             localStorage.setItem("isgucu_jobs", JSON.stringify([newJob, ...existingJobs]));
 

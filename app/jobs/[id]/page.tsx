@@ -59,6 +59,7 @@ export default function JobDetailPage() {
     const [offerDays, setOfferDays] = useState("");
     const [offerNote, setOfferNote] = useState("");
     const [success, setSuccess] = useState(false);
+    const [resolvedAttachmentUrls, setResolvedAttachmentUrls] = useState<string[]>([]);
 
     const jobId = useMemo(() => {
         return params?.id ? String(params.id) : "";
@@ -205,6 +206,47 @@ export default function JobDetailPage() {
 
         void fetchJob();
     }, [jobId]);
+
+    useEffect(() => {
+        const resolveAttachmentUrls = async () => {
+            if (!job?.attachments?.length) {
+                setResolvedAttachmentUrls([]);
+                return;
+            }
+
+            const ownerPrefix = String(job.userId || "").trim();
+            const resolved = await Promise.all(
+                job.attachments.map(async (file) => {
+                    const rawFile = String(file || "").trim();
+                    if (!rawFile) return "";
+
+                    if (rawFile.startsWith("http") || rawFile.startsWith("blob:") || rawFile.startsWith("data:")) {
+                        return rawFile;
+                    }
+
+                    if (rawFile.includes("/")) {
+                        return supabase.storage.from("job-attachments").getPublicUrl(rawFile).data.publicUrl || "";
+                    }
+
+                    if (!ownerPrefix) return "";
+
+                    try {
+                        const { data } = await supabase.storage.from("job-attachments").list(ownerPrefix, { limit: 100, search: rawFile });
+                        const found = (data || []).find((x: any) => String(x?.name || "").endsWith(rawFile));
+                        if (!found?.name) return "";
+                        const path = `${ownerPrefix}/${found.name}`;
+                        return supabase.storage.from("job-attachments").getPublicUrl(path).data.publicUrl || "";
+                    } catch {
+                        return "";
+                    }
+                })
+            );
+
+            setResolvedAttachmentUrls(resolved);
+        };
+
+        void resolveAttachmentUrls();
+    }, [job]);
 
     const handleSendProposal = async () => {
         if (!job) return;
@@ -430,7 +472,7 @@ export default function JobDetailPage() {
                                                 const storagePublicUrl = !isDirectUrl && rawFile
                                                     ? supabase.storage.from("job-attachments").getPublicUrl(rawFile).data.publicUrl
                                                     : "";
-                                                const finalUrl = isDirectUrl ? rawFile : storagePublicUrl;
+                                                const finalUrl = resolvedAttachmentUrls[i] || (isDirectUrl ? rawFile : storagePublicUrl);
                                                 const canOpen = Boolean(finalUrl);
                                                 const isImage = /\.(jpg|jpeg|png|gif|webp|svg|bmp)$/i.test(fileName);
                                                 return (
