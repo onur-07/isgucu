@@ -30,7 +30,7 @@ import { sanitizeMessage, usernameKey } from "@/lib/utils";
 import Image from "next/image";
 
 type JobDetail = {
-    id: number;
+    id: string | number;
     userId: string;
     title: string;
     description: string;
@@ -62,15 +62,13 @@ export default function JobDetailPage() {
     const [success, setSuccess] = useState(false);
 
     const jobId = useMemo(() => {
-        const raw = params?.id ? String(params.id) : "";
-        const parsed = Number(raw);
-        return Number.isFinite(parsed) ? parsed : NaN;
+        return params?.id ? String(params.id) : "";
     }, [params?.id]);
 
     useEffect(() => {
         const fetchJob = async () => {
-            if (!Number.isFinite(jobId)) {
-                setError("Geçersiz ilan ID.");
+            if (!jobId) {
+                setError("İlan ID bulunamadı.");
                 setLoading(false);
                 return;
             }
@@ -79,18 +77,25 @@ export default function JobDetailPage() {
             setError("");
 
             try {
-                // Fetch job and owner profile in one go if possible
+                console.log("Fetching job with ID:", jobId);
+
+                // 1. Try to fetch from Supabase
                 const { data: row, error: dbErr } = await supabase
                     .from("jobs")
-                    .select("*, profiles(id, username, full_name, avatar_url)")
+                    .select("*, profiles:user_id(id, username, full_name, avatar_url)")
                     .eq("id", jobId)
                     .maybeSingle();
 
-                if (dbErr) throw dbErr;
+                if (dbErr) {
+                    console.error("Supabase fetch error:", dbErr);
+                }
 
                 let finalJob: JobDetail | null = null;
 
                 if (row) {
+                    // Supabase results sometimes map the join differently depending on the schema
+                    const profileData = row.profiles;
+
                     finalJob = {
                         id: row.id,
                         userId: row.user_id,
@@ -101,20 +106,28 @@ export default function JobDetailPage() {
                         createdAt: row.created_at,
                         status: row.status || "open",
                         attachments: row.attachments || [],
-                        owner: row.profiles ? {
-                            id: row.profiles.id,
-                            username: row.profiles.username,
-                            fullName: row.profiles.full_name,
-                            avatarUrl: row.profiles.avatar_url
+                        owner: profileData ? {
+                            id: profileData.id,
+                            username: profileData.username,
+                            fullName: profileData.full_name,
+                            avatarUrl: profileData.avatar_url
                         } : null
                     };
-                } else {
-                    // Fallback to LocalStorage
+                }
+
+                // 2. If not found in Supabase, try LocalStorage
+                if (!finalJob) {
+                    console.log("Job not found in Supabase, checking local storage...");
                     const localJobs = JSON.parse(localStorage.getItem("isgucu_jobs") || "[]");
-                    const localRow = localJobs.find((x: any) => Number(x.id) === jobId);
+                    const numericId = Number(jobId);
+
+                    const localRow = localJobs.find((x: any) =>
+                        String(x.id) === String(jobId) || (Number.isFinite(numericId) && Number(x.id) === numericId)
+                    );
+
                     if (localRow) {
                         finalJob = {
-                            id: Number(localRow.id),
+                            id: localRow.id,
                             userId: String(localRow.user_id || ""),
                             title: String(localRow.title || ""),
                             description: String(localRow.description || ""),
@@ -123,19 +136,19 @@ export default function JobDetailPage() {
                             createdAt: String(localRow.created_at || localRow.createdAt || new Date().toISOString()),
                             status: String(localRow.status || "open"),
                             attachments: localRow.attachments || [],
-                            owner: null // Mock profile simulation could be better but keeping it simple
+                            owner: null
                         };
                     }
                 }
 
                 if (!finalJob) {
-                    setError("İlan bulunamadı.");
+                    setError(`İlan bulunamadı. (ID: ${jobId})`);
                 } else {
                     setJob(finalJob);
                 }
             } catch (e: any) {
-                console.error("Job fetch error:", e);
-                setError("İlan yüklenirken bir sorun oluştu.");
+                console.error("Critical Job fetch error:", e);
+                setError("İlan yüklenirken sistem hatası oluştu.");
             } finally {
                 setLoading(false);
             }

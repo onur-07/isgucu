@@ -5,7 +5,7 @@ import { JobCard } from "@/components/jobs/job-card";
 import { supabase } from "@/lib/supabase";
 
 interface Job {
-    id: number;
+    id: string | number;
     title: string;
     description: string;
     category: string;

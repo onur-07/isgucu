@@ -10,7 +10,7 @@ import { cn } from "@/lib/utils";
 import Image from "next/image";
 
 interface Job {
-    id: number;
+    id: string | number;
     title: string;
     description: string;
     category: string;
