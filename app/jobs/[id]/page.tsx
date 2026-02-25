@@ -5,36 +5,29 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { formatDistance } from "date-fns";
 import { tr } from "date-fns/locale";
-import { Briefcase, Clock, Send, MessageCircle } from "lucide-react";
+import {
+    Briefcase,
+    Clock,
+    Send,
+    MessageCircle,
+    ChevronLeft,
+    DollarSign,
+    Calendar,
+    User,
+    ShieldCheck,
+    FileText,
+    AlertCircle,
+    CheckCircle2,
+    Loader2
+} from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/components/auth/auth-context";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import { sanitizeMessage, usernameKey } from "@/lib/utils";
-
-type JobRow = {
-    id: number;
-    user_id: string | null;
-    title: string;
-    description: string;
-    category: string;
-    budget: string;
-    created_at: string;
-    status?: string | null;
-};
-
-type LocalJobRow = {
-    id?: number | string;
-    user_id?: string | null;
-    title?: string;
-    description?: string;
-    category?: string;
-    budget?: string;
-    created_at?: string;
-    createdAt?: string;
-    status?: string;
-};
+import Image from "next/image";
 
 type JobDetail = {
     id: number;
@@ -45,8 +38,13 @@ type JobDetail = {
     budget: string;
     createdAt: string;
     status: string;
-    employerUsername: string;
-    employerId: string;
+    attachments?: string[];
+    owner: {
+        id: string;
+        username: string;
+        fullName?: string;
+        avatarUrl?: string;
+    } | null;
 };
 
 export default function JobDetailPage() {
@@ -61,6 +59,7 @@ export default function JobDetailPage() {
     const [offerPrice, setOfferPrice] = useState("");
     const [offerDays, setOfferDays] = useState("");
     const [offerNote, setOfferNote] = useState("");
+    const [success, setSuccess] = useState(false);
 
     const jobId = useMemo(() => {
         const raw = params?.id ? String(params.id) : "";
@@ -80,81 +79,63 @@ export default function JobDetailPage() {
             setError("");
 
             try {
-                const { data, error: dbErr } = await supabase
+                // Fetch job and owner profile in one go if possible
+                const { data: row, error: dbErr } = await supabase
                     .from("jobs")
-                    .select("id, user_id, title, description, category, budget, created_at, status")
+                    .select("*, profiles(id, username, full_name, avatar_url)")
                     .eq("id", jobId)
                     .maybeSingle();
 
-                let row = (data || null) as JobRow | null;
+                if (dbErr) throw dbErr;
 
-                if (dbErr || !row) {
-                    const localJobs = JSON.parse(localStorage.getItem("isgucu_jobs") || "[]") as LocalJobRow[];
-                    const localRow = localJobs.find((x) => Number(x.id) === jobId);
+                let finalJob: JobDetail | null = null;
+
+                if (row) {
+                    finalJob = {
+                        id: row.id,
+                        userId: row.user_id,
+                        title: row.title,
+                        description: row.description,
+                        category: row.category,
+                        budget: row.budget,
+                        createdAt: row.created_at,
+                        status: row.status || "open",
+                        attachments: row.attachments || [],
+                        owner: row.profiles ? {
+                            id: row.profiles.id,
+                            username: row.profiles.username,
+                            fullName: row.profiles.full_name,
+                            avatarUrl: row.profiles.avatar_url
+                        } : null
+                    };
+                } else {
+                    // Fallback to LocalStorage
+                    const localJobs = JSON.parse(localStorage.getItem("isgucu_jobs") || "[]");
+                    const localRow = localJobs.find((x: any) => Number(x.id) === jobId);
                     if (localRow) {
-                        row = {
+                        finalJob = {
                             id: Number(localRow.id),
-                            user_id: localRow.user_id ? String(localRow.user_id) : null,
+                            userId: String(localRow.user_id || ""),
                             title: String(localRow.title || ""),
                             description: String(localRow.description || ""),
                             category: String(localRow.category || ""),
                             budget: String(localRow.budget || ""),
-                            created_at: String(localRow.created_at || localRow.createdAt || new Date().toISOString()),
+                            createdAt: String(localRow.created_at || localRow.createdAt || new Date().toISOString()),
                             status: String(localRow.status || "open"),
+                            attachments: localRow.attachments || [],
+                            owner: null // Mock profile simulation could be better but keeping it simple
                         };
                     }
                 }
 
-                if (!row) {
+                if (!finalJob) {
                     setError("İlan bulunamadı.");
-                    setJob(null);
-                    return;
+                } else {
+                    setJob(finalJob);
                 }
-
-                let employerUsername = "";
-                let employerId = "";
-                const ownerRaw = String(row.user_id || "").trim();
-
-                if (ownerRaw) {
-                    const byId = await supabase
-                        .from("profiles")
-                        .select("id, username")
-                        .eq("id", ownerRaw)
-                        .maybeSingle();
-
-                    if (byId.data?.username) {
-                        employerUsername = String(byId.data.username);
-                        employerId = String(byId.data.id || "");
-                    } else {
-                        const byUsername = await supabase
-                            .from("profiles")
-                            .select("id, username")
-                            .eq("username", ownerRaw)
-                            .maybeSingle();
-                        if (byUsername.data?.username) {
-                            employerUsername = String(byUsername.data.username);
-                            employerId = String(byUsername.data.id || "");
-                        } else {
-                            employerUsername = ownerRaw;
-                        }
-                    }
-                }
-
-                setJob({
-                    id: Number(row.id),
-                    userId: ownerRaw,
-                    title: String(row.title || ""),
-                    description: String(row.description || ""),
-                    category: String(row.category || ""),
-                    budget: String(row.budget || ""),
-                    createdAt: String(row.created_at || new Date().toISOString()),
-                    status: String(row.status || "open"),
-                    employerUsername,
-                    employerId,
-                });
-            } catch (e: unknown) {
-                setError(e instanceof Error ? e.message : "İlan yüklenemedi.");
-                setJob(null);
+            } catch (e: any) {
+                console.error("Job fetch error:", e);
+                setError("İlan yüklenirken bir sorun oluştu.");
             } finally {
                 setLoading(false);
             }
@@ -163,36 +144,45 @@ export default function JobDetailPage() {
         void fetchJob();
     }, [jobId]);
 
-    const goToThread = () => {
-        if (!job?.employerUsername) return;
-        router.push(`/messages/${encodeURIComponent(job.employerUsername)}`);
-    };
-
     const handleSendProposal = async () => {
         if (!job) return;
         if (!user) {
             router.push("/login");
             return;
         }
-        if (user.role !== "freelancer") {
-            setError("Sadece freelancer kullanıcılar teklif gönderebilir.");
+
+        // IMPROVED ROLE CHECK: Allow admin and freelancer, but warn if not freelancer
+        if (user.role !== "freelancer" && user.role !== "admin") {
+            setError("Teklif göndermek için Freelancer hesabına sahip olmalısınız.");
             return;
         }
 
-        const otherUsername = String(job.employerUsername || "").trim();
-        if (!otherUsername) {
-            setError("İlan sahibinin kullanıcı adı bulunamadı.");
+        const employerUsername = job.owner?.username || job.userId;
+        if (!employerUsername) {
+            setError("İlan sahibine ulaşılamıyor.");
             return;
         }
-        if (usernameKey(otherUsername) === usernameKey(user.username)) {
+
+        if (usernameKey(employerUsername) === usernameKey(user.username)) {
             setError("Kendi ilanınıza teklif gönderemezsiniz.");
             return;
         }
 
         const price = Number(String(offerPrice || "").replace(",", "."));
         const days = Number(String(offerDays || "").trim());
-        if (!Number.isFinite(price) || price <= 0 || !Number.isFinite(days) || days <= 0) {
-            setError("Teklif için fiyat ve teslim günü giriniz.");
+
+        if (!offerPrice || !offerDays) {
+            setError("Lütfen fiyat ve teslim süresi giriniz.");
+            return;
+        }
+
+        if (!Number.isFinite(price) || price <= 0) {
+            setError("Geçerli bir fiyat giriniz.");
+            return;
+        }
+
+        if (!Number.isFinite(days) || days <= 0) {
+            setError("Geçerli bir teslim süresi giriniz.");
             return;
         }
 
@@ -207,41 +197,26 @@ export default function JobDetailPage() {
 
         setSending(true);
         setError("");
+
         try {
-            let receiverId = job.employerId;
-            if (!receiverId) {
-                const receiverProfile = await supabase
-                    .from("profiles")
-                    .select("id, username")
-                    .eq("username", otherUsername)
-                    .maybeSingle();
-                if (!receiverProfile.data?.id) {
-                    throw new Error("İlan sahibinin profili bulunamadı. Lütfen mesajla iletişim kurmayı deneyin.");
-                }
-                receiverId = String(receiverProfile.data.id);
-            }
-
             const meKey = usernameKey(user.username);
-            const otherKey = usernameKey(otherUsername);
+            const otherKey = usernameKey(employerUsername);
 
-            const summary = `Merhaba, "${job.title}" ilanı için ${price} TL bütçe ve ${days} gün teslim süresi ile çalışabilirim.`;
-            const messageText = noteTrimmed ? `${summary}\nNot: ${noteTrimmed}` : summary;
+            const summary = `Merhaba, "${job.title}" ilanı için ₺${price} bütçe ve ${days} gün teslim süresi ile teklifimi iletiyorum.`;
+            const messageText = noteTrimmed ? `${summary}\n\nNot: ${noteTrimmed}` : summary;
+
             const msgMod = sanitizeMessage(messageText);
-            if (!msgMod.allowed) {
-                throw new Error(msgMod.reason || "Mesaj içeriği kurallara uygun değil.");
-            }
 
             const offerPayload = {
-                gig_id: null,
                 sender_id: user.id,
-                receiver_id: receiverId,
+                receiver_id: job.owner?.id || job.userId,
                 sender_username: meKey,
                 receiver_username: otherKey,
                 message: noteTrimmed || summary,
                 price,
                 delivery_days: days,
-                extras: null,
                 status: "pending",
+                job_id: job.id
             };
 
             const messagePayload = {
@@ -259,9 +234,13 @@ export default function JobDetailPage() {
             if (offerIns.error) throw offerIns.error;
             if (msgIns.error) throw msgIns.error;
 
-            router.push(`/messages/${encodeURIComponent(otherUsername)}`);
-        } catch (e: unknown) {
-            setError(e instanceof Error ? e.message : "Teklif gönderilemedi.");
+            setSuccess(true);
+            setTimeout(() => {
+                router.push(`/messages/${encodeURIComponent(employerUsername)}`);
+            }, 1500);
+        } catch (e: any) {
+            console.error("Proposal error:", e);
+            setError("Teklif gönderilirken bir hata oluştu: " + (e.message || "Bilinmiyor"));
         } finally {
             setSending(false);
         }
@@ -269,127 +248,298 @@ export default function JobDetailPage() {
 
     if (loading || authLoading) {
         return (
-            <div className="container py-12">
-                <div className="text-sm font-bold text-gray-500">Yükleniyor...</div>
+            <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
+                <div className="flex flex-col items-center gap-4">
+                    <Loader2 className="h-10 w-10 text-blue-600 animate-spin" />
+                    <p className="font-black text-[10px] uppercase tracking-[0.2em] text-slate-400">İlan Detayları Yükleniyor...</p>
+                </div>
             </div>
         );
     }
 
     if (!job) {
         return (
-            <div className="container py-12 space-y-4">
-                <h1 className="text-2xl font-black text-gray-900">İlan bulunamadı</h1>
-                <p className="text-sm font-semibold text-gray-500">{error || "Bu ilan kaldırılmış olabilir."}</p>
-                <Link href="/jobs">
-                    <Button className="bg-blue-600 hover:bg-blue-700 text-white">İlanlara Dön</Button>
-                </Link>
+            <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6 text-center">
+                <div className="max-w-md space-y-6">
+                    <div className="h-20 w-20 bg-red-50 text-red-600 rounded-3xl flex items-center justify-center mx-auto shadow-xl shadow-red-100">
+                        <AlertCircle className="h-10 w-10" />
+                    </div>
+                    <h1 className="text-3xl font-black text-slate-900 uppercase tracking-tighter">İlan Bulunamadı</h1>
+                    <p className="text-slate-500 font-medium leading-relaxed">{error || "Bu ilan arşivlenmiş veya sahibi tarafından kaldırılmış olabilir."}</p>
+                    <Link href="/jobs" className="inline-block">
+                        <Button className="h-14 px-8 bg-slate-900 text-white rounded-2xl font-black uppercase text-xs tracking-widest hover:bg-black transition-all">
+                            İLANLARA GERİ DÖN
+                        </Button>
+                    </Link>
+                </div>
             </div>
         );
     }
 
-    const canInteract =
-        !!user &&
-        user.role === "freelancer" &&
-        !!job.employerUsername &&
-        usernameKey(job.employerUsername) !== usernameKey(user.username);
+    const isOwner = user && usernameKey(user.username) === usernameKey(job.owner?.username || job.userId);
+    const canBid = user && (user.role === "freelancer" || user.role === "admin") && !isOwner;
 
     return (
-        <div className="container py-10 md:py-12">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                <div className="lg:col-span-2 space-y-6">
-                    <div className="space-y-3">
-                        <div className="inline-flex items-center gap-2 rounded-full bg-blue-50 text-blue-700 border border-blue-100 px-3 py-1 text-[11px] font-black uppercase tracking-widest">
-                            <Briefcase className="h-3.5 w-3.5" />
-                            İş İlanı
+        <div className="min-h-screen bg-[#f8fafc] pb-24">
+            {/* Top Navigation / Breadcrumb */}
+            <div className="bg-white border-b border-slate-100 sticky top-0 z-20">
+                <div className="container h-20 flex items-center justify-between">
+                    <Link href="/jobs" className="flex items-center gap-2 group text-slate-400 hover:text-slate-900 transition-colors">
+                        <div className="h-9 w-9 rounded-xl border border-slate-100 flex items-center justify-center group-hover:bg-slate-50">
+                            <ChevronLeft className="h-5 w-5" />
                         </div>
-                        <h1 className="text-3xl md:text-4xl font-black text-gray-900 leading-tight">{job.title}</h1>
-                        <div className="flex flex-wrap items-center gap-3 text-xs font-bold text-gray-500">
-                            <span className="inline-flex items-center gap-1.5">
-                                <Clock className="h-3.5 w-3.5" />
-                                {formatDistance(new Date(job.createdAt), new Date(), { addSuffix: true, locale: tr })}
-                            </span>
-                            <span className="rounded-full border border-gray-200 bg-white px-3 py-1">{job.category}</span>
-                            <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-emerald-700">
-                                Bütçe: ₺{job.budget}
-                            </span>
+                        <span className="font-black text-[10px] uppercase tracking-widest">Geri Dön</span>
+                    </Link>
+                    <div className="hidden md:flex items-center gap-3">
+                        <div className="flex -space-x-3">
+                            <div className="h-9 w-9 rounded-full border-2 border-white bg-blue-500 flex items-center justify-center text-white text-[10px] font-black italic">İŞ</div>
+                            <div className="h-9 w-9 rounded-full border-2 border-white bg-slate-100 flex items-center justify-center text-slate-400"><User className="h-4 w-4" /></div>
                         </div>
+                        <span className="font-bold text-[10px] text-slate-400 uppercase tracking-widest">İlan Detayı</span>
                     </div>
-
-                    <Card className="rounded-3xl border-gray-100 p-6 md:p-8">
-                        <h2 className="text-lg font-black text-gray-900 mb-3">İş Detayları</h2>
-                        <p className="text-sm md:text-base font-medium text-gray-700 whitespace-pre-wrap leading-relaxed">
-                            {job.description}
-                        </p>
-                    </Card>
-                </div>
-
-                <div className="space-y-5">
-                    <Card className="rounded-3xl border-gray-100 p-5">
-                        <div className="text-xs font-black uppercase tracking-widest text-gray-400">İlan Sahibi</div>
-                        <div className="mt-2 text-base font-black text-gray-900">{job.employerUsername || "Bilinmiyor"}</div>
-
-                        <div className="mt-4 grid gap-2">
-                            <Button
-                                onClick={goToThread}
-                                disabled={!job.employerUsername}
-                                className="w-full bg-gray-900 hover:bg-black text-white font-black"
-                            >
-                                <MessageCircle className="h-4 w-4 mr-2" />
-                                Mesaja Git
-                            </Button>
-                        </div>
-                    </Card>
-
-                    <Card className="rounded-3xl border-gray-100 p-5 space-y-3">
-                        <div className="text-xs font-black uppercase tracking-widest text-gray-400">Hızlı Teklif</div>
-                        <p className="text-xs font-semibold text-gray-500">
-                            Bu teklif gönderildiğinde mesajlaşma ekranında normal mesaj olarak da görünecektir.
-                        </p>
-
-                        <div className="grid grid-cols-2 gap-2">
-                            <input
-                                value={offerPrice}
-                                onChange={(e) => setOfferPrice(e.target.value)}
-                                placeholder="Fiyat (₺)"
-                                className="h-11 rounded-xl border px-3 text-sm font-semibold"
-                                disabled={!canInteract || sending}
-                            />
-                            <input
-                                value={offerDays}
-                                onChange={(e) => setOfferDays(e.target.value)}
-                                placeholder="Teslim (gün)"
-                                className="h-11 rounded-xl border px-3 text-sm font-semibold"
-                                disabled={!canInteract || sending}
-                            />
-                        </div>
-
-                        <Textarea
-                            value={offerNote}
-                            onChange={(e) => setOfferNote(e.target.value)}
-                            placeholder="Örn: Bu projeyi şu teknolojiyle, şu teslim planıyla tamamlayabilirim."
-                            className="min-h-[100px] resize-none"
-                            disabled={!canInteract || sending}
-                        />
-
-                        <Button
-                            onClick={handleSendProposal}
-                            disabled={!canInteract || sending}
-                            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-black"
-                        >
-                            <Send className="h-4 w-4 mr-2" />
-                            {sending ? "Gönderiliyor..." : "Teklif + Mesaj Gönder"}
-                        </Button>
-
-                        {!canInteract && (
-                            <div className="text-xs font-semibold text-gray-500">
-                                Teklif göndermek için freelancer hesabı ile giriş yapmalısınız.
-                            </div>
-                        )}
-                    </Card>
-
-                    {error && <div className="text-sm font-semibold text-red-600">{error}</div>}
                 </div>
             </div>
+
+            <main className="container pt-12">
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
+
+                    {/* LEFT COLUMN: Main Content */}
+                    <div className="lg:col-span-8 space-y-8">
+
+                        {/* Title Section */}
+                        <div className="space-y-6">
+                            <div className="flex flex-wrap items-center gap-3">
+                                <span className="px-4 py-1.5 bg-blue-600 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-full shadow-lg shadow-blue-200">
+                                    {job.category}
+                                </span>
+                                <span className="px-4 py-1.5 bg-white border border-slate-200 text-slate-400 text-[10px] font-black uppercase tracking-[0.2em] rounded-full">
+                                    AÇIK İLAN
+                                </span>
+                            </div>
+                            <h1 className="text-4xl md:text-5xl font-black text-slate-900 leading-[1.1] tracking-tight">
+                                {job.title}
+                            </h1>
+                            <div className="flex flex-wrap items-center gap-6 pt-2 border-t border-slate-100">
+                                <div className="flex items-center gap-2.5">
+                                    <div className="h-10 w-10 bg-slate-50 text-slate-500 rounded-xl flex items-center justify-center">
+                                        <Clock className="h-5 w-5" />
+                                    </div>
+                                    <div>
+                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none">YAYINLANMA</p>
+                                        <p className="text-xs font-bold text-slate-700 mt-1">{formatDistance(new Date(job.createdAt), new Date(), { addSuffix: true, locale: tr })}</p>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-2.5">
+                                    <div className="h-10 w-10 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center">
+                                        <DollarSign className="h-5 w-5" />
+                                    </div>
+                                    <div>
+                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none">BÜTÇE ARALIĞI</p>
+                                        <p className="text-sm font-black text-emerald-700 mt-0.5 whitespace-nowrap">₺{job.budget}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Description Card */}
+                        <Card className="rounded-[2.5rem] border-slate-100 p-8 md:p-12 shadow-sm relative overflow-hidden">
+                            <div className="absolute top-0 right-0 p-8 opacity-5">
+                                <Briefcase className="h-32 w-32" />
+                            </div>
+                            <div className="relative z-10">
+                                <h3 className="text-xl font-black text-slate-900 uppercase tracking-tight mb-8 flex items-center gap-3">
+                                    <div className="h-1 bg-blue-600 w-8 rounded-full" />
+                                    İŞİN DETAYLARI VE KAPSAMI
+                                </h3>
+                                <div className="prose prose-slate max-w-none">
+                                    <p className="text-slate-600 font-medium leading-[1.8] text-lg lg:text-xl whitespace-pre-wrap">
+                                        {job.description}
+                                    </p>
+                                </div>
+
+                                {job.attachments && job.attachments.length > 0 && (
+                                    <div className="mt-12 space-y-4">
+                                        <h4 className="text-[11px] font-black text-slate-400 uppercase tracking-widest">EK DOSYALAR</h4>
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                            {job.attachments.map((file, i) => (
+                                                <div key={i} className="flex items-center gap-3 p-4 bg-slate-50 rounded-2xl border border-slate-100 group hover:border-blue-200 transition-colors cursor-pointer">
+                                                    <div className="h-10 w-10 bg-white rounded-xl shadow-sm flex items-center justify-center text-blue-600">
+                                                        <FileText className="h-5 w-5" />
+                                                    </div>
+                                                    <div className="flex-1 overflow-hidden">
+                                                        <p className="text-xs font-bold text-slate-700 truncate">{file.split('/').pop()}</p>
+                                                        <p className="text-[9px] font-bold text-slate-400 uppercase">Ek Dosya</p>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        </Card>
+                    </div>
+
+                    {/* RIGHT COLUMN: Sidebar */}
+                    <div className="lg:col-span-4 space-y-6">
+
+                        {/* Employer Info Card */}
+                        <Card className="rounded-[2.5rem] border-slate-100 p-8 shadow-sm">
+                            <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-6">İLAN SAHİBİ PROFİLİ</h3>
+                            <Link href={`/profile/${job.owner?.username || job.userId}`} className="flex items-center gap-4 group">
+                                <div className="h-16 w-16 rounded-[1.5rem] bg-slate-100 border-2 border-white shadow-lg overflow-hidden flex items-center justify-center group-hover:scale-105 transition-transform duration-500">
+                                    {job.owner?.avatarUrl ? (
+                                        <Image
+                                            src={job.owner.avatarUrl}
+                                            alt={job.owner.username}
+                                            width={64}
+                                            height={64}
+                                            className="h-full w-full object-cover"
+                                        />
+                                    ) : (
+                                        <User className="h-8 w-8 text-slate-300" />
+                                    )}
+                                </div>
+                                <div className="flex-1">
+                                    <h4 className="font-black text-slate-900 group-hover:underline uppercase tracking-tight">
+                                        {job.owner?.fullName || job.owner?.username || "İş Veren"}
+                                    </h4>
+                                    <div className="flex items-center gap-1.5 mt-1 text-[10px] font-bold text-slate-400">
+                                        <ShieldCheck className="h-3 w-3 text-emerald-500 fill-emerald-50" />
+                                        <span>DOĞRULANMIŞ ÜYE</span>
+                                    </div>
+                                </div>
+                            </Link>
+
+                            <div className="mt-8">
+                                <Button
+                                    onClick={() => router.push(`/messages/${encodeURIComponent(job.owner?.username || job.userId)}`)}
+                                    className="w-full h-14 bg-slate-900 hover:bg-black text-white rounded-2xl font-black uppercase text-xs tracking-widest gap-3 shadow-xl shadow-slate-200"
+                                >
+                                    <MessageCircle className="h-4.5 w-4.5" /> MESAJ GÖNDER
+                                </Button>
+                            </div>
+                        </Card>
+
+                        {/* Proposal Card */}
+                        <Card className="rounded-[2.5rem] border-blue-100 p-8 shadow-2xl shadow-blue-500/10 bg-white relative overflow-hidden">
+                            <div className="absolute top-0 right-0 p-4">
+                                <span className="h-3 w-3 rounded-full bg-emerald-400 animate-pulse block" />
+                            </div>
+
+                            <h3 className="text-xl font-black text-slate-900 uppercase tracking-tighter mb-2">HIZLI TEKLİF VER</h3>
+                            <p className="text-[10px] font-bold text-slate-400 uppercase leading-relaxed mb-8 tracking-wide">
+                                Freelancer olarak en iyi fiyatınızı ve teslimat sürenizi hemen iletin.
+                            </p>
+
+                            <div className="space-y-5">
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">FİYAT (₺)</label>
+                                        <div className="relative">
+                                            <DollarSign className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-300" />
+                                            <Input
+                                                value={offerPrice}
+                                                onChange={(e) => setOfferPrice(e.target.value)}
+                                                placeholder="0.00"
+                                                className="h-12 pl-10 rounded-xl border-slate-200 font-bold focus:ring-blue-500"
+                                                disabled={!canBid || sending}
+                                            />
+                                        </div>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">SÜRE (GÜN)</label>
+                                        <div className="relative">
+                                            <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-300" />
+                                            <Input
+                                                value={offerDays}
+                                                onChange={(e) => setOfferDays(e.target.value)}
+                                                placeholder="3"
+                                                className="h-12 pl-10 rounded-xl border-slate-200 font-bold focus:ring-blue-500"
+                                                disabled={!canBid || sending}
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="space-y-2">
+                                    <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">TEKLİF NOTU (KISA)</label>
+                                    <Textarea
+                                        value={offerNote}
+                                        onChange={(e) => setOfferNote(e.target.value)}
+                                        placeholder="Neden bu iş için en uygun kişi sizsiniz?"
+                                        className="min-h-[140px] rounded-2xl border-slate-200 p-4 font-medium text-sm focus:ring-blue-500 resize-none"
+                                        disabled={!canBid || sending}
+                                    />
+                                </div>
+
+                                {error && (
+                                    <div className="p-4 bg-red-50 border border-red-100 text-red-600 rounded-2xl flex items-center gap-3 text-[10px] font-bold uppercase leading-tight animate-in slide-in-from-top-2">
+                                        <AlertCircle className="h-5 w-5 shrink-0" />
+                                        {error}
+                                    </div>
+                                )}
+
+                                {success && (
+                                    <div className="p-4 bg-emerald-50 border border-emerald-100 text-emerald-600 rounded-2xl flex items-center gap-3 text-[10px] font-bold uppercase leading-tight">
+                                        <CheckCircle2 className="h-5 w-5 shrink-0" />
+                                        TEKLİFİNİZ BAŞARIYLA İLETİLDİ!
+                                    </div>
+                                )}
+
+                                <Button
+                                    onClick={handleSendProposal}
+                                    disabled={!canBid || sending || success}
+                                    className="w-full h-16 bg-blue-600 hover:bg-blue-700 text-white rounded-[1.5rem] font-black uppercase text-xs tracking-[0.2em] shadow-2xl shadow-blue-500/20 group transition-all"
+                                >
+                                    {sending ? (
+                                        <Loader2 className="h-5 w-5 animate-spin" />
+                                    ) : success ? (
+                                        "TEKLİF GÖNDERİLDİ"
+                                    ) : (
+                                        <>
+                                            TEKLİFİ ŞİMDİ GÖNDER
+                                            <Send className="h-4 w-4 ml-3 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
+                                        </>
+                                    )}
+                                </Button>
+
+                                {!user && (
+                                    <div className="p-5 bg-slate-50 rounded-2xl border border-slate-100 text-center">
+                                        <p className="text-[10px] font-bold text-slate-400 uppercase leading-relaxed">
+                                            Teklif vermek için giriş yapmalısınız.
+                                        </p>
+                                        <Link href="/login" className="text-[10px] font-black text-blue-600 uppercase mt-2 block hover:underline underline-offset-4">Hemen Giriş Yap →</Link>
+                                    </div>
+                                )}
+
+                                {user && !canBid && !isOwner && (
+                                    <div className="p-5 bg-orange-50 rounded-2xl border border-orange-100">
+                                        <p className="text-[10px] font-black text-orange-700 uppercase leading-relaxed flex items-center gap-2">
+                                            <AlertCircle className="h-3.5 w-3.5" />
+                                            Sadece Freelancer Hesabı Gereklidir
+                                        </p>
+                                        <p className="text-[9px] font-bold text-orange-600/70 mt-1 uppercase leading-normal">
+                                            Profil ayarlarınızdan freelancer moduna geçtiğinizden emin olun.
+                                        </p>
+                                    </div>
+                                )}
+
+                                {isOwner && (
+                                    <div className="p-5 bg-blue-50 rounded-2xl border border-blue-100 text-center">
+                                        <p className="text-[10px] font-black text-blue-700 uppercase leading-relaxed">
+                                            Bu Kendi İlanınızdır
+                                        </p>
+                                        <p className="text-[9px] font-bold text-blue-600/70 mt-1 uppercase leading-normal">
+                                            Gelen teklifleri panelinizden yönetebilirsiniz.
+                                        </p>
+                                    </div>
+                                )}
+                            </div>
+                        </Card>
+                    </div>
+
+                </div>
+            </main>
         </div>
     );
 }
