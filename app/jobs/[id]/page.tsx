@@ -215,17 +215,50 @@ export default function JobDetailPage() {
             }
 
             const ownerPrefix = String(job.userId || "").trim();
+            const toStoragePathFromUrl = (url: string) => {
+                try {
+                    const u = new URL(url);
+                    const marker = "/storage/v1/object/public/job-attachments/";
+                    const idx = u.pathname.indexOf(marker);
+                    if (idx === -1) return "";
+                    return decodeURIComponent(u.pathname.slice(idx + marker.length));
+                } catch {
+                    return "";
+                }
+            };
+
+            const resolveFromPath = async (path: string) => {
+                const cleanPath = String(path || "").trim();
+                if (!cleanPath) return "";
+
+                const signed = await supabase.storage.from("job-attachments").createSignedUrl(cleanPath, 60 * 60);
+                const signedUrl = String((signed as any)?.data?.signedUrl || "");
+                if (signedUrl) return signedUrl;
+
+                return supabase.storage.from("job-attachments").getPublicUrl(cleanPath).data.publicUrl || "";
+            };
+
             const resolved = await Promise.all(
                 job.attachments.map(async (file) => {
                     const rawFile = String(file || "").trim();
                     if (!rawFile) return "";
 
-                    if (rawFile.startsWith("http") || rawFile.startsWith("blob:") || rawFile.startsWith("data:")) {
+                    if (rawFile.startsWith("blob:") || rawFile.startsWith("data:")) {
+                        return rawFile;
+                    }
+
+                    if (rawFile.startsWith("http")) {
+                        const pathFromUrl = toStoragePathFromUrl(rawFile);
+                        if (pathFromUrl) {
+                            const signedFromUrl = await resolveFromPath(pathFromUrl);
+                            if (signedFromUrl) return signedFromUrl;
+                        }
                         return rawFile;
                     }
 
                     if (rawFile.includes("/")) {
-                        return supabase.storage.from("job-attachments").getPublicUrl(rawFile).data.publicUrl || "";
+                        const signedFromPath = await resolveFromPath(rawFile);
+                        if (signedFromPath) return signedFromPath;
                     }
 
                     if (!ownerPrefix) return "";
@@ -235,7 +268,7 @@ export default function JobDetailPage() {
                         const found = (data || []).find((x: any) => String(x?.name || "").endsWith(rawFile));
                         if (!found?.name) return "";
                         const path = `${ownerPrefix}/${found.name}`;
-                        return supabase.storage.from("job-attachments").getPublicUrl(path).data.publicUrl || "";
+                        return await resolveFromPath(path);
                     } catch {
                         return "";
                     }

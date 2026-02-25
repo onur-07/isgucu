@@ -108,7 +108,7 @@ export function JobPostingForm() {
 
         try {
             // 1. Upload files to Supabase Storage
-            const uploadedUrls: string[] = [];
+            const uploadedPaths: string[] = [];
             for (const file of attachments) {
                 const filePath = `${user.id}/${Date.now()}-${file.name}`;
                 const { data: uploadData, error: uploadError } = await supabase.storage
@@ -118,12 +118,9 @@ export function JobPostingForm() {
                 if (uploadError) {
                     console.error("File upload error:", uploadError);
                     // Use Object URL as fallback for local preview
-                    uploadedUrls.push(URL.createObjectURL(file));
+                    uploadedPaths.push(URL.createObjectURL(file));
                 } else {
-                    const { data: { publicUrl } } = supabase.storage
-                        .from('job-attachments')
-                        .getPublicUrl(filePath);
-                    uploadedUrls.push(publicUrl);
+                    uploadedPaths.push(filePath);
                 }
             }
 
@@ -136,7 +133,7 @@ export function JobPostingForm() {
                     description: formData.description,
                     category: formData.category,
                     budget: formData.budget,
-                    attachments: uploadedUrls,
+                    attachments: uploadedPaths,
                     status: 'open'
                 });
 
