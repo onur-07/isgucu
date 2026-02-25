@@ -11,6 +11,12 @@ interface Job {
     category: string;
     budget: string;
     createdAt: string;
+    user_id?: string;
+    owner?: {
+        username: string;
+        avatar_url: string;
+        full_name: string;
+    } | null;
 }
 
 export function JobList({ limit, onTotalChange }: { limit?: number; onTotalChange?: (count: number) => void }) {
@@ -20,10 +26,10 @@ export function JobList({ limit, onTotalChange }: { limit?: number; onTotalChang
     useEffect(() => {
         const fetchJobs = async () => {
             try {
-                // Fetch from Supabase
+                // Fetch from Supabase with profile info
                 const { data: dbData, error } = await supabase
                     .from('jobs')
-                    .select('*')
+                    .select('*, profiles(username, avatar_url, full_name)')
                     .order('created_at', { ascending: false });
 
                 // Fetch from LocalStorage (Mock/Fallback)
@@ -32,23 +38,29 @@ export function JobList({ limit, onTotalChange }: { limit?: number; onTotalChang
                 let mergedJobs: Job[] = [];
 
                 if (dbData) {
-                    const formattedDbJobs = dbData.map((j: any) => ({
+                    mergedJobs = dbData.map((j: any) => ({
                         id: j.id,
                         title: j.title,
                         description: j.description,
                         category: j.category,
                         budget: j.budget,
-                        createdAt: j.created_at
+                        createdAt: j.created_at,
+                        user_id: j.user_id,
+                        owner: j.profiles ? {
+                            username: j.profiles.username,
+                            avatar_url: j.profiles.avatar_url,
+                            full_name: j.profiles.full_name
+                        } : null
                     }));
-                    mergedJobs = [...formattedDbJobs];
                 }
 
-                // Add local jobs that don't exist in DB (simple id check)
+                // Add local jobs that don't exist in DB
                 localJobs.forEach((lj: any) => {
                     if (!mergedJobs.some(mj => mj.id === lj.id)) {
                         mergedJobs.push({
                             ...lj,
-                            createdAt: lj.created_at || lj.createdAt // Support both
+                            createdAt: lj.created_at || lj.createdAt,
+                            owner: null // Local jobs usually don't have owner info in this structure
                         });
                     }
                 });
@@ -59,7 +71,6 @@ export function JobList({ limit, onTotalChange }: { limit?: number; onTotalChang
                 setJobs(mergedJobs);
             } catch (err) {
                 console.error("Jobs fetch error:", err);
-                // Fallback to only local storage on error
                 const localJobs = JSON.parse(localStorage.getItem("isgucu_jobs") || "[]");
                 setJobs(localJobs);
             } finally {
