@@ -17,6 +17,7 @@ interface Job {
         avatar_url: string;
         full_name: string;
     } | null;
+    status?: string;
 }
 
 export function JobList({ limit, onTotalChange }: { limit?: number; onTotalChange?: (count: number) => void }) {
@@ -82,6 +83,7 @@ export function JobList({ limit, onTotalChange }: { limit?: number; onTotalChang
                     budget: j.budget,
                     createdAt: j.created_at,
                     user_id: j.user_id,
+                    status: j.status || "open",
                     owner: (profileMap[j.user_id] || profileMap[String(j.user_id).toLowerCase()]) ? {
                         username: (profileMap[j.user_id] || profileMap[String(j.user_id).toLowerCase()]).username,
                         avatar_url: (profileMap[j.user_id] || profileMap[String(j.user_id).toLowerCase()]).avatar_url,
@@ -90,7 +92,14 @@ export function JobList({ limit, onTotalChange }: { limit?: number; onTotalChang
                 }));
 
                 const normalizedLocalJobs: Job[] = localJobs.map((j: any) => ({
-                    ...j,
+                    id: j.id,
+                    title: j.title,
+                    description: j.description,
+                    category: j.category,
+                    budget: j.budget,
+                    createdAt: j.createdAt || j.created_at || new Date().toISOString(),
+                    user_id: j.user_id,
+                    status: j.status || "open",
                     owner: (profileMap[j.user_id] || profileMap[String(j.user_id).toLowerCase()]) ? {
                         username: (profileMap[j.user_id] || profileMap[String(j.user_id).toLowerCase()]).username,
                         avatar_url: (profileMap[j.user_id] || profileMap[String(j.user_id).toLowerCase()]).avatar_url,
@@ -98,11 +107,20 @@ export function JobList({ limit, onTotalChange }: { limit?: number; onTotalChang
                     } : null
                 }));
 
-                const mergedJobs = [...normalizedDbJobs, ...normalizedLocalJobs];
-                // Sort by date
-                mergedJobs.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+                // Merge and dedupe by job id (DB row wins over local copy)
+                const byId: Record<string, Job> = {};
+                normalizedLocalJobs.forEach((j) => {
+                    byId[String(j.id)] = j;
+                });
+                normalizedDbJobs.forEach((j) => {
+                    byId[String(j.id)] = j;
+                });
 
-                setJobs(limit ? mergedJobs.slice(0, limit) : mergedJobs);
+                const mergedJobs = Object.values(byId)
+                    .filter((j) => String(j.status || "open").toLowerCase() !== "deleted")
+                    .sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+
+                setJobs(mergedJobs);
                 if (onTotalChange) onTotalChange(mergedJobs.length);
 
             } catch (err) {
