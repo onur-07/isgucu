@@ -8,7 +8,7 @@ import { useAuth } from "@/components/auth/auth-context";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
-import { displayUsername, sanitizeMessage, usernameFold, usernameKey } from "@/lib/utils";
+import { displayUsername, friendlySupabaseError, sanitizeMessage, usernameFold, usernameKey } from "@/lib/utils";
 
 type InboxItem = {
     otherKey: string;
@@ -454,7 +454,7 @@ export function ChatWidget() {
             setError("");
         } catch (e: any) {
             setMessages((prev) => prev.filter((m) => String(m.id) !== String(tempId)));
-            setError(e?.message ? String(e.message) : "Mesaj gönderilemedi");
+            setError(friendlySupabaseError(e, "Mesaj gönderilemedi"));
         } finally {
             setSending(false);
         }
@@ -515,7 +515,7 @@ export function ChatWidget() {
             if (msg.toLowerCase().includes("not found") || msg.toLowerCase().includes("bucket")) {
                 setError("Dosya gönderilemedi: Supabase Storage'da 'chat-files' bucket yok. Supabase -> Storage -> New bucket: chat-files (Public) oluştur.");
             } else {
-                setError(msg);
+                setError(friendlySupabaseError(e, msg));
             }
         } finally {
             setSending(false);
@@ -570,7 +570,7 @@ export function ChatWidget() {
             setOfferNote("");
             await fetchThread(activeOther);
         } catch (e: any) {
-            setError(e?.message ? String(e.message) : "Teklif gönderilemedi");
+            setError(friendlySupabaseError(e, "Teklif gönderilemedi"));
         } finally {
             setSending(false);
         }

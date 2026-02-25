@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/components/auth/auth-context";
-import { displayUsername, sanitizeMessage, usernameFold, usernameKey } from "@/lib/utils";
+import { displayUsername, friendlySupabaseError, sanitizeMessage, usernameFold, usernameKey } from "@/lib/utils";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -602,7 +602,7 @@ export default function MessageThreadPage() {
             }, 2500);
         } catch (err: any) {
             setMessages((prev) => prev.filter((m) => String(m.id) !== String(tempId)));
-            setError(err?.message ? String(err.message) : "Mesaj gönderilemedi");
+            setError(friendlySupabaseError(err, "Mesaj gönderilemedi"));
         } finally {
             setSending(false);
         }
