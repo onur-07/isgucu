@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useAuth } from "@/components/auth/auth-context";
 import { useRouter } from "next/navigation";
@@ -98,7 +98,7 @@ function AdminPageContent() {
     const fetchUsersFromAdminApi = async (): Promise<PlatformUser[]> => {
         const { data: sessionData, error: sessionErr } = await supabase.auth.getSession();
         if (sessionErr || !sessionData?.session?.access_token) {
-            throw new Error("Oturum alınamadı. Lütfen tekrar giriş yapın.");
+            throw new Error("Oturum alÄ±namadÄ±. LÃ¼tfen tekrar giriÅŸ yapÄ±n.");
         }
 
         const resp = await fetch(`/api/admin/users?t=${Date.now()}`,
@@ -128,12 +128,12 @@ function AdminPageContent() {
     };
 
     const loadData = async (opts?: { fetchUsers?: boolean }) => {
-        console.log("AdminPage: Veri çekme işlemi başladı...");
+        console.log("AdminPage: Veri Ã§ekme iÅŸlemi baÅŸladÄ±...");
         try {
             const fetchUsers = !!opts?.fetchUsers;
 
-            // 1) Hızlı sayım + istatistikler + destek + silme talepleri paralel
-            console.log("AdminPage: İstatistikler / talepler / sayımlar isteniyor...");
+            // 1) HÄ±zlÄ± sayÄ±m + istatistikler + destek + silme talepleri paralel
+            console.log("AdminPage: Ä°statistikler / talepler / sayÄ±mlar isteniyor...");
             const results = await Promise.allSettled([
                 withTimeout(getPlatformStats(), 7000, "platformStats"),
                 withTimeout(supabase.from('profiles').select('*', { count: 'exact', head: true }), 7000, "profilesCount"),
@@ -172,7 +172,7 @@ function AdminPageContent() {
 
             if (ticketsRes.status === 'fulfilled') {
                 const t = ticketsRes.value as any;
-                if (t?.error) console.error("AdminPage: Destek talebi çekme hatası:", t.error);
+                if (t?.error) console.error("AdminPage: Destek talebi Ã§ekme hatasÄ±:", t.error);
                 const ticketRows: SupportTicket[] = t?.data || [];
                 setTickets(ticketRows);
                 const usernames = Array.from(new Set(ticketRows.map((x) => String(x.from_user || "").trim()).filter(Boolean)));
@@ -196,40 +196,40 @@ function AdminPageContent() {
 
             if (deletionsRes.status === 'fulfilled') {
                 const d = deletionsRes.value as any;
-                if (d?.error) console.error("AdminPage: Silme talepleri çekme hatası:", d.error);
+                if (d?.error) console.error("AdminPage: Silme talepleri Ã§ekme hatasÄ±:", d.error);
                 setDeletionRequests(d?.data || []);
             } else {
                 console.error("AdminPage: Deletions load failed:", deletionsRes.reason);
                 setDeletionRequests([]);
             }
 
-            // 2) Kullanıcılar listesi sadece gerektiğinde
+            // 2) KullanÄ±cÄ±lar listesi sadece gerektiÄŸinde
             if (fetchUsers) {
-                console.log("AdminPage: Kullanıcılar listesi isteniyor...");
+                console.log("AdminPage: KullanÄ±cÄ±lar listesi isteniyor...");
                 try {
                     const uData = await withTimeout(fetchUsersFromAdminApi(), 10000, "usersListApi");
-                    console.log("AdminPage: Kullanıcılar (api):", uData?.length || 0);
+                    console.log("AdminPage: KullanÄ±cÄ±lar (api):", uData?.length || 0);
                     setUsers(uData || []);
                     setUsersSource("api");
                 } catch (e) {
                     console.warn("AdminPage: users api failed, falling back to profiles:", e);
                     const uData = await withTimeout(getAllUsers(), 10000, "usersList");
-                    console.log("AdminPage: Kullanıcılar (fallback):", uData?.length || 0);
+                    console.log("AdminPage: KullanÄ±cÄ±lar (fallback):", uData?.length || 0);
                     setUsers(uData || []);
                     setUsersSource("fallback");
                 }
             }
 
         } catch (err) {
-            console.error("AdminPage: Veri yükleme sırasında kritik hata:", err);
+            console.error("AdminPage: Veri yÃ¼kleme sÄ±rasÄ±nda kritik hata:", err);
         } finally {
-            console.log("AdminPage: Yükleme bitti.");
+            console.log("AdminPage: YÃ¼kleme bitti.");
             setLoading(false);
         }
     };
 
     const handleApproveDeletion = async (requestId: string, targetUserId: string) => {
-        if (!confirm("BU HESABI KALICI OLARAK SİLMEK İSTEDİĞİNİZE EMİN MİSİZ? Bu işlem geri alınamaz.")) return;
+        if (!confirm("BU HESABI KALICI OLARAK SÄ°LMEK Ä°STEDÄ°ÄÄ°NÄ°ZE EMÄ°N MÄ°SÄ°Z? Bu iÅŸlem geri alÄ±namaz.")) return;
 
         // 1. Mark request as approved
         await supabase.from('account_deletion_requests').update({ status: 'approved' }).eq('id', requestId);
@@ -238,7 +238,7 @@ function AdminPageContent() {
         const { error } = await supabase.from('profiles').delete().eq('id', targetUserId);
 
         if (!error) {
-            alert("Hesap başarıyla silindi.");
+            alert("Hesap baÅŸarÄ±yla silindi.");
             loadData();
         } else {
             alert("Hata: " + error.message);
@@ -251,19 +251,19 @@ function AdminPageContent() {
         if (authLoading) return;
 
         if (!user) {
-            console.log("AdminPage: Kullanıcı yok, login'e gidiliyor.");
+            console.log("AdminPage: KullanÄ±cÄ± yok, login'e gidiliyor.");
             router.push("/login");
             return;
         }
 
         if (user.role !== "admin") {
-            console.log("AdminPage: YETKİSİZ GİRİŞ! Rol:", user.role);
-            alert("Bu sayfaya erişim yetkiniz yok. Yönetici değilsiniz.");
+            console.log("AdminPage: YETKÄ°SÄ°Z GÄ°RÄ°Å! Rol:", user.role);
+            alert("Bu sayfaya eriÅŸim yetkiniz yok. YÃ¶netici deÄŸilsiniz.");
             router.push("/");
             return;
         }
 
-        console.log("AdminPage: Veriler yükleniyor...");
+        console.log("AdminPage: Veriler yÃ¼kleniyor...");
         loadData({ fetchUsers: false });
     }, [user, router, authLoading]);
 
@@ -296,7 +296,7 @@ function AdminPageContent() {
     };
 
     const handleDelete = async (u: PlatformUser) => {
-        if (!u.id || !confirm(`${u.username} kullanıcısını silmek istediğinize emin misiniz?`)) return;
+        if (!u.id || !confirm(`${u.username} kullanÄ±cÄ±sÄ±nÄ± silmek istediÄŸinize emin misiniz?`)) return;
         await deleteUserAccount(u.id);
         loadData();
     };
@@ -304,18 +304,18 @@ function AdminPageContent() {
     const handleUpdate = async (u: PlatformUser, field: "email" | "password" | "username") => {
         const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
         if (!u.id || !uuidRegex.test(u.id)) {
-            alert(`Geçersiz kullanıcı ID (UUID değil): ${String(u.id)}`);
+            alert(`GeÃ§ersiz kullanÄ±cÄ± ID (UUID deÄŸil): ${String(u.id)}`);
             return;
         }
         const newValue = prompt(
-            `${u.username} için yeni ${field}:`,
+            `${u.username} iÃ§in yeni ${field}:`,
             field === "email" ? u.email : field === "username" ? u.username : ""
         );
         if (newValue && u.id) {
             if (field === "password" || field === "email" || field === "username") {
                 const { data: sessionData, error: sessionErr } = await supabase.auth.getSession();
                 if (sessionErr || !sessionData?.session?.access_token) {
-                    alert("Oturum alınamadı. Lütfen tekrar giriş yapın.");
+                    alert("Oturum alÄ±namadÄ±. LÃ¼tfen tekrar giriÅŸ yapÄ±n.");
                     return;
                 }
 
@@ -342,17 +342,17 @@ function AdminPageContent() {
                     const received = Object.prototype.hasOwnProperty.call(json || {}, "received")
                         ? ` (gelen id: ${String((json as any).received)})`
                         : "";
-                    const label = field === "password" ? "Şifre" : "E-posta";
-                    alert(label + " güncelleme başarısız: " + (json?.details || json?.error || resp.status) + received + ` (ui id: ${u.id})`);
+                    const label = field === "password" ? "Åifre" : "E-posta";
+                    alert(label + " gÃ¼ncelleme baÅŸarÄ±sÄ±z: " + (json?.details || json?.error || resp.status) + received + ` (ui id: ${u.id})`);
                     return;
                 }
 
                 const authEmail = json?.email ? String(json.email) : "";
                 if (field === "password") {
-                    alert("Şifre güncellendi." + (authEmail ? ` Giriş için e-posta: ${authEmail}` : ""));
+                    alert("Åifre gÃ¼ncellendi." + (authEmail ? ` GiriÅŸ iÃ§in e-posta: ${authEmail}` : ""));
                 } else {
-                    const label = field === "email" ? "E-posta" : "Kullanıcı adı";
-                    alert(label + " güncellendi." + (field === "email" && authEmail ? ` Yeni e-posta: ${authEmail}` : ""));
+                    const label = field === "email" ? "E-posta" : "KullanÄ±cÄ± adÄ±";
+                    alert(label + " gÃ¼ncellendi." + (field === "email" && authEmail ? ` Yeni e-posta: ${authEmail}` : ""));
                 }
                 loadData({ fetchUsers: true });
                 return;
@@ -360,7 +360,7 @@ function AdminPageContent() {
 
             const res = await updateUserInfo(u.id, { [field]: newValue });
             if ((res as any)?.ok === false) {
-                alert("Güncelleme başarısız: " + (((res as any)?.error?.message) || "RLS/izin hatası"));
+                alert("GÃ¼ncelleme baÅŸarÄ±sÄ±z: " + (((res as any)?.error?.message) || "RLS/izin hatasÄ±"));
                 return;
             }
 
@@ -418,24 +418,24 @@ function AdminPageContent() {
         }
     };
 
-    // Auth hâlâ yükleniyor — bekle
+    // Auth hÃ¢lÃ¢ yÃ¼kleniyor â€” bekle
     if (authLoading) return (
         <div className="h-screen flex items-center justify-center bg-gray-50 uppercase font-black text-xs tracking-widest animate-pulse">
             Oturum Kontrol Ediliyor...
         </div>
     );
 
-    // Auth yüklendi ama user yok veya admin değil — useEffect zaten yönlendirecek
+    // Auth yÃ¼klendi ama user yok veya admin deÄŸil â€” useEffect zaten yÃ¶nlendirecek
     if (!user || user.role !== "admin") return (
         <div className="h-screen flex items-center justify-center bg-gray-50 uppercase font-black text-xs tracking-widest animate-pulse">
             Yetki Kontrol Ediliyor...
         </div>
     );
 
-    // Admin verisi yükleniyor
+    // Admin verisi yÃ¼kleniyor
     if (loading) return (
         <div className="h-screen flex items-center justify-center bg-gray-50 uppercase font-black text-xs tracking-widest animate-pulse">
-            Veriler Yükleniyor...
+            Veriler YÃ¼kleniyor...
         </div>
     );
 
@@ -445,20 +445,20 @@ function AdminPageContent() {
         <div className="container mx-auto px-4 py-8 max-w-6xl">
             <div className="mb-8">
                 <h1 className="text-3xl font-bold tracking-tight font-heading flex items-center gap-3 uppercase">
-                    <Shield className="h-8 w-8 text-red-600" /> Yönetim Paneli
+                    <Shield className="h-8 w-8 text-red-600" /> YÃ¶netim Paneli
                 </h1>
-                <p className="text-[10px] text-gray-400 font-bold mt-1">Hoş geldiniz, {user.username}. Platform yönetim alanı.</p>
+                <p className="text-[10px] text-gray-400 font-bold mt-1">HoÅŸ geldiniz, {user.username}. Platform yÃ¶netim alanÄ±.</p>
             </div>
 
             {/* Tabs */}
             <div className="flex gap-2 mb-8 border-b">
                 {[
-                    { key: "overview" as const, label: "📊 Genel Bakış", count: null },
-                    { key: "users" as const, label: "👥 Üyeler", count: totalUsersCount },
-                    { key: "support" as const, label: "🎧 Destek", count: openTicketsCount > 0 ? openTicketsCount : null },
-                    { key: "deletions" as const, label: "⚠️ Silme Talepleri", count: deletionRequests.length > 0 ? deletionRequests.length : null },
-                    { key: "categories" as const, label: "📂 Kategoriler", count: null },
-                    { key: "site_settings" as const, label: "⚙️ Site Ayarları", count: null },
+                    { key: "overview" as const, label: "ğŸ“Š Genel BakÄ±ÅŸ", count: null },
+                    { key: "users" as const, label: "ğŸ‘¥ Ãœyeler", count: totalUsersCount },
+                    { key: "support" as const, label: "ğŸ§ Destek", count: openTicketsCount > 0 ? openTicketsCount : null },
+                    { key: "deletions" as const, label: "âš ï¸ Silme Talepleri", count: deletionRequests.length > 0 ? deletionRequests.length : null },
+                    { key: "categories" as const, label: "ğŸ“‚ Kategoriler", count: null },
+                    { key: "site_settings" as const, label: "âš™ï¸ Site AyarlarÄ±", count: null },
                 ].map(tab => (
                     tab.key === "categories" ? (
                         <Link
@@ -498,7 +498,6 @@ function AdminPageContent() {
             {/* OVERVIEW TAB */}
             {activeTab === "overview" && (
                 <>
-                    {/* (Overview code same as before) */}
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
                         <div className="bg-white border rounded-2xl p-6 shadow-sm">
                             <div className="flex items-center gap-3 mb-2">
@@ -509,7 +508,87 @@ function AdminPageContent() {
                             </div>
                             <div className="text-3xl font-black text-gray-900">{users.length}</div>
                         </div>
-                        {/* ... rest of overview ... */}
+
+                        <div className="bg-white border rounded-2xl p-6 shadow-sm">
+                            <div className="flex items-center gap-3 mb-2">
+                                <div className="h-10 w-10 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center">
+                                    <Users className="h-5 w-5" />
+                                </div>
+                                <span className="text-[10px] font-black text-gray-400 uppercase">Freelancerlar</span>
+                            </div>
+                            <div className="text-3xl font-black text-gray-900">{stats?.totalFreelancers || 0}</div>
+                        </div>
+
+                        <div className="bg-white border rounded-2xl p-6 shadow-sm">
+                            <div className="flex items-center gap-3 mb-2">
+                                <div className="h-10 w-10 rounded-xl bg-indigo-100 text-indigo-600 flex items-center justify-center">
+                                    <Briefcase className="h-5 w-5" />
+                                </div>
+                                <span className="text-[10px] font-black text-gray-400 uppercase">İş Verenler</span>
+                            </div>
+                            <div className="text-3xl font-black text-gray-900">{stats?.totalEmployers || 0}</div>
+                        </div>
+
+                        <div className="bg-white border rounded-2xl p-6 shadow-sm">
+                            <div className="flex items-center gap-3 mb-2">
+                                <div className="h-10 w-10 rounded-xl bg-red-100 text-red-600 flex items-center justify-center">
+                                    <Headphones className="h-5 w-5" />
+                                </div>
+                                <span className="text-[10px] font-black text-gray-400 uppercase">Açık Destek</span>
+                            </div>
+                            <div className="text-3xl font-black text-gray-900">{openTicketsCount}</div>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8 text-black">
+                        <div className="bg-gradient-to-br from-blue-600 to-indigo-700 rounded-[2rem] p-8 text-white shadow-2xl flex items-center justify-between group cursor-pointer hover:scale-[1.02] transition-all" onClick={() => router.push("/admin/categories")}>
+                            <div>
+                                <h3 className="text-2xl font-black uppercase mb-2">Kategori Yönetimi</h3>
+                                <p className="text-white/80 font-bold text-sm leading-relaxed">Platformdaki tüm hizmet ve kategorileri buradan düzenleyebilir veya yeni eklemeler yapabilirsin.</p>
+                                <Button className="mt-6 bg-white text-blue-700 font-black rounded-xl group-hover:bg-blue-50 px-8 h-12">HEMEN YÖNET →</Button>
+                            </div>
+                            <TrendingUp className="h-24 w-24 opacity-20 transition-transform group-hover:scale-110" />
+                        </div>
+
+                        <div className="bg-white border-2 border-red-100 rounded-[2rem] p-8 flex items-center justify-between group cursor-pointer hover:bg-red-50 transition-all" onClick={() => setActiveTab("deletions")}>
+                            <div>
+                                <h3 className="text-2xl font-black text-gray-900 uppercase mb-2">Silme Talepleri</h3>
+                                <p className="text-gray-400 font-bold text-sm leading-relaxed">Hesabını kapatmak isteyen {deletionRequests.length} kullanıcı bekliyor.</p>
+                                <Button variant="outline" className="mt-6 border-red-200 text-red-600 font-black rounded-xl hover:bg-red-600 hover:text-white px-8 h-12">TALEPLERİ GÖR</Button>
+                            </div>
+                            <Trash2 className="h-24 w-24 text-red-100 transition-transform group-hover:scale-110" />
+                        </div>
+                    </div>
+
+                    {/* Recent Activity */}
+                    <div className="bg-white border rounded-[2rem] p-8 shadow-sm">
+                        <h3 className="font-black text-gray-900 text-lg uppercase mb-6 tracking-tight">Son Destek Talepleri</h3>
+                        <div className="space-y-4">
+                            {tickets.slice(0, 5).map(ticket => (
+                                <div key={ticket.id} className="flex items-center gap-4 p-4 rounded-2xl hover:bg-gray-50 border border-transparent hover:border-gray-100 transition-all">
+                                    <div className={`h-12 w-12 rounded-full flex items-center justify-center text-xs font-black text-white ${ticket.status === "open" ? "bg-orange-500" : ticket.status === "replied" ? "bg-emerald-500" : "bg-gray-400"
+                                        }`}>
+                                        {ticket.from_user.charAt(0).toUpperCase()}
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-sm font-black text-gray-900 uppercase truncate">{ticket.subject}</p>
+                                        <p className="text-[10px] text-gray-400 font-bold uppercase">{ticket.from_user} • {ticket.category}</p>
+                                    </div>
+                                    <span className={`text-[9px] font-black px-3 py-1 rounded-lg uppercase tracking-widest ${ticket.status === "open" ? "bg-orange-50 text-orange-600" :
+                                        ticket.status === "replied" ? "bg-emerald-50 text-emerald-600" :
+                                            "bg-gray-50 text-gray-400"
+                                        }`}>
+                                        {ticket.status === "open" ? "Açık" : ticket.status === "replied" ? "Yanıtlandı" : "Kapandı"}
+                                    </span>
+                                </div>
+                            ))}
+                            {tickets.length === 0 && (
+                                <div className="text-center py-12">
+                                    <MessageCircle className="h-12 w-12 text-gray-100 mx-auto mb-3" />
+                                    <p className="text-[10px] font-black text-gray-300 uppercase tracking-widest">Henüz aktivite yok.</p>
+                                </div>
+                            )}
+                        </div>
                     </div>
                 </>
             )}
@@ -517,37 +596,282 @@ function AdminPageContent() {
             {/* USERS TAB */}
             {activeTab === "users" && (
                 <div className="bg-white border rounded-[2rem] overflow-hidden shadow-sm">
-                    {/* ... users table code ... */}
+                    <div className="p-8 border-b flex items-center justify-between bg-gray-50/30">
+                        <div>
+                            <h3 className="font-black text-gray-900 text-lg uppercase tracking-tight">Kayıtlı Üyeler ({users.length})</h3>
+                            <p className="text-[10px] text-gray-400 font-bold uppercase mt-1">Platformdaki tüm kullanıcıları yönetin</p>
+                            {usersSource === "fallback" && (
+                                <p className="text-[10px] text-orange-600 font-black uppercase mt-2">
+                                    Uyarı: Kullanıcı listesi Auth API yerine sadece profiles tablosundan geldiği için e-posta/kullanıcı adı yanlış görünebilir.
+                                </p>
+                            )}
+                        </div>
+                    </div>
+
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-left border-collapse">
+                            <thead>
+                                <tr className="bg-gray-50/50 text-[10px] font-black uppercase text-gray-400 border-b">
+                                    <th className="p-6">Kullanıcı</th>
+                                    <th className="p-6">Rol</th>
+                                    <th className="p-6">Durum</th>
+                                    <th className="p-6">Kayıt</th>
+                                    <th className="p-6 text-right">İşlemler</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y">
+                                {users.map((u) => (
+                                    <tr key={u.id} className="hover:bg-gray-50/80 transition-colors">
+                                        <td className="p-6">
+                                            <div className="flex items-center gap-3 cursor-pointer group" onClick={() => router.push(`/admin/users/${u.id}`)}>
+                                                <div className={`h-12 w-12 rounded-full flex items-center justify-center text-white font-black text-sm shadow-sm group-hover:ring-2 group-hover:ring-blue-400 transition-all ${u.role === "admin" ? "bg-red-600" : u.role === "freelancer" ? "bg-emerald-500" : "bg-blue-600"}`}>
+                                                    {u.username.charAt(0).toUpperCase()}
+                                                </div>
+                                                <div>
+                                                    <p className="font-black text-sm text-gray-900 group-hover:text-blue-600 transition-colors">{u.username}</p>
+                                                    <p className="text-[10px] text-gray-400 font-bold">{u.email}</p>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td className="p-6">
+                                            <span className={`text-[10px] font-black px-3 py-1 rounded-lg uppercase tracking-widest ${u.role === "admin" ? "bg-red-50 text-red-600" : u.role === "freelancer" ? "bg-emerald-50 text-emerald-600" : "bg-blue-50 text-blue-600"}`}>
+                                                {u.role === "admin" ? "Yönetici" : u.role === "freelancer" ? "Freelancer" : "İş Veren"}
+                                            </span>
+                                        </td>
+                                        <td className="p-6">
+                                            {u.isBanned ? (
+                                                <span className="text-[10px] font-black text-red-500 bg-red-100 px-3 py-1 rounded-lg uppercase">Engelli</span>
+                                            ) : (
+                                                <span className="text-[10px] font-black text-emerald-500 bg-emerald-100 px-3 py-1 rounded-lg uppercase">Aktif</span>
+                                            )}
+                                        </td>
+                                        <td className="p-6 text-[10px] font-black uppercase text-gray-400">
+                                            {u.createdAt ? new Date(u.createdAt).toLocaleDateString("tr-TR") : "—"}
+                                        </td>
+                                        <td className="p-6 text-right">
+                                            <div className="flex items-center justify-end gap-2">
+                                                <Button variant="outline" size="sm" className="h-9 px-4 text-[10px] font-black border-gray-100 hover:bg-black hover:text-white rounded-xl uppercase" onClick={() => handleUpdate(u, 'username')}>Kullanıcı</Button>
+                                                <Button variant="outline" size="sm" className="h-9 px-4 text-[10px] font-black border-gray-100 hover:bg-black hover:text-white rounded-xl uppercase" onClick={() => handleUpdate(u, 'email')}>E-posta</Button>
+                                                <Button variant="outline" size="sm" className="h-9 px-4 text-[10px] font-black border-gray-100 hover:bg-black hover:text-white rounded-xl uppercase" onClick={() => handleUpdate(u, 'password')}>Şifre</Button>
+                                                <Button variant="outline" size="sm" disabled={u.role === "admin"} className={`h-9 px-4 text-[10px] font-black rounded-xl uppercase ${u.isBanned ? "bg-emerald-50 text-emerald-600 border-emerald-100" : "bg-orange-50 text-orange-600 border-orange-100"}`} onClick={() => handleBan(u)}>{u.isBanned ? "Kaldır" : "Engelle"}</Button>
+                                                <Button variant="outline" size="icon" disabled={u.role === "admin"} className="h-9 w-9 text-gray-300 hover:text-red-500 hover:bg-red-50 border-gray-100 rounded-xl" onClick={() => handleDelete(u)}><Trash2 className="h-4 w-4" /></Button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             )}
 
             {/* SUPPORT TAB */}
             {activeTab === "support" && (
                 <div className="space-y-6">
-                    {/* ... support tickets code ... */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div className="bg-orange-50 border border-orange-100 rounded-2xl p-6 text-center shadow-sm">
+                            <Clock className="h-8 w-8 text-orange-600 mx-auto mb-2" />
+                            <div className="text-3xl font-black text-orange-700">{openTicketsCount}</div>
+                            <div className="text-[10px] text-orange-600 font-black uppercase tracking-widest">Açık Talepler</div>
+                        </div>
+                        <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-6 text-center shadow-sm">
+                            <CheckCircle2 className="h-8 w-8 text-emerald-600 mx-auto mb-2" />
+                            <div className="text-3xl font-black text-emerald-700">{tickets.filter(t => t.status === 'replied').length}</div>
+                            <div className="text-[10px] text-emerald-600 font-black uppercase tracking-widest">Yanıtlanan</div>
+                        </div>
+                        <div className="bg-blue-50 border border-blue-100 rounded-2xl p-6 text-center shadow-sm">
+                            <MessageCircle className="h-8 w-8 text-blue-600 mx-auto mb-2" />
+                            <div className="text-3xl font-black text-blue-700">{tickets.length}</div>
+                            <div className="text-[10px] text-blue-600 font-black uppercase tracking-widest">Toplam</div>
+                        </div>
+                    </div>
+
+                    <div className="space-y-6">
+                        {tickets.map(ticket => {
+                            const sec = parseSecurityMeta(ticket.message);
+                            const fromUserId = sec.callerId || usernameToId[ticket.from_user] || "";
+                            const freelancerId = sec.callerRole === "freelancer" ? sec.callerId : sec.otherRole === "freelancer" ? sec.otherId : "";
+                            const employerId = sec.callerRole === "employer" ? sec.callerId : sec.otherRole === "employer" ? sec.otherId : "";
+                            return (
+                            <div key={ticket.id} className={`bg-white border rounded-[2rem] overflow-hidden shadow-sm transition-all ${ticket.status === 'open' ? 'border-l-8 border-l-orange-500' : 'border-l-8 border-l-emerald-500'}`}>
+                                <div className="p-8">
+                                    <div className="flex items-start justify-between gap-4 mb-6">
+                                        <div className="flex items-center gap-4">
+                                            <div className="h-14 w-14 rounded-full bg-black text-white flex items-center justify-center text-xl font-black uppercase">
+                                                {ticket.from_user.charAt(0)}
+                                            </div>
+                                            <div>
+                                                <p className="font-black text-gray-900 uppercase tracking-tight">
+                                                    {fromUserId ? (
+                                                        <Link href={`/admin/users/${fromUserId}`} className="hover:underline text-blue-700">
+                                                            {ticket.from_user}
+                                                        </Link>
+                                                    ) : (
+                                                        ticket.from_user
+                                                    )}
+                                                </p>
+                                                <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">{ticket.from_email} • {new Date(ticket.created_at).toLocaleString("tr-TR")}</p>
+                                                {sec.otherUsername && (
+                                                    <p className="text-[10px] text-gray-500 font-black uppercase tracking-widest mt-1">
+                                                        Hedef: {sec.otherId ? (
+                                                            <Link href={`/admin/users/${sec.otherId}`} className="text-blue-700 hover:underline">
+                                                                {sec.otherUsername}
+                                                            </Link>
+                                                        ) : sec.otherUsername}
+                                                    </p>
+                                                )}
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <span className={`text-[9px] font-black px-4 py-1.5 rounded-full uppercase tracking-widest ${ticket.status === 'open' ? 'bg-orange-100 text-orange-600' : 'bg-emerald-100 text-emerald-600'}`}>
+                                                {ticket.status === 'open' ? '⏳ Açık' : '✅ Yanıtlandı'}
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    <div className="mb-6">
+                                        <h4 className="font-black text-gray-900 text-lg uppercase mb-3 tracking-tight">{ticket.subject}</h4>
+                                        <div className="bg-gray-50 border border-gray-100 p-6 rounded-2xl text-sm font-bold text-gray-600 leading-relaxed shadow-inner">
+                                            {ticket.message}
+                                        </div>
+                                        {(freelancerId || employerId) && (
+                                            <div className="mt-4 flex flex-wrap gap-2">
+                                                {freelancerId && (
+                                                    <Button
+                                                        variant="outline"
+                                                        className="h-10 px-4 text-[10px] font-black uppercase rounded-xl bg-orange-50 text-orange-700 border-orange-200 hover:bg-orange-100"
+                                                        onClick={() => handleDeactivateFreelancerGigs(freelancerId)}
+                                                    >
+                                                        Freelancer ilanlarini pasife al
+                                                    </Button>
+                                                )}
+                                                {employerId && (
+                                                    <Button
+                                                        variant="outline"
+                                                        className="h-10 px-4 text-[10px] font-black uppercase rounded-xl bg-red-50 text-red-700 border-red-200 hover:bg-red-100"
+                                                        onClick={() => handleBanEmployer(employerId)}
+                                                    >
+                                                        Musteriyi engelle
+                                                    </Button>
+                                                )}
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {ticket.reply && (
+                                        <div className="mt-6 p-6 bg-emerald-50/50 border border-emerald-100 rounded-2xl">
+                                            <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest mb-3">📩 Gönderilen Yanıt:</p>
+                                            <p className="text-sm font-bold text-emerald-800 leading-relaxed">{ticket.reply}</p>
+                                            <p className="text-[9px] text-emerald-400 mt-4 font-black uppercase tracking-widest">{new Date(ticket.replied_at!).toLocaleString("tr-TR")}</p>
+                                        </div>
+                                    )}
+
+                                    {ticket.status !== 'closed' && (
+                                        <div className="mt-8 space-y-4">
+                                            <Textarea
+                                                placeholder="Resmi yanıtınızı buraya yazın..."
+                                                value={replyInputs[ticket.id] || ""}
+                                                onChange={(e) => setReplyInputs(prev => ({ ...prev, [ticket.id]: e.target.value }))}
+                                                className="min-h-[120px] rounded-2xl border-gray-100 font-bold text-sm bg-gray-50/30 focus:bg-white transition-all shadow-inner"
+                                            />
+                                            <div className="flex gap-4">
+                                                <Button onClick={() => replyToTicket(ticket.id)} className="bg-blue-600 hover:bg-blue-700 text-white font-black uppercase tracking-widest h-14 px-8 rounded-2xl shadow-xl shadow-blue-100 transition-all hover:scale-[1.02]">
+                                                    <Send className="h-5 w-5 mr-3" /> Yanıtı Gönder
+                                                </Button>
+                                                <Button variant="outline" onClick={() => closeTicket(ticket.id)} className="h-14 px-8 rounded-2xl border-gray-100 text-gray-400 font-black uppercase tracking-widest hover:bg-black hover:text-white transition-all">
+                                                    Talebi Kapat
+                                                </Button>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                            );
+                        })}
+                    </div>
                 </div>
             )}
-
             {/* DELETIONS TAB */}
             {activeTab === "deletions" && (
                 <div className="bg-white border rounded-[2rem] overflow-hidden shadow-sm">
-                    {/* ... deletions code ... */}
+                    <div className="p-8 border-b bg-red-50/30">
+                        <h3 className="font-black text-gray-900 text-lg uppercase tracking-tight">Hesap Silme Talepleri ({deletionRequests.length})</h3>
+                        <p className="text-[10px] text-gray-400 font-bold uppercase mt-1">Kullanıcıların hesap kapatma isteklerini onaylayın veya reddedin.</p>
+                    </div>
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-left border-collapse">
+                            <thead>
+                                <tr className="bg-gray-50/50 text-[10px] font-black uppercase text-gray-400 border-b">
+                                    <th className="p-6">Kullanıcı</th>
+                                    <th className="p-6">Sebep</th>
+                                    <th className="p-6">Tarih</th>
+                                    <th className="p-6 text-right">İşlemler</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y">
+                                {deletionRequests.map((req) => (
+                                    <tr key={req.id} className="hover:bg-red-50/20 transition-colors">
+                                        <td className="p-6">
+                                            <p className="font-black text-sm text-gray-900 uppercase">{req.username}</p>
+                                            <p className="text-[10px] text-gray-400 font-bold uppercase">{req.email}</p>
+                                        </td>
+                                        <td className="p-6 text-sm font-bold text-gray-600">
+                                            {req.reason || "Belirtilmedi"}
+                                        </td>
+                                        <td className="p-6 text-[10px] font-black uppercase text-gray-400">
+                                            {new Date(req.created_at).toLocaleDateString("tr-TR")}
+                                        </td>
+                                        <td className="p-6 text-right">
+                                            <div className="flex items-center justify-end gap-2">
+                                                <Button
+                                                    variant="outline"
+                                                    className="h-10 px-6 bg-red-600 text-white border-transparent hover:bg-red-700 font-black rounded-xl uppercase text-[10px] tracking-widest"
+                                                    onClick={() => handleApproveDeletion(req.id, req.user_id)}
+                                                >
+                                                    Onayla & Sil
+                                                </Button>
+                                                <Button
+                                                    variant="outline"
+                                                    className="h-10 px-6 border-gray-100 text-gray-400 font-black rounded-xl uppercase text-[10px] tracking-widest hover:bg-gray-50"
+                                                    onClick={async () => {
+                                                        await supabase.from('account_deletion_requests').update({ status: 'rejected' }).eq('id', req.id);
+                                                        loadData();
+                                                    }}
+                                                >
+                                                    Reddet
+                                                </Button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))}
+                                {deletionRequests.length === 0 && (
+                                    <tr>
+                                        <td colSpan={4} className="p-12 text-center">
+                                            <div className="flex flex-col items-center gap-3">
+                                                <CheckCircle2 className="h-12 w-12 text-emerald-100" />
+                                                <p className="text-[10px] font-black text-gray-300 uppercase tracking-widest">Bekleyen silme talebi bulunmuyor.</p>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             )}
-
             {/* SITE SETTINGS TAB */}
             {activeTab === "site_settings" && (
                 <div className="space-y-8 animate-in fade-in duration-500">
                     <div className="bg-white border rounded-[2.5rem] p-10 shadow-sm border-slate-100">
                         <div className="flex items-center justify-between mb-8 pb-4 border-b">
                             <div>
-                                <h3 className="text-2xl font-black text-slate-900 uppercase">Genel Site Yapılandırması</h3>
-                                <p className="text-[10px] text-slate-400 font-bold uppercase mt-1">Sitenin ismini, logosunu ve temel bilgilerini buradan yönetin.</p>
+                                <h3 className="text-2xl font-black text-slate-900 uppercase">Genel Site YapÄ±landÄ±rmasÄ±</h3>
+                                <p className="text-[10px] text-slate-400 font-bold uppercase mt-1">Sitenin ismini, logosunu ve temel bilgilerini buradan yÃ¶netin.</p>
                             </div>
                             <Button
                                 onClick={() => {
                                     saveSiteConfig(siteConfig);
-                                    alert("Site ayarları başarıyla kaydedildi ve tüm kullanıcılara yansıtıldı!");
+                                    alert("Site ayarlarÄ± baÅŸarÄ±yla kaydedildi ve tÃ¼m kullanÄ±cÄ±lara yansÄ±tÄ±ldÄ±!");
                                 }}
                                 className="bg-blue-600 hover:bg-blue-700 text-white font-black rounded-xl px-10 h-14"
                             >
@@ -558,7 +882,7 @@ function AdminPageContent() {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
                             <div className="space-y-6">
                                 <div className="space-y-2">
-                                    <label className="text-[10px] font-black uppercase text-slate-400 ml-2">Site İsmi</label>
+                                    <label className="text-[10px] font-black uppercase text-slate-400 ml-2">Site Ä°smi</label>
                                     <Input
                                         value={siteConfig.siteName}
                                         onChange={(e) => setSiteConfig({ ...siteConfig, siteName: e.target.value })}
@@ -576,7 +900,7 @@ function AdminPageContent() {
                             </div>
                             <div className="space-y-6">
                                 <div className="space-y-2">
-                                    <label className="text-[10px] font-black uppercase text-slate-400 ml-2">İletişim E-postası</label>
+                                    <label className="text-[10px] font-black uppercase text-slate-400 ml-2">Ä°letiÅŸim E-postasÄ±</label>
                                     <Input
                                         value={siteConfig.contactEmail}
                                         onChange={(e) => setSiteConfig({ ...siteConfig, contactEmail: e.target.value })}
@@ -584,7 +908,7 @@ function AdminPageContent() {
                                     />
                                 </div>
                                 <div className="space-y-2">
-                                    <label className="text-[10px] font-black uppercase text-slate-400 ml-2">İletişim Telefonu</label>
+                                    <label className="text-[10px] font-black uppercase text-slate-400 ml-2">Ä°letiÅŸim Telefonu</label>
                                     <Input
                                         value={siteConfig.contactPhone}
                                         onChange={(e) => setSiteConfig({ ...siteConfig, contactPhone: e.target.value })}
@@ -598,7 +922,7 @@ function AdminPageContent() {
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                         <div className="bg-white border rounded-[2.5rem] p-10 shadow-sm border-slate-100">
                             <h3 className="text-xl font-black text-slate-900 uppercase mb-6 flex items-center gap-3">
-                                <Layout className="w-6 h-6 text-blue-600" /> Üst Menü (Header)
+                                <Layout className="w-6 h-6 text-blue-600" /> Ãœst MenÃ¼ (Header)
                             </h3>
                             <div className="space-y-4">
                                 {siteConfig.headerLinks.map((link, i) => (
@@ -610,7 +934,7 @@ function AdminPageContent() {
                                                 next[i].label = e.target.value;
                                                 setSiteConfig({ ...siteConfig, headerLinks: next });
                                             }}
-                                            placeholder="Menü Adı"
+                                            placeholder="MenÃ¼ AdÄ±"
                                             className="flex-1 bg-white border-slate-200 font-bold"
                                         />
                                         <Input
@@ -643,14 +967,14 @@ function AdminPageContent() {
                                         setSiteConfig({ ...siteConfig, headerLinks: [...siteConfig.headerLinks, { label: "Yeni Link", href: "/" }] });
                                     }}
                                 >
-                                    <Plus className="w-4 h-4 mr-2" /> Yeni Menü Öğesi Ekle
+                                    <Plus className="w-4 h-4 mr-2" /> Yeni MenÃ¼ Ã–ÄŸesi Ekle
                                 </Button>
                             </div>
                         </div>
 
                         <div className="bg-white border rounded-[2.5rem] p-10 shadow-sm border-slate-100">
                             <h3 className="text-xl font-black text-slate-900 uppercase mb-6 flex items-center gap-3">
-                                <Palette className="w-6 h-6 text-purple-600" /> Alt Menü (Footer)
+                                <Palette className="w-6 h-6 text-purple-600" /> Alt MenÃ¼ (Footer)
                             </h3>
                             <div className="space-y-4">
                                 {siteConfig.footerLinks.map((link, i) => (
@@ -693,7 +1017,7 @@ function AdminPageContent() {
                                         setSiteConfig({ ...siteConfig, footerLinks: [...siteConfig.footerLinks, { label: "Yeni Link", href: "/" }] });
                                     }}
                                 >
-                                    <Plus className="w-4 h-4 mr-2" /> Yeni Menü Öğesi Ekle
+                                    <Plus className="w-4 h-4 mr-2" /> Yeni MenÃ¼ Ã–ÄŸesi Ekle
                                 </Button>
                             </div>
                         </div>
@@ -702,8 +1026,8 @@ function AdminPageContent() {
                     <div className="bg-slate-900 rounded-[3rem] p-12 text-white shadow-2xl relative overflow-hidden">
                         <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-10">
                             <div className="max-w-xl">
-                                <h3 className="text-3xl font-black uppercase italic mb-4">Duyuru Yönetimi</h3>
-                                <p className="text-white/60 font-medium leading-relaxed">Sitenin en üstünde kurumsal bir duyuru bandı yayınlayarak önemli gelişmeleri bildirin.</p>
+                                <h3 className="text-3xl font-black uppercase italic mb-4">Duyuru YÃ¶netimi</h3>
+                                <p className="text-white/60 font-medium leading-relaxed">Sitenin en Ã¼stÃ¼nde kurumsal bir duyuru bandÄ± yayÄ±nlayarak Ã¶nemli geliÅŸmeleri bildirin.</p>
 
                                 <div className="mt-8 space-y-6">
                                     <div className="flex items-center gap-4">
@@ -713,7 +1037,7 @@ function AdminPageContent() {
                                             onChange={(e) => setSiteConfig({ ...siteConfig, announcement: { ...siteConfig.announcement, enabled: e.target.checked } })}
                                             className="w-6 h-6 rounded accent-blue-600"
                                         />
-                                        <span className="font-bold uppercase text-[10px] tracking-widest">Duyuruyu Aktifleştir</span>
+                                        <span className="font-bold uppercase text-[10px] tracking-widest">Duyuruyu AktifleÅŸtir</span>
                                     </div>
                                     <Textarea
                                         value={siteConfig.announcement.text}
@@ -724,7 +1048,7 @@ function AdminPageContent() {
                                 </div>
                             </div>
                             <div className="w-full md:w-[320px] bg-white/5 backdrop-blur-xl border border-white/10 p-8 rounded-[2.5rem]">
-                                <h4 className="text-[10px] font-black uppercase tracking-widest text-white/40 mb-6">Tema Seçimi</h4>
+                                <h4 className="text-[10px] font-black uppercase tracking-widest text-white/40 mb-6">Tema SeÃ§imi</h4>
                                 <div className="grid grid-cols-2 gap-4">
                                     {["blue", "red", "orange", "slate"].map((t) => (
                                         <button
@@ -749,7 +1073,7 @@ function AdminPageContent() {
 
 export default function AdminPage() {
     return (
-        <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><p>Yükleniyor...</p></div>}>
+        <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><p>YÃ¼kleniyor...</p></div>}>
             <AdminPageContent />
         </Suspense>
     );
