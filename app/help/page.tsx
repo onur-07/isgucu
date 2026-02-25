@@ -54,7 +54,7 @@ export default function HelpPage() {
 
                 {/* FAQ */}
                 <div className="max-w-4xl mx-auto mb-24">
-                    <h2 className="text-3xl font-black font-heading text-center mb-12 text-slate-900 uppercase tracking-tight">En Çok Merulanlar</h2>
+                    <h2 className="text-3xl font-black font-heading text-center mb-12 text-slate-900 uppercase tracking-tight">Sıkça Sorulan Sorular</h2>
                     <div className="space-y-6">
                         {questions.map((faq, i) => (
                             <div key={i} className="bg-white border-2 border-slate-100 rounded-[2rem] p-8 hover:border-blue-50 transition-all">
