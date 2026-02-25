@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Search, Star, ZapIcon, Sparkles, ShieldCheck, Briefcase, ArrowRight } from "lucide-react";
@@ -25,9 +25,27 @@ export default function Home() {
   const { user, isAuthenticated, loading } = useAuth();
   const router = useRouter();
   const [query, setQuery] = useState("");
+  const rotatingHeroWords = useMemo(
+    () => ["Freelancerlık", "İş Proje Yaptırmak", "Doğru Uzmanı Bulmak"],
+    []
+  );
+  const [activeHeroWordIndex, setActiveHeroWordIndex] = useState(0);
 
-  const categories = useMemo(() => CATEGORIES, []);
+  const categories = useMemo(
+    () =>
+      CATEGORIES.map((cat) =>
+        cat.slug === "web-tasarim" ? { ...cat, title: "Yapay Zeka" } : cat
+      ),
+    []
+  );
   const latestPosts = useMemo(() => getBlogPosts().slice(0, 3), []);
+
+  useEffect(() => {
+    const intervalId = window.setInterval(() => {
+      setActiveHeroWordIndex((prev) => (prev + 1) % rotatingHeroWords.length);
+    }, 2200);
+    return () => window.clearInterval(intervalId);
+  }, [rotatingHeroWords.length]);
 
   if (loading) return null;
 
@@ -136,6 +154,17 @@ export default function Home() {
         </div>
 
         <div className="container mx-auto px-4 md:px-6 flex flex-col items-center justify-center text-center space-y-10 relative z-10">
+          <p className="text-base md:text-lg font-black tracking-tight">
+            <span className="text-black">Burada </span>
+            <span
+              key={rotatingHeroWords[activeHeroWordIndex]}
+              className="text-orange-500 animate-in fade-in duration-500 inline-block"
+            >
+              {rotatingHeroWords[activeHeroWordIndex]}
+            </span>
+            <span className="text-black"> çok kolay</span>
+          </p>
+
           <div className="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 border-transparent bg-blue-50 text-blue-700 hover:bg-blue-100 mb-4">
             ✨ Geleceğin Çalışma Modeli
           </div>
@@ -351,7 +380,7 @@ export default function Home() {
                     asChild
                     className="w-full rounded-2xl font-black bg-[#0b1f4d] hover:bg-[#123a8f] text-white border border-[#0b1f4d]"
                   >
-                    <Link href={`/blog/${post.slug}`}>Yaziyi Oku</Link>
+                    <Link href={`/blog/${post.slug}`}>Yazıyı Oku</Link>
                   </Button>
                 </CardFooter>
               </Card>

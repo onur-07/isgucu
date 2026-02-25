@@ -281,6 +281,14 @@ export function GigPostingForm() {
         }
     });
 
+    useEffect(() => {
+        if (!formData.serviceType) return;
+        setFormData((prev) => {
+            if (prev.title.trim()) return prev;
+            return { ...prev, title: `${prev.serviceType} yapıyorum` };
+        });
+    }, [formData.serviceType]);
+
     const [activePackages, setActivePackages] = useState<Record<string, boolean>>({
         basic: true,
         standard: false,
@@ -307,6 +315,71 @@ export function GigPostingForm() {
     }, [formData.category]);
 
     const [tagInput, setTagInput] = useState("");
+
+    const sanitizeGigTitle = (value: string) => value.replace(/^ben,\s*/i, "").trimStart();
+
+    const activePackageKeys = (["basic", "standard", "premium"] as const).filter((key) => activePackages[key]);
+
+    const isStep3Valid = () => {
+        const baseValid =
+            formData.title.trim().length >= 10 &&
+            formData.description.trim().length >= 30 &&
+            formData.tags.length > 0;
+
+        if (!baseValid) return false;
+
+        if (formData.subCategory === "Seslendirme") {
+            return (
+                formData.voiceDetails.language.length > 0 &&
+                formData.voiceDetails.usage.length > 0 &&
+                formData.voiceDetails.tone.length > 0
+            );
+        }
+
+        return true;
+    };
+
+    const isPackageComplete = (pkg: PackageData, key: "basic" | "standard" | "premium") => {
+        if (formData.subCategory === "Seslendirme" && key === "basic") {
+            return Boolean(
+                pkg.wordCount &&
+                pkg.extraWordCount &&
+                pkg.extraWordPrice &&
+                pkg.deliveryDays &&
+                pkg.revisions &&
+                pkg.price &&
+                parseInt(pkg.price, 10) >= 100
+            );
+        }
+
+        return Boolean(
+            pkg.name.trim() &&
+            pkg.description.trim() &&
+            pkg.deliveryDays &&
+            pkg.revisions &&
+            pkg.features.length > 0 &&
+            pkg.price &&
+            parseInt(pkg.price, 10) >= 100
+        );
+    };
+
+    const areExtrasValid = () =>
+        extras
+            .filter((ex) => ex.selected)
+            .every((ex) => ex.title.trim() && ex.price && ex.additionalDays !== "");
+
+    const isStep4Valid = () => activePackageKeys.every((key) => isPackageComplete(packages[key], key)) && areExtrasValid();
+
+    const isStep5Valid = () => formData.images.length > 0;
+
+    const getValidationMessage = () => {
+        if (!formData.category) return "Kategori seçimi zorunludur.";
+        if (!formData.subCategory || !formData.serviceType) return "Alt kategori ve hizmet türü seçimi zorunludur.";
+        if (!isStep3Valid()) return "Genel bilgiler bölümündeki tüm zorunlu alanları doldurun (başlık, açıklama, en az 1 etiket).";
+        if (!isStep4Valid()) return "Paket ve ekstra alanlarındaki tüm zorunlu bilgileri eksiksiz doldurun.";
+        if (!isStep5Valid()) return "En az 1 görsel yüklemek zorunludur.";
+        return "";
+    };
 
     const addTag = () => {
         if (tagInput.trim() && !formData.tags.includes(tagInput.trim())) {
@@ -378,6 +451,11 @@ export function GigPostingForm() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        const validationMessage = getValidationMessage();
+        if (validationMessage) {
+            alert(validationMessage);
+            return;
+        }
         setLoading(true);
         const activePks: Record<string, PackageData> = {};
         Object.keys(activePackages).forEach(key => {
@@ -424,7 +502,7 @@ export function GigPostingForm() {
                     .from("gigs")
                     .insert({
                         user_id: user.id,
-                        title: formData.title,
+                        title: sanitizeGigTitle(formData.title),
                         description: formData.description,
                         category: formData.category,
                         price: packages.basic.price,
@@ -803,9 +881,9 @@ export function GigPostingForm() {
                             <div className="relative">
                                 <div className="absolute left-5 top-1/2 -translate-y-1/2 font-black text-lg text-gray-300">Ben,</div>
                                 <Input
-                                    placeholder="Profesyonel stüdyomda reklam filmleriniz için seslendirme yapabilirim"
+                                    placeholder={`${formData.serviceType || "Web tasarımı"} yapıyorum`}
                                     value={formData.title}
-                                    onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                                    onChange={(e) => setFormData({ ...formData, title: sanitizeGigTitle(e.target.value) })}
                                     className="h-14 pl-16 text-lg font-bold border-2 border-gray-100 focus:border-blue-500 rounded-xl shadow-inner bg-gray-50/10"
                                 />
                             </div>
@@ -852,7 +930,14 @@ export function GigPostingForm() {
 
                     <div className="flex justify-between items-center py-6">
                         <Button type="button" variant="ghost" onClick={() => setStep(2)} className="px-6 py-4 rounded-xl font-black text-gray-400 hover:text-gray-900 hover:bg-gray-100">← GERİ</Button>
-                        <Button type="button" onClick={() => setStep(4)} className="bg-blue-600 hover:bg-blue-700 text-white px-10 py-5 rounded-2xl font-black text-base shadow-xl shadow-blue-500/20 transition-all hover:scale-105">FİYATLANDIRMAYA GEÇ →</Button>
+                        <Button
+                            type="button"
+                            onClick={() => setStep(4)}
+                            disabled={!isStep3Valid()}
+                            className="bg-blue-600 hover:bg-blue-700 text-white px-10 py-5 rounded-2xl font-black text-base shadow-xl shadow-blue-500/20 transition-all hover:scale-105 disabled:opacity-50 disabled:hover:scale-100"
+                        >
+                            FİYATLANDIRMAYA GEÇ →
+                        </Button>
                     </div>
                 </div>
             )}
@@ -1295,7 +1380,8 @@ export function GigPostingForm() {
                         <Button
                             type="button"
                             onClick={() => setStep(5)}
-                            className="bg-blue-600 hover:bg-blue-700 text-white px-12 py-6 rounded-xl font-bold shadow-xl shadow-blue-100"
+                            disabled={!isStep4Valid()}
+                            className="bg-blue-600 hover:bg-blue-700 text-white px-12 py-6 rounded-xl font-bold shadow-xl shadow-blue-100 disabled:opacity-50"
                         >
                             Devam Et →
                         </Button>
@@ -1380,7 +1466,7 @@ export function GigPostingForm() {
                             <Button type="button" variant="outline" onClick={() => setStep(4)} className="flex-1 h-14 rounded-2xl border-2 font-bold">
                                 ← Fiyatlandırmaya Dön
                             </Button>
-                            <Button type="submit" className="flex-1 bg-green-500 hover:bg-green-600 text-white h-14 rounded-2xl shadow-xl font-black text-lg transition-all hover:-translate-y-1 hover:shadow-2xl disabled:opacity-50" disabled={loading}>
+                            <Button type="submit" className="flex-1 bg-green-500 hover:bg-green-600 text-white h-14 rounded-2xl shadow-xl font-black text-lg transition-all hover:-translate-y-1 hover:shadow-2xl disabled:opacity-50" disabled={loading || !isStep5Valid()}>
                                 {loading ? "Yükleniyor..." : "🚀 HİZMETİ YAYINLA"}
                             </Button>
                         </div>
