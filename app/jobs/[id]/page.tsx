@@ -24,6 +24,18 @@ type JobRow = {
     status?: string | null;
 };
 
+type LocalJobRow = {
+    id?: number | string;
+    user_id?: string | null;
+    title?: string;
+    description?: string;
+    category?: string;
+    budget?: string;
+    created_at?: string;
+    createdAt?: string;
+    status?: string;
+};
+
 type JobDetail = {
     id: number;
     userId: string;
@@ -77,8 +89,8 @@ export default function JobDetailPage() {
                 let row = (data || null) as JobRow | null;
 
                 if (dbErr || !row) {
-                    const localJobs = JSON.parse(localStorage.getItem("isgucu_jobs") || "[]");
-                    const localRow = localJobs.find((x: any) => Number(x.id) === jobId);
+                    const localJobs = JSON.parse(localStorage.getItem("isgucu_jobs") || "[]") as LocalJobRow[];
+                    const localRow = localJobs.find((x) => Number(x.id) === jobId);
                     if (localRow) {
                         row = {
                             id: Number(localRow.id),
@@ -140,8 +152,8 @@ export default function JobDetailPage() {
                     employerUsername,
                     employerId,
                 });
-            } catch (e: any) {
-                setError(e?.message ? String(e.message) : "İlan yüklenemedi.");
+            } catch (e: unknown) {
+                setError(e instanceof Error ? e.message : "İlan yüklenemedi.");
                 setJob(null);
             } finally {
                 setLoading(false);
@@ -248,8 +260,8 @@ export default function JobDetailPage() {
             if (msgIns.error) throw msgIns.error;
 
             router.push(`/messages/${encodeURIComponent(otherUsername)}`);
-        } catch (e: any) {
-            setError(e?.message ? String(e.message) : "Teklif gönderilemedi.");
+        } catch (e: unknown) {
+            setError(e instanceof Error ? e.message : "Teklif gönderilemedi.");
         } finally {
             setSending(false);
         }
@@ -381,4 +393,3 @@ export default function JobDetailPage() {
         </div>
     );
 }
-

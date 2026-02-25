@@ -13,7 +13,7 @@ interface Job {
     createdAt: string;
 }
 
-export function JobList({ limit }: { limit?: number }) {
+export function JobList({ limit, onTotalChange }: { limit?: number; onTotalChange?: (count: number) => void }) {
     const [jobs, setJobs] = useState<Job[]>([]);
     const [loading, setLoading] = useState(true);
 
@@ -69,6 +69,10 @@ export function JobList({ limit }: { limit?: number }) {
 
         fetchJobs();
     }, []);
+
+    useEffect(() => {
+        onTotalChange?.(jobs.length);
+    }, [jobs.length, onTotalChange]);
 
     if (loading) {
         return (

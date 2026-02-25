@@ -25,6 +25,7 @@ export default function Home() {
   const { user, isAuthenticated, loading } = useAuth();
   const router = useRouter();
   const [query, setQuery] = useState("");
+  const [freelancerJobCount, setFreelancerJobCount] = useState(0);
   const rotatingHeroWords = useMemo(
     () => ["Freelancerlık", "Proje Yaptırmak", "Doğru Uzmanı Bulmak"],
     []
@@ -78,9 +79,11 @@ export default function Home() {
               <h2 className="text-2xl font-black text-gray-900 uppercase tracking-tight flex items-center justify-center sm:justify-start gap-3">
                 <ZapIcon className="h-6 w-6 text-yellow-500" /> Sizin İçin Önerilen İşler
               </h2>
-              <Link href="/jobs" className="text-[10px] font-black uppercase text-blue-600 hover:underline tracking-widest">Tümünü İncele →</Link>
+              <Link href="/jobs" className="text-[10px] font-black uppercase text-blue-600 hover:underline tracking-widest">
+                Tümünü İncele ({freelancerJobCount}) →
+              </Link>
             </div>
-            <JobList limit={6} />
+            <JobList limit={4} onTotalChange={setFreelancerJobCount} />
           </div>
         </div>
       );
