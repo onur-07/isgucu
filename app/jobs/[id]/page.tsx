@@ -79,22 +79,26 @@ export default function JobDetailPage() {
             try {
                 console.log("Fetching job with ID:", jobId);
 
-                // 1. Try to fetch from Supabase
+                // 1. Fetch Job
                 const { data: row, error: dbErr } = await supabase
                     .from("jobs")
-                    .select("*, profiles:user_id(id, username, full_name, avatar_url)")
+                    .select("*")
                     .eq("id", jobId)
                     .maybeSingle();
 
                 if (dbErr) {
-                    console.error("Supabase fetch error:", dbErr);
+                    console.error("Supabase job fetch error:", dbErr);
                 }
 
                 let finalJob: JobDetail | null = null;
 
                 if (row) {
-                    // Supabase results sometimes map the join differently depending on the schema
-                    const profileData = row.profiles;
+                    // 2. Fetch Owner Profile separately for better reliability
+                    const { data: profileData } = await supabase
+                        .from('profiles')
+                        .select('id, username, full_name, avatar_url')
+                        .eq('id', row.user_id)
+                        .maybeSingle();
 
                     finalJob = {
                         id: row.id,
@@ -115,7 +119,7 @@ export default function JobDetailPage() {
                     };
                 }
 
-                // 2. If not found in Supabase, try LocalStorage
+                // 3. Fallback to LocalStorage
                 if (!finalJob) {
                     console.log("Job not found in Supabase, checking local storage...");
                     const localJobs = JSON.parse(localStorage.getItem("isgucu_jobs") || "[]");
@@ -409,11 +413,13 @@ export default function JobDetailPage() {
                                             className="h-full w-full object-cover"
                                         />
                                     ) : (
-                                        <User className="h-8 w-8 text-slate-300" />
+                                        <div className="h-full w-full flex items-center justify-center bg-slate-100 italic font-black text-slate-300">
+                                            {(job.owner?.fullName || job.owner?.username || "I").charAt(0).toUpperCase()}
+                                        </div>
                                     )}
                                 </div>
                                 <div className="flex-1">
-                                    <h4 className="font-black text-slate-900 group-hover:underline uppercase tracking-tight">
+                                    <h4 className="font-black text-slate-1000 group-hover:underline uppercase tracking-tight">
                                         {job.owner?.fullName || job.owner?.username || "İş Veren"}
                                     </h4>
                                     <div className="flex items-center gap-1.5 mt-1 text-[10px] font-bold text-slate-400">
@@ -425,7 +431,10 @@ export default function JobDetailPage() {
 
                             <div className="mt-8">
                                 <Button
-                                    onClick={() => router.push(`/messages/${encodeURIComponent(job.owner?.username || job.userId)}`)}
+                                    onClick={() => {
+                                        const username = job.owner?.username || job.userId;
+                                        router.push(`/messages/${encodeURIComponent(username)}`);
+                                    }}
                                     className="w-full h-14 bg-slate-900 hover:bg-black text-white rounded-2xl font-black uppercase text-xs tracking-widest gap-3 shadow-xl shadow-slate-200"
                                 >
                                     <MessageCircle className="h-4.5 w-4.5" /> MESAJ GÖNDER

@@ -74,7 +74,7 @@ export function GigCard({ gig }: { gig: Gig }) {
                 {/* Content Section */}
                 <div className="p-4 flex flex-col flex-1">
                     {/* Seller & Rating */}
-                    <div className="flex items-center gap-2 mb-3">
+                    <Link href={`/profile/${gig.seller}`} className="flex items-center gap-2 mb-3 hover:opacity-70 transition-all">
                         <div className="relative">
                             {gig.sellerAvatarUrl ? (
                                 <img
@@ -96,7 +96,7 @@ export function GigCard({ gig }: { gig: Gig }) {
                             <span className="text-[11px] font-bold text-gray-900 leading-none">{gig.seller || "Anonim"}</span>
                             <span className="text-[9px] text-green-600 font-bold uppercase tracking-wider mt-0.5">Aktif Satıcı</span>
                         </div>
-                    </div>
+                    </Link>
 
                     {/* Title */}
                     <h3 className="font-heading font-semibold text-[14px] text-gray-800 leading-tight line-clamp-2 mb-3 group-hover:text-blue-600 transition-colors min-h-[2.5rem]">

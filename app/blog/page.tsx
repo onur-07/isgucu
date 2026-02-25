@@ -56,7 +56,7 @@ export default function BlogPage() {
                 asChild
                 className="w-full rounded-2xl font-black bg-[#0b1f4d] hover:bg-[#123a8f] text-white border border-[#0b1f4d]"
               >
-                <Link href={`/blog/${post.slug}`}>Yaziyi Oku</Link>
+                <Link href={`/blog/${post.slug}`}>Yazıyı Oku</Link>
               </Button>
             </CardFooter>
           </Card>

@@ -26,64 +26,71 @@ export function JobList({ limit, onTotalChange }: { limit?: number; onTotalChang
     useEffect(() => {
         const fetchJobs = async () => {
             try {
-                // Fetch from Supabase with profile info
-                const { data: dbData, error } = await supabase
+                // 1. Fetch from Supabase
+                const { data: dbData, error: dbError } = await supabase
                     .from('jobs')
-                    .select('*, profiles(username, avatar_url, full_name)')
+                    .select('*')
                     .order('created_at', { ascending: false });
 
-                // Fetch from LocalStorage (Mock/Fallback)
+                // 2. Fetch from LocalStorage (Mock/Fallback)
                 const localJobs = JSON.parse(localStorage.getItem("isgucu_jobs") || "[]");
 
-                let mergedJobs: Job[] = [];
+                let combinedRows = dbData ? [...dbData] : [];
 
-                if (dbData) {
-                    mergedJobs = dbData.map((j: any) => ({
-                        id: j.id,
-                        title: j.title,
-                        description: j.description,
-                        category: j.category,
-                        budget: j.budget,
-                        createdAt: j.created_at,
-                        user_id: j.user_id,
-                        owner: j.profiles ? {
-                            username: j.profiles.username,
-                            avatar_url: j.profiles.avatar_url,
-                            full_name: j.profiles.full_name
-                        } : null
-                    }));
+                // Fetch profiles for database jobs
+                let profileMap: Record<string, any> = {};
+                if (dbData && dbData.length > 0) {
+                    const userIds = Array.from(new Set(dbData.map(j => j.user_id).filter(Boolean)));
+                    if (userIds.length > 0) {
+                        const { data: profiles } = await supabase
+                            .from('profiles')
+                            .select('id, username, avatar_url, full_name')
+                            .in('id', userIds);
+
+                        if (profiles) {
+                            profiles.forEach(p => {
+                                profileMap[p.id] = p;
+                            });
+                        }
+                    }
                 }
 
-                // Add local jobs that don't exist in DB
-                localJobs.forEach((lj: any) => {
-                    if (!mergedJobs.some(mj => mj.id === lj.id)) {
-                        mergedJobs.push({
-                            ...lj,
-                            createdAt: lj.created_at || lj.createdAt,
-                            owner: null // Local jobs usually don't have owner info in this structure
-                        });
-                    }
-                });
+                const normalizedDbJobs: Job[] = (dbData || []).map((j: any) => ({
+                    id: j.id,
+                    title: j.title,
+                    description: j.description,
+                    category: j.category,
+                    budget: j.budget,
+                    createdAt: j.created_at,
+                    user_id: j.user_id,
+                    owner: profileMap[j.user_id] ? {
+                        username: profileMap[j.user_id].username,
+                        avatar_url: profileMap[j.user_id].avatar_url,
+                        full_name: profileMap[j.user_id].full_name
+                    } : null
+                }));
 
+                const normalizedLocalJobs: Job[] = localJobs.map((j: any) => ({
+                    ...j,
+                    owner: null // Mock local storage jobs don't have profile joins
+                }));
+
+                const mergedJobs = [...normalizedDbJobs, ...normalizedLocalJobs];
                 // Sort by date
                 mergedJobs.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
-                setJobs(mergedJobs);
+                setJobs(limit ? mergedJobs.slice(0, limit) : mergedJobs);
+                if (onTotalChange) onTotalChange(mergedJobs.length);
+
             } catch (err) {
-                console.error("Jobs fetch error:", err);
-                const localJobs = JSON.parse(localStorage.getItem("isgucu_jobs") || "[]");
-                setJobs(localJobs);
+                console.error("Job list fetch error:", err);
             } finally {
                 setLoading(false);
             }
         };
 
         fetchJobs();
-    }, []);
-
-    useEffect(() => {
-        onTotalChange?.(jobs.length);
-    }, [jobs.length, onTotalChange]);
+    }, [limit, onTotalChange]);
 
     if (loading) {
         return (

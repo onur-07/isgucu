@@ -95,6 +95,11 @@ export function JobPostingForm() {
             return;
         }
 
+        if (user.role !== "employer" && user.role !== "admin") {
+            setError("İş ilanı vermek için İş Veren hesabına sahip olmalısınız.");
+            return;
+        }
+
         setLoading(true);
         setError(null);
 
