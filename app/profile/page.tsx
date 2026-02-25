@@ -171,7 +171,18 @@ export default function ProfilePage() {
                 .eq('user_id', user.id)
                 .order('created_at', { ascending: false });
 
-            if (data) setUserJobs(data);
+            const localJobs = JSON.parse(localStorage.getItem("isgucu_jobs") || "[]");
+            const myLocalJobs = localJobs.filter((j: any) => String(j.user_id) === String(user.id));
+
+            let allMyJobs = data ? [...data] : [];
+            // Add local jobs that aren't in DB data
+            myLocalJobs.forEach((lj: any) => {
+                if (!allMyJobs.some(mj => mj.id === lj.id)) {
+                    allMyJobs.push(lj);
+                }
+            });
+
+            setUserJobs(allMyJobs);
         };
 
         fetchProfile();
@@ -182,7 +193,7 @@ export default function ProfilePage() {
                 try {
                     const { data, error } = await supabase
                         .from('gigs')
-                        .select('id, user_id, title, description, category, price, created_at, images, packages')
+                        .select('id, user_id, title, description, category, price, created_at, images, packages, is_active')
                         .eq('user_id', user.id)
                         .order('created_at', { ascending: false });
 
@@ -200,6 +211,73 @@ export default function ProfilePage() {
         setStats(getUserStats(user.username, user.role as "employer" | "freelancer" | "admin"));
         setReviews(getUserReviews(user.username));
     }, [user, router, authLoading]);
+
+    const refreshMyJobs = async () => {
+        if (!user?.id) return;
+        const { data } = await supabase
+            .from('jobs')
+            .select('*')
+            .eq('user_id', user.id)
+            .order('created_at', { ascending: false });
+
+        const localJobs = JSON.parse(localStorage.getItem("isgucu_jobs") || "[]");
+        const myLocalJobs = localJobs.filter((j: any) => String(j.user_id) === String(user.id));
+
+        let allMyJobs = data ? [...data] : [];
+        myLocalJobs.forEach((lj: any) => {
+            if (!allMyJobs.some(mj => mj.id === lj.id)) {
+                allMyJobs.push(lj);
+            }
+        });
+        setUserJobs(allMyJobs);
+    };
+
+    const toggleJobStatus = async (jobId: any, currentStatus: string) => {
+        if (!user?.id) return;
+        const nextStatus = currentStatus === "closed" ? "open" : "closed";
+
+        // Try Supabase first
+        const { error } = await supabase
+            .from('jobs')
+            .update({ status: nextStatus })
+            .eq('id', jobId)
+            .eq('user_id', user.id);
+
+        if (error) {
+            console.log("Supabase update error (trying local):", error);
+            // Try Local Storage
+            const localJobs = JSON.parse(localStorage.getItem("isgucu_jobs") || "[]");
+            const updated = localJobs.map((j: any) =>
+                String(j.id) === String(jobId) ? { ...j, status: nextStatus } : j
+            );
+            localStorage.setItem("isgucu_jobs", JSON.stringify(updated));
+        }
+
+        await refreshMyJobs();
+    };
+
+    const deleteJob = async (jobId: any) => {
+        if (!user?.id) return;
+        if (!confirm("Bu iş ilanını tamamen silmek istediğinize emin misiniz?")) return;
+
+        // Try Supabase
+        const { error } = await supabase
+            .from('jobs')
+            .delete()
+            .eq('id', jobId)
+            .eq('user_id', user.id);
+
+        if (error) {
+            console.log("Supabase delete error (trying local):", error);
+        }
+
+        // Always check local storage too
+        const localJobs = JSON.parse(localStorage.getItem("isgucu_jobs") || "[]");
+        const updated = localJobs.filter((j: any) => String(j.id) !== String(jobId));
+        localStorage.setItem("isgucu_jobs", JSON.stringify(updated));
+
+        await refreshMyJobs();
+    };
 
     const refreshMyGigs = async () => {
         if (!user?.id) return;
@@ -1032,6 +1110,24 @@ export default function ProfilePage() {
                                             {userJobs.map((job: any) => (
                                                 <div key={job.id} className="hover:scale-[1.02] transition-transform duration-300">
                                                     <JobCard job={job} isOwner={true} />
+                                                    <div className="mt-4 flex gap-2">
+                                                        <Button
+                                                            type="button"
+                                                            variant="outline"
+                                                            className="h-10 rounded-xl text-[10px] font-black uppercase tracking-widest"
+                                                            onClick={() => toggleJobStatus(job.id, job.status || "open")}
+                                                        >
+                                                            {job.status === "closed" ? "Aktife Al" : "Pasife Al"}
+                                                        </Button>
+                                                        <Button
+                                                            type="button"
+                                                            variant="outline"
+                                                            className="h-10 rounded-xl text-[10px] font-black uppercase tracking-widest text-red-600 border-red-100 hover:bg-red-50"
+                                                            onClick={() => deleteJob(job.id)}
+                                                        >
+                                                            Kaldır
+                                                        </Button>
+                                                    </div>
                                                 </div>
                                             ))}
                                         </div>
