@@ -57,7 +57,7 @@ export const BLOG_POSTS: BlogPost[] = [
     excerpt:
       "Özgürlük kadar disiplin de ister. Freelance çalışmanın artıları, eksileri ve sürdürülebilir hale getirmek için ipuçları.",
     category: "Freelancerlık",
-    coverImage: "/blog/freelancer.webp",
+    coverImage: "/blog/isgucu.webp",
     date: "2026-02-25",
     readingMinutes: 5,
     content: [

@@ -319,7 +319,7 @@ export default function Home() {
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {latestPosts.map((post) => (
-              <Card key={post.slug} className="rounded-[2rem] overflow-hidden border-gray-100 hover:shadow-2xl transition-shadow">
+              <Card key={post.slug} className="h-full rounded-[2rem] overflow-hidden border-gray-100 hover:shadow-2xl transition-shadow flex flex-col">
                 <div className="relative">
                   <img
                     src={post.coverImage}
@@ -341,15 +341,18 @@ export default function Home() {
                     {post.readingMinutes} dk okuma
                   </div>
                 </CardHeader>
-                <CardContent className="pt-0">
+                <CardContent className="pt-0 flex-1">
                   <p className="text-sm font-semibold text-gray-600 leading-relaxed">
                     {post.excerpt}
                   </p>
                 </CardContent>
-                <CardFooter className="pt-0">
-                  <Link href={`/blog/${post.slug}`} className="w-full">
-                    <Button className="w-full rounded-2xl font-black">Yazıyı Oku</Button>
-                  </Link>
+                <CardFooter className="pt-0 mt-auto">
+                  <Button
+                    asChild
+                    className="w-full rounded-2xl font-black bg-[#0b1f4d] hover:bg-[#123a8f] text-white border border-[#0b1f4d]"
+                  >
+                    <Link href={`/blog/${post.slug}`}>Yaziyi Oku</Link>
+                  </Button>
                 </CardFooter>
               </Card>
             ))}

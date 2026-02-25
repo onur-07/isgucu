@@ -5,12 +5,13 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { getBlogPostBySlug } from "@/lib/blog-posts";
 
-export default function BlogDetailPage({
+export default async function BlogDetailPage({
   params,
 }: {
-  params: { slug: string };
+  params: Promise<{ slug: string }>;
 }) {
-  const post = getBlogPostBySlug(params.slug);
+  const { slug } = await params;
+  const post = getBlogPostBySlug(slug);
 
   if (!post) return notFound();
 
@@ -50,12 +51,12 @@ export default function BlogDetailPage({
 
         <div className="mt-12 flex flex-col sm:flex-row gap-3">
           <Link href="/register?role=freelancer" className="w-full sm:w-auto">
-            <Button size="lg" variant="secondary" className="w-full sm:w-auto font-black px-10 h-12 rounded-2xl">
+            <Button size="lg" variant="secondary" className="w-full sm:w-auto font-black px-10 h-12 rounded-2xl text-[#0b1f4d] border border-[#123a8f]">
               Freelancer Ol
             </Button>
           </Link>
           <Link href="/register?role=employer" className="w-full sm:w-auto">
-            <Button size="lg" className="w-full sm:w-auto bg-gray-900 hover:bg-black font-black px-10 h-12 rounded-2xl">
+            <Button size="lg" className="w-full sm:w-auto bg-[#0b1f4d] hover:bg-[#123a8f] text-white border border-[#0b1f4d] font-black px-10 h-12 rounded-2xl">
               İş İlanı Ver
             </Button>
           </Link>
