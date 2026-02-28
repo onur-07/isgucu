@@ -19,7 +19,7 @@ const CATEGORIES = [
   { title: "Yazılım & Mobil", slug: "yazilim-mobil", icon: "💻", color: "text-blue-600", bg: "bg-blue-50" },
   { title: "Logo & Grafik", slug: "logo-grafik", icon: "🎨", color: "text-purple-600", bg: "bg-purple-50" },
   { title: "Web Tasarım", slug: "web-tasarim", icon: "🌐", color: "text-cyan-600", bg: "bg-cyan-50" },
-  { title: "Video & Animasyon", slug: "video-animasyon", icon: "🎬", color: "text-pink-600", bg: "bg-pink-50" },
+  { title: "Yapay Zeka", slug: "yapay-zeka", icon: "🤖", color: "text-indigo-600", bg: "bg-indigo-50" },
   { title: "Çeviri & İçerik", slug: "ceviri-icerik", icon: "✍️", color: "text-orange-600", bg: "bg-orange-50" },
 ];
 
@@ -39,13 +39,7 @@ export default function Home() {
     return (config.managedPages || []).find((p) => p.slug === "/" || p.id === "home-system") || null;
   });
 
-  const categories = useMemo(
-    () =>
-      CATEGORIES.map((cat) =>
-        cat.slug === "web-tasarim" ? { ...cat, title: "Yapay Zeka", icon: "🧠" } : cat
-      ),
-    []
-  );
+  const categories = useMemo(() => CATEGORIES, []);
   const latestPosts = useMemo(() => getBlogPosts().slice(0, 3), []);
   const normalizeJobSearch = (value: string) => {
     const trMap: Record<string, string> = { ç: "c", ğ: "g", ı: "i", İ: "i", ö: "o", ş: "s", ü: "u" };
@@ -169,7 +163,7 @@ export default function Home() {
                         placeholder="İlan, kategori veya anahtar kelime ara..."
                       />
                     </div>
-                    <Button size="sm" className="rounded-xl bg-slate-900 hover:bg-slate-800 h-11 px-6 font-black text-white">
+                    <Button type="submit" size="sm" className="rounded-xl bg-slate-900 hover:bg-slate-800 h-11 px-6 font-black text-white">
                       Ara
                     </Button>
                   </div>
@@ -197,7 +191,7 @@ export default function Home() {
               <Link href="/categories/all" className="text-[10px] font-black uppercase text-amber-600 hover:underline tracking-widest">Kategori Listesi →</Link>
             </div>
             <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-              {CATEGORIES.map((cat) => (
+              {categories.map((cat) => (
                 <Link key={cat.slug} href={`/categories/${cat.slug}`} className="group p-6 bg-white border border-gray-100 rounded-2xl text-center hover:shadow-xl transition-all hover:-translate-y-1">
                   <div className="text-3xl mb-3">{cat.icon}</div>
                   <span className="text-[10px] font-black uppercase text-gray-600 group-hover:text-amber-600 tracking-widest">{cat.title}</span>
