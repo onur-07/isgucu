@@ -72,6 +72,7 @@ export default function OrdersPage() {
             if (updErr) throw updErr;
 
             await refresh();
+            if (typeof window !== "undefined") window.dispatchEvent(new Event("orders_updated"));
         } catch (e: any) {
             window.alert("Teslim gönderilemedi: " + String(e?.message || e));
         } finally {
@@ -189,6 +190,7 @@ export default function OrdersPage() {
             if (updErr) throw updErr;
 
             await refresh();
+            if (typeof window !== "undefined") window.dispatchEvent(new Event("orders_updated"));
         } catch (e: any) {
             window.alert("Revizyon isteği gönderilemedi: " + String(e?.message || e));
         } finally {
@@ -251,6 +253,7 @@ export default function OrdersPage() {
             if (paidErr) throw paidErr;
 
             await refresh();
+            if (typeof window !== "undefined") window.dispatchEvent(new Event("orders_updated"));
         } catch (e: any) {
             window.alert("Onay işlemi başarısız: " + String(e?.message || e));
         } finally {

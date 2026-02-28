@@ -3,17 +3,19 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useState, useEffect, useCallback } from "react";
-import { maskFullName, usernameKey } from "@/lib/utils";
+import { maskFullName, usernameFold, usernameKey } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/components/auth/auth-context";
 import { Menu, X, Bell, MessageCircle, User, ChevronDown } from "lucide-react";
 import { getSiteConfig, hydrateSiteConfigFromRemote } from "@/lib/site-config";
+import { supabase } from "@/lib/supabase";
 
 export function Header() {
     const { user, logout, loading } = useAuth();
     const [mobileOpen, setMobileOpen] = useState(false);
     const [profileOpen, setProfileOpen] = useState(false);
     const [notifCount, setNotifCount] = useState(0);
+    const [orderApprovalCount, setOrderApprovalCount] = useState(0);
     const [siteConfig, setSiteConfig] = useState(getSiteConfig());
 
     const handleLogout = async () => {
@@ -70,9 +72,37 @@ export function Header() {
         setSiteConfig(getSiteConfig());
     }, []);
 
+    const updateOrderApprovalCount = useCallback(async () => {
+        if (!user || user.role !== "employer") {
+            setOrderApprovalCount(0);
+            return;
+        }
+
+        const raw = String(user.username || "").trim();
+        if (!raw) {
+            setOrderApprovalCount(0);
+            return;
+        }
+        const k = usernameKey(raw);
+        const f = usernameFold(raw);
+
+        const res = await supabase
+            .from("orders")
+            .select("id", { count: "exact", head: true })
+            .eq("status", "delivered")
+            .or(`buyer_username.ilike.${raw},buyer_username.ilike.${k},buyer_username.ilike.${f}`);
+
+        if (res.error) {
+            setOrderApprovalCount(0);
+            return;
+        }
+        setOrderApprovalCount(Number(res.count || 0));
+    }, [user]);
+
     useEffect(() => {
         const initialId = window.setTimeout(() => {
             updateCounts();
+            void updateOrderApprovalCount();
         }, 0);
         hydrateSiteConfigFromRemote().then((remoteConfig) => {
             if (!remoteConfig) return;
@@ -80,14 +110,20 @@ export function Header() {
         });
         window.addEventListener("storage", updateCounts);
         window.addEventListener("storage_updated", updateCounts);
+        window.addEventListener("orders_updated", updateOrderApprovalCount);
         window.addEventListener("site_config_updated", handleConfigUpdate);
+        const intervalId = window.setInterval(() => {
+            void updateOrderApprovalCount();
+        }, 10000);
         return () => {
             window.clearTimeout(initialId);
+            window.clearInterval(intervalId);
             window.removeEventListener("storage", updateCounts);
             window.removeEventListener("storage_updated", updateCounts);
+            window.removeEventListener("orders_updated", updateOrderApprovalCount);
             window.removeEventListener("site_config_updated", handleConfigUpdate);
         };
-    }, [updateCounts, handleConfigUpdate]);
+    }, [updateCounts, handleConfigUpdate, updateOrderApprovalCount]);
 
     useEffect(() => {
         const faviconHref = siteConfig.faviconUrl || siteConfig.logoUrl || "/logo.png";
@@ -232,8 +268,13 @@ export function Header() {
                                         <Link href="/profile" className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors" onClick={() => setProfileOpen(false)}>
                                             <User className="h-4 w-4" /> Profilim
                                         </Link>
-                                        <Link href="/orders" className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors" onClick={() => setProfileOpen(false)}>
-                                            📋 Siparişlerim
+                                        <Link href="/orders" className="flex items-center justify-between gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors" onClick={() => setProfileOpen(false)}>
+                                            <span>📋 Siparişlerim</span>
+                                            {orderApprovalCount > 0 && (
+                                                <span className="h-5 min-w-5 px-1.5 bg-red-500 text-white text-[10px] font-black rounded-full flex items-center justify-center">
+                                                    {orderApprovalCount}
+                                                </span>
+                                            )}
                                         </Link>
                                         <Link href="/wallet" className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors" onClick={() => setProfileOpen(false)}>
                                             💰 Cüzdanım
@@ -300,8 +341,13 @@ export function Header() {
                                 <Link href="/profile" className="px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-lg" onClick={() => setMobileOpen(false)}>
                                     👤 Profilim
                                 </Link>
-                                <Link href="/orders" className="px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-lg" onClick={() => setMobileOpen(false)}>
-                                    📋 Siparişlerim
+                                <Link href="/orders" className="px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-lg flex items-center justify-between gap-3" onClick={() => setMobileOpen(false)}>
+                                    <span>📋 Siparişlerim</span>
+                                    {orderApprovalCount > 0 && (
+                                        <span className="h-5 min-w-5 px-1.5 bg-red-500 text-white text-[10px] font-black rounded-full flex items-center justify-center">
+                                            {orderApprovalCount}
+                                        </span>
+                                    )}
                                 </Link>
                                 <Link href="/wallet" className="px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-lg" onClick={() => setMobileOpen(false)}>
                                     💰 Cüzdanım
