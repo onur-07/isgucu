@@ -47,6 +47,25 @@ export default function Home() {
     []
   );
   const latestPosts = useMemo(() => getBlogPosts().slice(0, 3), []);
+  const normalizeJobSearch = (value: string) => {
+    const trMap: Record<string, string> = { ç: "c", ğ: "g", ı: "i", İ: "i", ö: "o", ş: "s", ü: "u" };
+    const stop = new Set([
+      "ve", "ile", "icin", "için", "veya", "ya", "da", "de", "bir", "bu", "o", "şu", "su",
+      "hizmet", "ilan", "is", "iş", "proje", "freelancer", "uzman", "teklif", "yeni", "gibi",
+      "yapacağım", "yapacagim", "istiyorum", "lazım", "lazim", "var", "yok",
+    ]);
+    const folded = String(value || "")
+      .replace(/[çğıİöşü]/g, (m) => trMap[m] || m)
+      .toLocaleLowerCase("tr-TR")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "");
+    const tokens = folded
+      .replace(/[^\p{L}0-9]+/gu, " ")
+      .split(/\s+/)
+      .map((t) => t.trim())
+      .filter((t) => t.length >= 2 && !stop.has(t));
+    return tokens.slice(0, 5).join(" ");
+  };
   const homeSummaryText = managedHome
     ? String(managedHome.summary || "").trim()
     : "Turkiye freelancer platformu: Hizmet bul, ilan ver, guvenle calis. Ister freelancer ol, ister is veren olarak en dogru uzmani sec.";
@@ -131,12 +150,13 @@ export default function Home() {
                   className="w-full max-w-2xl"
                   onSubmit={(e) => {
                     e.preventDefault();
-                    const q = employerQuery.trim();
-                    if (!q) {
+                    const raw = employerQuery.trim();
+                    if (!raw) {
                       router.push("/jobs");
                       return;
                     }
-                    router.push(`/jobs?q=${encodeURIComponent(q)}`);
+                    const normalized = normalizeJobSearch(raw);
+                    router.push(`/jobs?q=${encodeURIComponent(normalized || raw)}`);
                   }}
                 >
                   <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 bg-white/95 p-2 rounded-2xl border border-white/30">
@@ -257,12 +277,13 @@ export default function Home() {
             className="w-full max-w-2xl"
             onSubmit={(e) => {
               e.preventDefault();
-              const q = query.trim();
-              if (!q) {
+              const raw = query.trim();
+              if (!raw) {
                 router.push("/jobs");
                 return;
               }
-              router.push(`/jobs?q=${encodeURIComponent(q)}`);
+              const normalized = normalizeJobSearch(raw);
+              router.push(`/jobs?q=${encodeURIComponent(normalized || raw)}`);
             }}
           >
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 bg-white p-3 rounded-3xl shadow-2xl border border-gray-100">
