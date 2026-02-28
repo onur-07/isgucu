@@ -494,17 +494,24 @@ export default function JobDetailPage() {
             const messageText = noteTrimmed ? `${summary}\n\nNot: ${noteTrimmed}` : summary;
 
             const msgMod = sanitizeMessage(messageText);
+            const receiverId = String(job.owner?.id || "").trim();
+            if (!receiverId) {
+                setError("İlan sahibinin kullanıcı kaydı bulunamadı. Lütfen mesaj gönder butonunu kullanın.");
+                setSending(false);
+                return;
+            }
 
             const offerPayload = {
+                gig_id: null,
                 sender_id: user.id,
-                receiver_id: job.owner?.id || job.userId,
+                receiver_id: receiverId,
                 sender_username: meKey,
                 receiver_username: otherKey,
                 message: noteTrimmed || summary,
                 price,
                 delivery_days: days,
+                extras: { source: "job", job_id: String(job.id) },
                 status: "pending",
-                job_id: job.id
             };
 
             const messagePayload = {
