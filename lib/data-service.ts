@@ -1,4 +1,5 @@
 import { supabase } from "./supabase";
+import { usernameFold, usernameKey } from "./utils";
 
 // Centralized data service for İşgücü platform - Supabase Backend
 // Migrated from localStorage to persistent SQL storage
@@ -437,10 +438,39 @@ export async function getUserReviews(username: string): Promise<Review[]> {
 export async function getUserOrders(username: string, _role: "employer" | "freelancer" | "guest" | "admin"): Promise<Order[]> {
     void _role;
     if (!username) return [];
+
+    const rawUsername = String(username || "").trim();
+    const folded = usernameFold(rawUsername);
+    const keyed = usernameKey(rawUsername);
+
+    let profileId = "";
+    try {
+        const { data: me } = await supabase
+            .from("profiles")
+            .select("id")
+            .or(`username.eq.${rawUsername},username.ilike.${folded},username.ilike.${keyed}`)
+            .limit(1)
+            .maybeSingle();
+        profileId = String((me as any)?.id || "");
+    } catch {}
+
+    const clauses = [
+        `buyer_username.ilike.${rawUsername}`,
+        `seller_username.ilike.${rawUsername}`,
+        `buyer_username.ilike.${folded}`,
+        `seller_username.ilike.${folded}`,
+        `buyer_username.ilike.${keyed}`,
+        `seller_username.ilike.${keyed}`,
+    ];
+    if (profileId) {
+        clauses.push(`buyer_id.eq.${profileId}`);
+        clauses.push(`seller_id.eq.${profileId}`);
+    }
+
     const { data, error } = await supabase
         .from("orders")
         .select("id, gig_id, buyer_id, seller_id, buyer_username, seller_username, total_price, total_days, status, created_at, paid_to_seller, gigs(title)")
-        .or(`buyer_username.eq.${username},seller_username.eq.${username}`)
+        .or(clauses.join(","))
         .order("created_at", { ascending: false });
 
     if (error) {
