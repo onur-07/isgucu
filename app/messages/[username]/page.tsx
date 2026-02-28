@@ -82,7 +82,7 @@ export default function MessageThreadPage() {
             return await Promise.race([
                 Promise.resolve(p),
                 new Promise<T>((_, reject) => {
-                    timeoutId = setTimeout(() => reject(new Error(`${label} zaman aÅŸÄ±mÄ±na uÄŸradÄ± (${ms}ms)`)), ms);
+                    timeoutId = setTimeout(() => reject(new Error(`${label} zaman aşımına uğradı (${ms}ms)`)), ms);
                 }),
             ]);
         } finally {
@@ -94,7 +94,7 @@ export default function MessageThreadPage() {
         if (!user || user.role !== "admin") return;
         if (!meKey || !otherKey) return;
 
-        const ok = window.confirm("Bu konuÅŸmadaki tÃ¼m mesajlarÄ± silmek istiyor musun? Bu iÅŸlem geri alÄ±namaz.");
+        const ok = window.confirm("Bu konuşmadaki tüm mesajları silmek istiyor musun? Bu işlem geri alınamaz.");
         if (!ok) return;
 
         setSending(true);
@@ -103,7 +103,7 @@ export default function MessageThreadPage() {
             const { data, error: sessErr } = await supabase.auth.getSession();
             if (sessErr) throw sessErr;
             const token = data?.session?.access_token;
-            if (!token) throw new Error("Oturum bulunamadÄ±");
+            if (!token) throw new Error("Oturum bulunamadı");
 
             const res = await fetch("/api/admin/messages/clear", {
                 method: "POST",
@@ -119,7 +119,7 @@ export default function MessageThreadPage() {
                 try {
                     const j = JSON.parse(txt);
                     if (j?.error === "missing_service_role") {
-                        throw new Error("Admin temizleme Ã§alÄ±ÅŸmÄ±yor: Vercel'de SUPABASE_SERVICE_ROLE_KEY eklenmemiÅŸ.");
+                        throw new Error("Admin temizleme çalışmıyor: Vercel'de SUPABASE_SERVICE_ROLE_KEY eklenmemiş.");
                     }
                     throw new Error(j?.details || j?.error || txt || `HTTP ${res.status}`);
                 } catch {
@@ -139,7 +139,7 @@ export default function MessageThreadPage() {
                 .limit(200);
             if (!r?.error && Array.isArray((r as any)?.data)) setMessages((r as any).data);
         } catch (e: any) {
-            setError(e?.message ? String(e.message) : "Temizleme baÅŸarÄ±sÄ±z");
+            setError(e?.message ? String(e.message) : "Temizleme başarısız");
         } finally {
             setSending(false);
         }
@@ -153,13 +153,13 @@ export default function MessageThreadPage() {
         const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
 
         if (!supabaseUrl || !supabaseAnonKey) {
-            throw new Error("Supabase ortam deÄŸiÅŸkenleri eksik");
+            throw new Error("Supabase ortam değişkenleri eksik");
         }
 
         const { data, error } = await supabase.auth.getSession();
         if (error) throw error;
         const accessToken = data?.session?.access_token;
-        if (!accessToken) throw new Error("Oturum bulunamadÄ± (token yok)");
+        if (!accessToken) throw new Error("Oturum bulunamadı (token yok)");
 
         const controller = new AbortController();
 
@@ -320,7 +320,7 @@ export default function MessageThreadPage() {
                             .order("created_at", { ascending: true })
                             .limit(200),
                         12000,
-                        "Mesaj geÃ§miÅŸi"
+                        "Mesaj geçmişi"
                     ),
                     withTimeout(
                         supabase
@@ -342,7 +342,7 @@ export default function MessageThreadPage() {
                             .limit(1)
                             .maybeSingle(),
                         8000,
-                        "KullanÄ±cÄ±"
+                        "Kullanıcı"
                     ),
                 ]);
 
@@ -372,7 +372,7 @@ export default function MessageThreadPage() {
                     .eq("read", false)
                     .then(() => {});
             } catch (err: any) {
-                setError(err?.message ? String(err.message) : "Mesajlar yÃ¼klenemedi");
+                setError(err?.message ? String(err.message) : "Mesajlar yüklenemedi");
                 setMessages([]);
                 setOffers([]);
             } finally {
@@ -516,7 +516,7 @@ export default function MessageThreadPage() {
 
         const mod = sanitizeMessage(trimmed);
         if (!mod.allowed) {
-            setError(mod.reason || "Mesaj gÃ¶nderilemedi.");
+            setError(mod.reason || "Mesaj gönderilemedi.");
             return;
         }
 
@@ -558,15 +558,15 @@ export default function MessageThreadPage() {
             let finished = false;
             let slowTimer: ReturnType<typeof setTimeout> | null = null;
             slowTimer = setTimeout(() => {
-                if (!finished) setError("Mesaj gÃ¶nderiliyor... (baÄŸlantÄ± yavaÅŸ olabilir)");
+                if (!finished) setError("Mesaj gönderiliyor... (bağlantı yavaş olabilir)");
             }, 8000);
 
             let ok = false;
             let firstErr: string | null = null;
             try {
-                ok = await withTimeout(insertMessageRest(payload as any, 20000), 20000, "Mesaj gÃ¶nderme");
+                ok = await withTimeout(insertMessageRest(payload as any, 20000), 20000, "Mesaj gönderme");
             } catch (e: any) {
-                firstErr = e?.message ? String(e.message) : "Mesaj gÃ¶nderilemedi";
+                firstErr = e?.message ? String(e.message) : "Mesaj gönderilemedi";
                 console.log("[send] insert attempt-1 failed", firstErr);
                 // 1 retry (short)
                 ok = await withTimeout(insertMessageRest(payload as any, 8000), 8000, "Mesaj yeniden deneme");
@@ -579,7 +579,7 @@ export default function MessageThreadPage() {
 
             if (!ok) {
                 setMessages((prev) => prev.filter((m) => String(m.id) !== String(tempId)));
-                setError(firstErr ? `Mesaj gÃ¶nderilemedi: ${firstErr}` : "Mesaj gÃ¶nderilemedi");
+                setError(firstErr ? `Mesaj gönderilemedi: ${firstErr}` : "Mesaj gönderilemedi");
                 return;
             }
 
@@ -613,7 +613,7 @@ export default function MessageThreadPage() {
             }, 2500);
         } catch (err: any) {
             setMessages((prev) => prev.filter((m) => String(m.id) !== String(tempId)));
-            const friendly = friendlySupabaseError(err, "Mesaj gÃ¶nderilemedi");
+            const friendly = friendlySupabaseError(err, "Mesaj gönderilemedi");
             setError(friendly);
 
             // Best-effort: notify admin (support ticket) on PII attempts
@@ -693,14 +693,14 @@ export default function MessageThreadPage() {
         const price = Number(String(offerPrice || "").replace(",", "."));
         const days = Number(String(offerDays || "").trim());
         if (!Number.isFinite(price) || price <= 0 || !Number.isFinite(days) || days <= 0) {
-            setError("Teklif iÃ§in fiyat ve teslim gÃ¼nÃ¼ gir.");
+            setError("Teklif için fiyat ve teslim günü gir.");
             return;
         }
 
         if (offerNote.trim()) {
             const mod = sanitizeMessage(offerNote.trim());
             if (!mod.allowed) {
-                setError(mod.reason || "Bu iÃ§erik gÃ¶nderilemez");
+                setError(mod.reason || "Bu içerik gönderilemez");
                 return;
             }
         }
@@ -724,7 +724,7 @@ export default function MessageThreadPage() {
             const res = (await withTimeout(
                 supabase.from("offers").insert([payload]).select("id").maybeSingle(),
                 15000,
-                "Teklif gÃ¶nderme"
+                "Teklif gönderme"
             )) as any;
 
             if (res?.error) throw res.error;
@@ -734,7 +734,7 @@ export default function MessageThreadPage() {
             setOfferNote("");
             await refreshOffers();
         } catch (e: any) {
-            setError(e?.message ? String(e.message) : "Teklif gÃ¶nderilemedi");
+            setError(e?.message ? String(e.message) : "Teklif gönderilemedi");
         } finally {
             setSending(false);
         }
@@ -833,14 +833,14 @@ export default function MessageThreadPage() {
             const up = await withTimeout(
                 supabase.storage.from("chat-files").upload(path, bytes, { contentType: file.type || "application/octet-stream" }),
                 20000,
-                "Dosya yÃ¼kleme"
+                "Dosya yükleme"
             );
 
             if ((up as any)?.error) throw (up as any).error;
 
             const { data: pub } = supabase.storage.from("chat-files").getPublicUrl(path);
             const url = String((pub as any)?.publicUrl || "");
-            if (!url) throw new Error("Dosya URL alÄ±namadÄ±");
+            if (!url) throw new Error("Dosya URL alınamadı");
 
             const payload = {
                 sender_username: meKey,
@@ -856,15 +856,15 @@ export default function MessageThreadPage() {
                 read: false,
             };
 
-            const ok = await withTimeout(insertMessageRest(payload as any, 20000), 20000, "Dosya mesajÄ±");
-            if (!ok) throw new Error("Dosya mesajÄ± gÃ¶nderilemedi");
+            const ok = await withTimeout(insertMessageRest(payload as any, 20000), 20000, "Dosya mesajı");
+            if (!ok) throw new Error("Dosya mesajı gönderilemedi");
 
             setError("");
         } catch (e: any) {
             setMessages((prev) => prev.filter((m) => String(m.id) !== String(tempId)));
-            const msg = e?.message ? String(e.message) : "Dosya gÃ¶nderilemedi";
+            const msg = e?.message ? String(e.message) : "Dosya gönderilemedi";
             if (msg.toLowerCase().includes("not found") || msg.toLowerCase().includes("bucket")) {
-                setError("Dosya gÃ¶nderilemedi: Supabase Storage'da 'chat-files' bucket yok. Supabase -> Storage -> New bucket: chat-files (Public) oluÅŸtur.");
+                setError("Dosya gönderilemedi: Supabase Storage'da 'chat-files' bucket yok. Supabase -> Storage -> New bucket: chat-files (Public) oluştur.");
             } else {
                 setError(msg);
             }
@@ -890,7 +890,7 @@ export default function MessageThreadPage() {
     if (loading || pageLoading) {
         return (
             <div className="container py-10">
-                <div className="text-sm text-gray-500 font-semibold">YÃ¼kleniyor...</div>
+                <div className="text-sm text-gray-500 font-semibold">Yükleniyor...</div>
             </div>
         );
     }
@@ -910,11 +910,11 @@ export default function MessageThreadPage() {
                         onClick={handleAdminClearThread}
                         className="bg-red-600 hover:bg-red-700 text-white"
                     >
-                        KonuÅŸmayÄ± Temizle
+                        Konuşmayı Temizle
                     </Button>
                 )}
                 <Link href="/messages" className="text-sm font-bold text-blue-600 hover:text-blue-700">
-                    Mesajlara dÃ¶n
+                    Mesajlara dön
                 </Link>
             </div>
 
@@ -927,7 +927,7 @@ export default function MessageThreadPage() {
             <Card className="p-0 overflow-hidden">
                 <div ref={listRef} className="h-[60vh] overflow-auto p-4 space-y-3 bg-gray-50">
                     {timeline.length === 0 ? (
-                        <div className="text-sm text-gray-500 font-semibold">HenÃ¼z mesaj yok.</div>
+                        <div className="text-sm text-gray-500 font-semibold text-center">Henüz mesaj yok.</div>
                     ) : (
                         timeline.map((it) => {
                             if (it.type === "message") {
@@ -947,9 +947,9 @@ export default function MessageThreadPage() {
                                             </div>
                                         )}
 
-                                        <div className={`max-w-[78%] rounded-2xl px-4 py-3 shadow-sm ${mine ? "bg-blue-600 text-white" : "bg-white border text-gray-900"}`}>
+                                        <div className={`max-w-[78%] rounded-3xl px-5 py-4 shadow-sm ${mine ? "bg-gradient-to-br from-blue-600 to-indigo-700 text-white" : "bg-white border text-gray-900"}`}>
                                             {isFile ? (
-                                                <div>
+                                                <div className="text-center">
                                                     <div className="text-sm font-black">Dosya</div>
                                                     <a
                                                         className={`text-sm font-semibold underline break-all ${mine ? "text-white" : "text-blue-600"}`}
@@ -959,14 +959,14 @@ export default function MessageThreadPage() {
                                                     >
                                                         {String(fd.name || "dosya")}
                                                     </a>
-                                                    <div className={`text-[10px] font-bold mt-2 ${mine ? "text-blue-100" : "text-gray-400"}`}>
+                                                    <div className={`text-[10px] font-bold mt-3 ${mine ? "text-blue-100" : "text-gray-400"}`}>
                                                         {m.created_at ? new Date(m.created_at).toLocaleString("tr-TR") : ""}
                                                     </div>
                                                 </div>
                                             ) : (
                                                 <>
-                                                    <div className="text-sm font-semibold whitespace-pre-wrap break-words">{m.text || ""}</div>
-                                                    <div className={`text-[10px] font-bold mt-2 ${mine ? "text-blue-100" : "text-gray-400"}`}>
+                                                    <div className="text-sm font-semibold whitespace-pre-wrap break-words text-center">{m.text || ""}</div>
+                                                    <div className={`text-[10px] font-bold mt-3 text-center ${mine ? "text-blue-100" : "text-gray-400"}`}>
                                                         {m.created_at ? new Date(m.created_at).toLocaleString("tr-TR") : ""}
                                                     </div>
                                                 </>
@@ -993,7 +993,7 @@ export default function MessageThreadPage() {
 
                             return (
                                 <div key={it.id} className={`flex ${mine ? "justify-end" : "justify-start"}`}>
-                                    <div className={`max-w-[92%] rounded-2xl px-4 py-3 border ${mine ? "bg-blue-50 border-blue-100" : "bg-white border-gray-200"}`}>
+                                    <div className={`max-w-[92%] rounded-3xl px-5 py-4 border shadow-sm ${mine ? "bg-blue-50 border-blue-100" : "bg-white border-gray-200"}`}>
                                         <div className="flex items-center justify-between gap-3">
                                             <div className="text-xs font-black uppercase tracking-widest text-gray-500">Teklif</div>
                                             <div
@@ -1011,16 +1011,16 @@ export default function MessageThreadPage() {
 
                                         <div className="mt-2 grid grid-cols-2 gap-2">
                                             <div className="rounded-xl bg-gray-50 p-3">
-                                                <div className="text-[10px] font-black uppercase tracking-widest text-gray-400">Fiyat</div>
-                                                <div className="text-sm font-black text-gray-900">{String(o.price)} â‚º</div>
+                                                <div className="text-[10px] font-black uppercase tracking-widest text-gray-400 text-center">Fiyat</div>
+                                                <div className="text-sm font-black text-gray-900 text-center">{String(o.price)} ₺</div>
                                             </div>
                                             <div className="rounded-xl bg-gray-50 p-3">
-                                                <div className="text-[10px] font-black uppercase tracking-widest text-gray-400">Teslim</div>
-                                                <div className="text-sm font-black text-gray-900">{String(o.delivery_days)} gÃ¼n</div>
+                                                <div className="text-[10px] font-black uppercase tracking-widest text-gray-400 text-center">Teslim</div>
+                                                <div className="text-sm font-black text-gray-900 text-center">{String(o.delivery_days)} gün</div>
                                             </div>
                                         </div>
 
-                                        {o.message && <div className="mt-2 text-sm font-semibold text-gray-700 whitespace-pre-wrap break-words">{o.message}</div>}
+                                        {o.message && <div className="mt-3 text-sm font-semibold text-gray-700 whitespace-pre-wrap break-words text-center">{o.message}</div>}
 
                                         {pending && receiverIsMe && (
                                             <div className="mt-3 flex gap-2 justify-end">
@@ -1052,7 +1052,7 @@ export default function MessageThreadPage() {
                         {offerOpen && (
                             <div className="rounded-2xl border bg-white p-4">
                                 <div className="flex items-center justify-between gap-3">
-                                    <div className="text-xs font-black uppercase tracking-widest text-gray-500">Teklif gÃ¶nder</div>
+                                    <div className="text-xs font-black uppercase tracking-widest text-gray-500">Teklif gönder</div>
                                     <Button type="button"
                                         disabled={sending}
                                         onClick={() => setOfferOpen(false)}
@@ -1065,14 +1065,14 @@ export default function MessageThreadPage() {
                                     <input
                                         value={offerPrice}
                                         onChange={(e) => setOfferPrice(e.target.value)}
-                                        placeholder="Fiyat (â‚º)"
+                                        placeholder="Fiyat (₺)"
                                         className="h-10 rounded-xl border px-3 text-sm font-semibold"
                                         disabled={sending}
                                     />
                                     <input
                                         value={offerDays}
                                         onChange={(e) => setOfferDays(e.target.value)}
-                                        placeholder="Teslim (gÃ¼n)"
+                                        placeholder="Teslim (gün)"
                                         className="h-10 rounded-xl border px-3 text-sm font-semibold"
                                         disabled={sending}
                                     />
@@ -1090,7 +1090,7 @@ export default function MessageThreadPage() {
                                         onClick={handleSendOffer}
                                         className="bg-blue-600 hover:bg-blue-700 text-white"
                                     >
-                                        Teklifi GÃ¶nder
+                                        Teklifi Gönder
                                     </Button>
                                 </div>
                             </div>
@@ -1125,7 +1125,7 @@ export default function MessageThreadPage() {
                                 </Button>
                             </div>
                             <div className="text-[10px] font-black uppercase tracking-widest text-gray-400">
-                                {otherUserId ? "" : "KullanÄ±cÄ± bulunamadÄ±"}
+                                {otherUserId ? "" : "Kullanıcı bulunamadı"}
                             </div>
                         </div>
 
@@ -1140,7 +1140,7 @@ export default function MessageThreadPage() {
                         />
                         <div className="flex justify-end">
                             <Button type="button" onClick={handleSend} disabled={sending || !text.trim()} className="bg-blue-600 hover:bg-blue-700 text-white">
-                                {sending ? "GÃ¶nderiliyor..." : "GÃ¶nder"}
+                                {sending ? "Gönderiliyor..." : "Gönder"}
                             </Button>
                         </div>
                     </div>

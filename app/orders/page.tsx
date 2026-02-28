@@ -10,6 +10,22 @@ import { supabase } from "@/lib/supabase";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 
+type CancellationRequestRow = {
+    id: string | number;
+    order_id: string | number;
+    requester_id: string;
+    requester_username: string;
+    requester_role: "employer" | "freelancer";
+    responder_id: string;
+    responder_username: string;
+    responder_role: "employer" | "freelancer";
+    compensation_rate: number;
+    reason: string | null;
+    status: "pending" | "accepted" | "rejected" | "admin_approved" | "admin_rejected";
+    created_at: string;
+    responded_at: string | null;
+};
+
 const statusConfig = {
     pending: { label: "Bekliyor", icon: Clock, color: "text-yellow-600 bg-yellow-50 border-yellow-200" },
     active: { label: "Devam Ediyor", icon: Clock, color: "text-blue-600 bg-blue-50 border-blue-200" },
@@ -22,6 +38,7 @@ export default function OrdersPage() {
     const { user } = useAuth();
     const router = useRouter();
     const [orders, setOrders] = useState<Order[]>([]);
+    const [cancelRequests, setCancelRequests] = useState<CancellationRequestRow[]>([]);
     const [busyId, setBusyId] = useState<string>("");
 
     const [reviewOpen, setReviewOpen] = useState(false);
@@ -29,11 +46,32 @@ export default function OrdersPage() {
     const [reviewRating, setReviewRating] = useState<string>("5");
     const [reviewComment, setReviewComment] = useState<string>("");
 
+    const loadCancellationRequests = async (orderRows: Order[]) => {
+        const ids = orderRows.map((o) => Number(o.id)).filter((n) => Number.isFinite(n) && n > 0);
+        if (ids.length === 0) {
+            setCancelRequests([]);
+            return;
+        }
+
+        const { data, error } = await supabase
+            .from("order_cancellation_requests")
+            .select("id, order_id, requester_id, requester_username, requester_role, responder_id, responder_username, responder_role, compensation_rate, reason, status, created_at, responded_at")
+            .in("order_id", ids)
+            .order("created_at", { ascending: false });
+
+        if (error) {
+            setCancelRequests([]);
+            return;
+        }
+        setCancelRequests((data || []) as unknown as CancellationRequestRow[]);
+    };
+
     useEffect(() => {
         if (!user) { router.push("/login"); return; }
         (async () => {
             const rows = await getUserOrders(user.username, user.role as "employer" | "freelancer" | "admin");
             setOrders(rows);
+            await loadCancellationRequests(rows);
         })();
     }, [user, router]);
 
@@ -41,6 +79,99 @@ export default function OrdersPage() {
         if (!user) return;
         const rows = await getUserOrders(user.username, user.role as "employer" | "freelancer" | "admin");
         setOrders(rows);
+        await loadCancellationRequests(rows);
+    };
+
+    const handleRequestCancellation = async (order: Order) => {
+        if (!user) return;
+        if (busyId) return;
+        if (!order.id) return;
+        if (order.status !== "active" && order.status !== "delivered") return;
+
+        const reason = (window.prompt("Iptal gerekcesini yazin:", "") || "").trim();
+        if (!reason) return;
+
+        const ratioRaw = (window.prompt("Odeme payi secin: 0, 25, 50, 75, 100", "50") || "").trim();
+        const ratio = Number(ratioRaw);
+        if (!Number.isFinite(ratio) || ratio < 0 || ratio > 100) {
+            window.alert("Gecerli bir oran secin (0-100).");
+            return;
+        }
+        const compensationRate = ratio / 100;
+
+        const requesterRole = user.role === "employer" ? "employer" : "freelancer";
+        const responderRole = requesterRole === "employer" ? "freelancer" : "employer";
+        const requesterUsername = user.username;
+        const responderUsername = requesterRole === "employer" ? order.freelancer : order.client;
+        const responderId = requesterRole === "employer" ? (order.sellerId || "") : (order.buyerId || "");
+        if (!responderId) {
+            window.alert("Karsi taraf bilgisi bulunamadi.");
+            return;
+        }
+
+        const existingPending = cancelRequests.find(
+            (r) => Number(r.order_id) === Number(order.id) && String(r.status) === "pending"
+        );
+        if (existingPending) {
+            window.alert("Bu siparis icin zaten bekleyen bir iptal talebi var.");
+            return;
+        }
+
+        setBusyId(order.id);
+        try {
+            const { error } = await supabase.from("order_cancellation_requests").insert([
+                {
+                    order_id: Number(order.id),
+                    requester_id: user.id,
+                    requester_username: requesterUsername,
+                    requester_role: requesterRole,
+                    responder_id: responderId,
+                    responder_username: responderUsername,
+                    responder_role: responderRole,
+                    compensation_rate: compensationRate,
+                    reason,
+                    status: "pending",
+                },
+            ]);
+            if (error) throw error;
+            await refresh();
+        } catch (e: any) {
+            window.alert("Iptal talebi olusturulamadi: " + String(e?.message || e));
+        } finally {
+            setBusyId("");
+        }
+    };
+
+    const handleRespondCancellation = async (req: CancellationRequestRow, decision: "accepted" | "rejected") => {
+        if (!user) return;
+        if (busyId) return;
+        if (String(req.status) !== "pending") return;
+        if (String(req.responder_id) !== String(user.id)) return;
+
+        const key = `cancel-${String(req.id)}`;
+        setBusyId(key);
+        try {
+            const { error: updErr } = await supabase
+                .from("order_cancellation_requests")
+                .update({ status: decision, responded_at: new Date().toISOString() })
+                .eq("id", Number(req.id));
+            if (updErr) throw updErr;
+
+            if (decision === "accepted") {
+                const { error: ordErr } = await supabase
+                    .from("orders")
+                    .update({ status: "cancelled" })
+                    .eq("id", Number(req.order_id));
+                if (ordErr) throw ordErr;
+            }
+
+            await refresh();
+            if (typeof window !== "undefined") window.dispatchEvent(new Event("orders_updated"));
+        } catch (e: any) {
+            window.alert("Iptal talebi guncellenemedi: " + String(e?.message || e));
+        } finally {
+            setBusyId("");
+        }
     };
 
     const handleSendDelivery = async (order: Order) => {
@@ -361,6 +492,12 @@ export default function OrdersPage() {
                         const StatusIcon = config.icon;
                         const isMineFreelancer = user.role === "freelancer" && user.username === order.freelancer;
                         const isMineEmployer = user.role === "employer" && user.username === order.client;
+                        const latestCancelReq = cancelRequests.find((r) => Number(r.order_id) === Number(order.id));
+                        const cancelPending = !!latestCancelReq && String(latestCancelReq.status) === "pending";
+                        const canRespondCancel =
+                            !!latestCancelReq &&
+                            String(latestCancelReq.status) === "pending" &&
+                            String(latestCancelReq.responder_id || "") === String(user.id || "");
                         const busy = busyId === order.id;
 
                         return (
