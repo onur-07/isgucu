@@ -274,10 +274,8 @@ export default function JobDetailPage() {
 
                 const signed = await supabase.storage.from("job-attachments").createSignedUrl(cleanPath, 60 * 60);
                 const signedUrl = String(signed.data?.signedUrl || "");
-                if (signedUrl) return signedUrl;
-
-                const publicUrl = supabase.storage.from("job-attachments").getPublicUrl(cleanPath).data.publicUrl || "";
-                return publicUrl;
+                if (signed.error || !signedUrl) return "";
+                return signedUrl;
             };
 
             const tryFindInFolder = async (searchName: string) => {
@@ -291,9 +289,10 @@ export default function JobDetailPage() {
                             .from("job-attachments")
                             .list(prefix, { limit: 500 });
                         const rows = (data || []) as StorageListItem[];
-                        const found = rows.find((x) => String(x?.name || "") === cleanName)
-                            || rows.find((x) => String(x?.name || "").endsWith(cleanName))
-                            || rows.find((x) => String(x?.name || "").includes(cleanName));
+                        const target = cleanName.toLowerCase();
+                        const found = rows.find((x) => String(x?.name || "").toLowerCase() === target)
+                            || rows.find((x) => String(x?.name || "").toLowerCase().endsWith(target))
+                            || rows.find((x) => String(x?.name || "").toLowerCase().includes(target));
                         if (found?.name) return `${prefix}/${found.name}`;
                     } catch {
                         // try next prefix
@@ -581,21 +580,22 @@ export default function JobDetailPage() {
                                             {job.attachments.map((file, i) => {
                                                 const rawFile = String(file || "").trim();
                                                 const fileName = rawFile.split('/').pop() || rawFile;
-                                                const isDirectUrl = rawFile.startsWith('http') || rawFile.startsWith('blob:');
-                                                const storagePublicUrl = !isDirectUrl && rawFile
-                                                    ? supabase.storage.from("job-attachments").getPublicUrl(rawFile).data.publicUrl
-                                                    : "";
-                                                const finalUrl = resolvedAttachmentUrls[i] || (isDirectUrl ? rawFile : storagePublicUrl);
+                                                const isDirectUrl = rawFile.startsWith('http') || rawFile.startsWith('blob:') || rawFile.startsWith('data:');
+                                                const finalUrl = resolvedAttachmentUrls[i] || (isDirectUrl ? rawFile : "");
                                                 const canOpen = Boolean(finalUrl);
                                                 const isImage = /\.(jpg|jpeg|png|gif|webp|svg|bmp)$/i.test(fileName);
                                                 return (
                                                     <a
                                                         key={i}
-                                                        href={canOpen ? finalUrl : "javascript:void(0)"}
-                                                        target="_blank"
-                                                        rel="noopener noreferrer"
+                                                        href={canOpen ? finalUrl : "#"}
+                                                        target={canOpen ? "_blank" : undefined}
+                                                        rel={canOpen ? "noopener noreferrer" : undefined}
                                                         onClick={(e) => { if (!canOpen) e.preventDefault(); }}
-                                                        className="flex items-center gap-3 p-4 bg-slate-50 rounded-2xl border border-slate-100 group hover:border-blue-200 transition-colors cursor-pointer"
+                                                        className={`flex items-center gap-3 p-4 rounded-2xl border transition-colors ${canOpen
+                                                                ? "bg-slate-50 border-slate-100 group hover:border-blue-200 cursor-pointer"
+                                                                : "bg-slate-50/60 border-slate-100 cursor-not-allowed opacity-70"
+                                                            }`}
+                                                        title={canOpen ? fileName : "Dosya bulunamadı veya erişim izni yok"}
                                                     >
                                                         {isImage && canOpen ? (
                                                             <div className="h-10 w-10 rounded-xl overflow-hidden shadow-sm">
