@@ -624,7 +624,17 @@ export default function JobDetailPage() {
                                                 const rawFile = String(file || "").trim();
                                                 const fileName = rawFile.split('/').pop() || rawFile;
                                                 const isDirectUrl = rawFile.startsWith('http') || rawFile.startsWith('blob:') || rawFile.startsWith('data:');
-                                                const finalUrl = resolvedAttachmentUrls[i] || (isDirectUrl ? rawFile : "");
+                                                const publicFromRaw = !isDirectUrl && rawFile
+                                                    ? String(supabase.storage.from("job-attachments").getPublicUrl(rawFile).data.publicUrl || "")
+                                                    : "";
+                                                const publicFromFileName = !isDirectUrl && fileName
+                                                    ? String(supabase.storage.from("job-attachments").getPublicUrl(fileName).data.publicUrl || "")
+                                                    : "";
+                                                const finalUrl =
+                                                    resolvedAttachmentUrls[i]
+                                                    || (isDirectUrl ? rawFile : "")
+                                                    || publicFromRaw
+                                                    || publicFromFileName;
                                                 const canOpen = Boolean(finalUrl);
                                                 const isImage = /\.(jpg|jpeg|png|gif|webp|svg|bmp)$/i.test(fileName);
                                                 return (
@@ -642,7 +652,14 @@ export default function JobDetailPage() {
                                                     >
                                                         {isImage && canOpen ? (
                                                             <div className="h-10 w-10 rounded-xl overflow-hidden shadow-sm">
-                                                                <img src={finalUrl} alt={fileName} className="h-full w-full object-cover" />
+                                                                <Image
+                                                                    src={finalUrl}
+                                                                    alt={fileName}
+                                                                    width={40}
+                                                                    height={40}
+                                                                    unoptimized
+                                                                    className="h-full w-full object-cover"
+                                                                />
                                                             </div>
                                                         ) : (
                                                             <div className="h-10 w-10 bg-white rounded-xl shadow-sm flex items-center justify-center text-blue-600">
