@@ -22,7 +22,8 @@ interface Gig {
     subCategory?: string;
     serviceType?: string;
     price: string;
-    createdAt: string;
+    createdAt?: string;
+    created_at?: string;
     isActive?: boolean;
     seller?: string;
     sellerAvatarUrl?: string;
@@ -34,6 +35,9 @@ interface Gig {
 export function GigCard({ gig }: { gig: Gig }) {
     const hasImages = gig.images && gig.images.length > 0;
     const basePrice = gig.packages?.basic?.price || gig.price;
+    const rawDate = (gig.createdAt || gig.created_at || "").trim();
+    const dateObj = rawDate ? new Date(rawDate) : null;
+    const hasValidDate = !!dateObj && !Number.isNaN(dateObj.getTime());
 
     return (
         <Link href={`/gigs/${gig.id}`} className="block group">
@@ -147,7 +151,7 @@ export function GigCard({ gig }: { gig: Gig }) {
                         </div>
                         <div className="flex items-center gap-1.5 bg-gray-50 px-2.5 py-1.5 rounded-lg text-[10px] text-gray-500 font-bold border border-gray-100 shadow-sm">
                             <Clock className="h-3 w-3 text-blue-500" />
-                            {formatDistance(new Date(gig.createdAt), new Date(), { addSuffix: true, locale: tr })}
+                            {hasValidDate ? formatDistance(dateObj!, new Date(), { addSuffix: true, locale: tr }) : "—"}
                         </div>
                     </div>
                 </div>
