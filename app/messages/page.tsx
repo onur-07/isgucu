@@ -7,6 +7,7 @@ import { useAuth } from "@/components/auth/auth-context";
 import { supabase } from "@/lib/supabase";
 import { displayUsername, usernameFold, usernameKey } from "@/lib/utils";
 import { Card } from "@/components/ui/card";
+import { Check, CheckCheck } from "lucide-react";
 
 export default function MessagesPage() {
     const router = useRouter();
@@ -18,6 +19,8 @@ export default function MessagesPage() {
             lastText: string;
             lastAt: string;
             unreadCount: number;
+            lastFromMe: boolean;
+            lastRead: boolean;
         }>
     >([]);
     const [error, setError] = useState<string>("");
@@ -114,6 +117,8 @@ export default function MessagesPage() {
                         lastText: string;
                         lastAt: string;
                         unreadCount: number;
+                        lastFromMe: boolean;
+                        lastRead: boolean;
                     }
                 >();
 
@@ -134,6 +139,8 @@ export default function MessagesPage() {
                             lastText: String((m as any).text || ""),
                             lastAt: String((m as any).created_at || ""),
                             unreadCount: isUnread ? 1 : 0,
+                            lastFromMe: sender === meKey,
+                            lastRead: !!(m as any).read,
                         });
                     } else {
                         if (isUnread) existing.unreadCount += 1;
@@ -223,8 +230,17 @@ export default function MessagesPage() {
                                             <div className="font-black text-gray-900 truncate">
                                                 {displayUsername(c.otherUsername)}
                                             </div>
-                                            <div className="text-[10px] font-bold text-gray-400 whitespace-nowrap shrink-0">
-                                                {c.lastAt ? new Date(c.lastAt).toLocaleString("tr-TR") : ""}
+                                            <div className="flex items-center gap-1 text-[10px] font-bold text-gray-400 whitespace-nowrap shrink-0">
+                                                {c.lastFromMe && (
+                                                    <span className="inline-flex items-center">
+                                                        {c.lastRead ? (
+                                                            <CheckCheck className="h-3.5 w-3.5 text-emerald-600" />
+                                                        ) : (
+                                                            <Check className="h-3.5 w-3.5 text-gray-400" />
+                                                        )}
+                                                    </span>
+                                                )}
+                                                <span>{c.lastAt ? new Date(c.lastAt).toLocaleString("tr-TR") : ""}</span>
                                             </div>
                                         </div>
                                         <div className="mt-1 flex items-center justify-between gap-3">

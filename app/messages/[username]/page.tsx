@@ -9,6 +9,7 @@ import { displayUsername, friendlySupabaseError, sanitizeMessage, usernameFold, 
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Check, CheckCheck } from "lucide-react";
 
 type ChatMessage = {
     id: string | number;
@@ -959,15 +960,33 @@ export default function MessageThreadPage() {
                                                     >
                                                         {String(fd.name || "dosya")}
                                                     </a>
-                                                    <div className={`text-[10px] font-bold mt-3 ${mine ? "text-blue-100" : "text-gray-400"}`}>
-                                                        {m.created_at ? new Date(m.created_at).toLocaleString("tr-TR") : ""}
+                                                    <div className={`mt-3 flex items-center justify-center gap-1 text-[10px] font-bold ${mine ? "text-blue-100" : "text-gray-400"}`}>
+                                                        <span>{m.created_at ? new Date(m.created_at).toLocaleString("tr-TR") : ""}</span>
+                                                        {mine && (
+                                                            <span className="inline-flex items-center">
+                                                                {m.read ? (
+                                                                    <CheckCheck className="h-3 w-3 text-emerald-300" />
+                                                                ) : (
+                                                                    <Check className="h-3 w-3 text-blue-100" />
+                                                                )}
+                                                            </span>
+                                                        )}
                                                     </div>
                                                 </div>
                                             ) : (
                                                 <>
                                                     <div className="text-sm font-semibold whitespace-pre-wrap break-words text-center">{m.text || ""}</div>
-                                                    <div className={`text-[10px] font-bold mt-3 text-center ${mine ? "text-blue-100" : "text-gray-400"}`}>
-                                                        {m.created_at ? new Date(m.created_at).toLocaleString("tr-TR") : ""}
+                                                    <div className={`mt-3 flex items-center justify-center gap-1 text-[10px] font-bold ${mine ? "text-blue-100" : "text-gray-400"}`}>
+                                                        <span>{m.created_at ? new Date(m.created_at).toLocaleString("tr-TR") : ""}</span>
+                                                        {mine && (
+                                                            <span className="inline-flex items-center">
+                                                                {m.read ? (
+                                                                    <CheckCheck className="h-3 w-3 text-emerald-300" />
+                                                                ) : (
+                                                                    <Check className="h-3 w-3 text-blue-100" />
+                                                                )}
+                                                            </span>
+                                                        )}
                                                     </div>
                                                 </>
                                             )}
