@@ -26,12 +26,14 @@ export function Header() {
         if (!user) return;
         const key = `isgucu_notifications_${usernameKey(user.username)}`;
         const legacyKey = `isgucu_notifications_${user.username}`;
+        const initKey = `isgucu_notifications_init_${usernameKey(user.username)}`;
 
         let raw = localStorage.getItem(key);
         if (!raw) {
             const legacyRaw = localStorage.getItem(legacyKey);
             if (legacyRaw) {
                 localStorage.setItem(key, legacyRaw);
+                localStorage.setItem(initKey, "1");
                 try {
                     localStorage.removeItem(legacyKey);
                 } catch { }
@@ -40,6 +42,10 @@ export function Header() {
         }
 
         if (!raw) {
+            if (localStorage.getItem(initKey) === "1") {
+                setNotifCount(0);
+                return;
+            }
             const defaultNotifs = [
                 {
                     id: "welcome-" + Date.now(),
@@ -51,6 +57,7 @@ export function Header() {
                 },
             ];
             localStorage.setItem(key, JSON.stringify(defaultNotifs));
+            localStorage.setItem(initKey, "1");
             setNotifCount(defaultNotifs.length);
             return;
         }
@@ -138,17 +145,17 @@ export function Header() {
             )}
             <div className="container flex h-20 md:h-24 items-center justify-between">
                 {/* Logo */}
-                <div className="flex items-center gap-8">
-                    <Link href="/" className="flex items-center space-x-2">
+                <div className="flex items-center gap-3 md:gap-8">
+                    <Link href="/" className="flex items-center gap-2 sm:gap-3 min-w-0">
                         <Image
                             src={siteConfig.logoUrl || "/logo.png"}
                             alt="İşgücü Logo"
                             width={160}
                             height={80}
-                            className="h-12 md:h-20 w-auto object-contain transition-all"
+                            className="h-14 sm:h-12 md:h-20 w-auto object-contain transition-all"
                             unoptimized
                         />
-                        <span className="font-heading text-2xl md:text-3xl font-bold bg-gradient-to-r from-blue-700 to-indigo-700 bg-clip-text text-transparent hidden sm:block">
+                        <span className="font-heading text-xl sm:text-2xl md:text-3xl font-bold bg-gradient-to-r from-blue-700 to-indigo-700 bg-clip-text text-transparent block leading-none truncate">
                             {siteConfig.siteName || "İŞGÜCÜ"}
                         </span>
                     </Link>

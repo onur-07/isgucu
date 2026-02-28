@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useAuth } from "@/components/auth/auth-context";
 import { useRouter } from "next/navigation";
@@ -22,21 +22,27 @@ const iconMap = {
     system: { icon: Bell, color: "bg-purple-100 text-purple-600" },
 };
 
+const notificationInitKey = (username: string) => `isgucu_notifications_init_${usernameKey(username)}`;
+
 function loadNotifications(username: string): Notification[] {
     const normKey = `isgucu_notifications_${usernameKey(username)}`;
     const legacyKey = `isgucu_notifications_${username}`;
+    const initKey = notificationInitKey(username);
 
     const raw = localStorage.getItem(normKey);
     if (raw) return JSON.parse(raw);
 
-    // Migration: older versions stored by raw username. Move once to normalized key.
     const legacyRaw = localStorage.getItem(legacyKey);
     if (legacyRaw) {
         localStorage.setItem(normKey, legacyRaw);
+        localStorage.setItem(initKey, "1");
         return JSON.parse(legacyRaw);
     }
 
-    // First time: create a welcome notification
+    if (localStorage.getItem(initKey) === "1") {
+        return [];
+    }
+
     const defaultNotifs: Notification[] = [
         {
             id: Date.now().toString(),
@@ -48,17 +54,19 @@ function loadNotifications(username: string): Notification[] {
         },
     ];
     localStorage.setItem(normKey, JSON.stringify(defaultNotifs));
+    localStorage.setItem(initKey, "1");
     return defaultNotifs;
 }
 
 function saveNotifications(username: string, notifs: Notification[]) {
     const normKey = `isgucu_notifications_${usernameKey(username)}`;
     const legacyKey = `isgucu_notifications_${username}`;
+    const initKey = notificationInitKey(username);
     localStorage.setItem(normKey, JSON.stringify(notifs));
+    localStorage.setItem(initKey, "1");
     try {
         localStorage.removeItem(legacyKey);
     } catch {}
-    // Trigger custom event for Header
     window.dispatchEvent(new Event("storage_updated"));
 }
 
@@ -68,27 +76,30 @@ export default function NotificationsPage() {
     const [notifications, setNotifications] = useState<Notification[]>([]);
 
     useEffect(() => {
-        if (!user) { router.push("/login"); return; }
+        if (!user) {
+            router.push("/login");
+            return;
+        }
         setNotifications(loadNotifications(user.username));
     }, [user, router]);
 
     const markRead = (id: string) => {
         if (!user) return;
-        const updated = notifications.map(n => n.id === id ? { ...n, read: true } : n);
+        const updated = notifications.map((n) => (n.id === id ? { ...n, read: true } : n));
         setNotifications(updated);
         saveNotifications(user.username, updated);
     };
 
     const deleteNotification = (id: string) => {
         if (!user) return;
-        const updated = notifications.filter(n => n.id !== id);
+        const updated = notifications.filter((n) => n.id !== id);
         setNotifications(updated);
         saveNotifications(user.username, updated);
     };
 
     const markAllRead = () => {
         if (!user) return;
-        const updated = notifications.map(n => ({ ...n, read: true }));
+        const updated = notifications.map((n) => ({ ...n, read: true }));
         setNotifications(updated);
         saveNotifications(user.username, updated);
     };
@@ -101,7 +112,7 @@ export default function NotificationsPage() {
 
     if (!user) return null;
 
-    const unreadCount = notifications.filter(n => !n.read).length;
+    const unreadCount = notifications.filter((n) => !n.read).length;
 
     return (
         <div className="container mx-auto px-4 py-8 max-w-3xl">
@@ -141,8 +152,7 @@ export default function NotificationsPage() {
                         return (
                             <div
                                 key={notif.id}
-                                className={`bg-white border rounded-xl p-5 flex items-start gap-4 transition-all hover:shadow-sm group ${!notif.read ? "border-l-4 border-l-blue-500 bg-blue-50/30" : ""
-                                    }`}
+                                className={`bg-white border rounded-xl p-5 flex items-start gap-4 transition-all hover:shadow-sm group ${!notif.read ? "border-l-4 border-l-blue-500 bg-blue-50/30" : ""}`}
                             >
                                 <div className={`h-10 w-10 rounded-full flex items-center justify-center shrink-0 ${config.color}`}>
                                     <Icon className="h-5 w-5" />
@@ -157,9 +167,7 @@ export default function NotificationsPage() {
                                     <p className="text-sm text-gray-500 mt-0.5">{notif.description}</p>
                                 </div>
                                 <div className="flex items-center gap-2 shrink-0">
-                                    {!notif.read && (
-                                        <div className="h-2.5 w-2.5 bg-blue-500 rounded-full" />
-                                    )}
+                                    {!notif.read && <div className="h-2.5 w-2.5 bg-blue-500 rounded-full" />}
                                     <button
                                         onClick={() => deleteNotification(notif.id)}
                                         className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded hover:bg-red-50 text-gray-400 hover:text-red-500"

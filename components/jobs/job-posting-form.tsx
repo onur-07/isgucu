@@ -212,17 +212,6 @@ export function JobPostingForm() {
 
             if (submitError) throw submitError;
 
-            // Keep a local cache copy as a visibility fallback between role/account switches.
-            const existingJobs = JSON.parse(localStorage.getItem("isgucu_jobs") || "[]");
-            const newJob = {
-                ...formData,
-                id: Date.now(),
-                created_at: new Date().toISOString(),
-                user_id: getUserIdentifier(),
-                status: "open",
-            };
-            localStorage.setItem("isgucu_jobs", JSON.stringify([newJob, ...existingJobs]));
-
             setSuccess(true);
             setTimeout(() => {
                 router.push("/jobs");

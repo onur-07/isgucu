@@ -47,6 +47,7 @@ function ProfilePageContent() {
     const [stats, setStats] = useState<UserStats | null>(null);
     const [reviews, setReviews] = useState<Review[]>([]);
     const [userJobs, setUserJobs] = useState<any[]>([]);
+    const [showAllJobs, setShowAllJobs] = useState(false);
     const [userGigs, setUserGigs] = useState<any[]>([]);
     const [gigsLoading, setGigsLoading] = useState(false);
     const [profile, setProfile] = useState<ProfileData>({
@@ -190,17 +191,6 @@ function ProfilePageContent() {
                 if (!merged.has(key)) merged.set(key, row);
             }
 
-            const localJobs = JSON.parse(localStorage.getItem("isgucu_jobs") || "[]");
-            const myLocalJobs = localJobs.filter((j: any) =>
-                String(j.user_id) === String(user.id) ||
-                String(j.user_id).toLowerCase() === String(user.username).toLowerCase()
-            );
-            for (const lj of myLocalJobs) {
-                const key = String((lj as any)?.id || "");
-                if (!key) continue;
-                if (!merged.has(key)) merged.set(key, lj);
-            }
-
             const allMyJobs = Array.from(merged.values()).sort((a: any, b: any) => {
                 const ta = new Date(String(a?.created_at || a?.createdAt || 0)).getTime();
                 const tb = new Date(String(b?.created_at || b?.createdAt || 0)).getTime();
@@ -307,17 +297,6 @@ function ProfilePageContent() {
             const key = String((row as any)?.id || "");
             if (!key) continue;
             if (!merged.has(key)) merged.set(key, row);
-        }
-
-        const localJobs = JSON.parse(localStorage.getItem("isgucu_jobs") || "[]");
-        const myLocalJobs = localJobs.filter((j: any) =>
-            String(j.user_id) === String(user.id) ||
-            String(j.user_id).toLowerCase() === String(user.username).toLowerCase()
-        );
-        for (const lj of myLocalJobs) {
-            const key = String((lj as any)?.id || "");
-            if (!key) continue;
-            if (!merged.has(key)) merged.set(key, lj);
         }
 
         const allMyJobs = Array.from(merged.values()).sort((a: any, b: any) => {
@@ -442,6 +421,8 @@ function ProfilePageContent() {
         }
         await refreshMyGigs();
     };
+
+    const visibleJobs = showAllJobs ? userJobs : userJobs.slice(0, 4);
 
     useEffect(() => {
         setAvatarRetryCount(0);
@@ -880,58 +861,6 @@ function ProfilePageContent() {
                             </div>
                         </div>
 
-                        {/* Contact Info Card */}
-                        <div className="bg-white rounded-[2rem] p-8 shadow-sm border border-slate-100">
-                            <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-6 border-b border-slate-50 pb-4">
-                                İletişim & Sosyal
-                            </h3>
-                            <div className="space-y-6">
-                                <div className="flex items-center gap-4">
-                                    <div className="h-10 w-10 rounded-xl bg-slate-50 flex items-center justify-center text-slate-400">
-                                        <Mail className="h-5 w-5" />
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">E-Posta Adresi</p>
-                                        <p className="text-sm font-bold text-slate-900 truncate">{user.email}</p>
-                                    </div>
-                                </div>
-                                <div className="flex items-center gap-4">
-                                    <div className="h-10 w-10 rounded-xl bg-slate-50 flex items-center justify-center text-slate-400 text-slate-400">
-                                        <Phone className="h-5 w-5" />
-                                    </div>
-                                    <div className="flex-1">
-                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">Telefon</p>
-                                        {editing ? (
-                                            <Input
-                                                value={profile.phone}
-                                                onChange={(e) => setProfile({ ...profile, phone: e.target.value })}
-                                                className="h-8 p-0 border-0 border-b-2 bg-transparent text-sm font-bold rounded-none focus-visible:ring-0 focus-visible:border-blue-500"
-                                            />
-                                        ) : (
-                                            <p className="text-sm font-bold text-slate-900">{profile.phone || "Eklenmemiş"}</p>
-                                        )}
-                                    </div>
-                                </div>
-                                <div className="flex items-center gap-4">
-                                    <div className="h-10 w-10 rounded-xl bg-slate-50 flex items-center justify-center text-slate-400">
-                                        <Globe className="h-5 w-5" />
-                                    </div>
-                                    <div className="flex-1">
-                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">Web Sitesi</p>
-                                        {editing ? (
-                                            <Input
-                                                value={profile.website}
-                                                onChange={(e) => setProfile({ ...profile, website: e.target.value })}
-                                                className="h-8 p-0 border-0 border-b-2 bg-transparent text-sm font-bold rounded-none focus-visible:ring-0 focus-visible:border-blue-500"
-                                            />
-                                        ) : (
-                                            <p className="text-sm font-bold text-blue-600 truncate">{profile.website || "Eklenmemiş"}</p>
-                                        )}
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
                         {/* IBAN Protection Info (Freelancer Only) */}
                         {isFreelancer && (
                             <div className="bg-gradient-to-br from-blue-600 to-indigo-700 rounded-[2rem] p-8 text-white shadow-xl shadow-blue-100">
@@ -1231,7 +1160,7 @@ function ProfilePageContent() {
                                         </div>
                                     ) : (
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 w-full">
-                                            {userJobs.map((job: any) => (
+                                            {visibleJobs.map((job: any) => (
                                                 <div key={job.id} className="hover:scale-[1.02] transition-transform duration-300">
                                                     <JobCard job={job} isOwner={true} />
                                                     <div className="mt-4 flex gap-2">
@@ -1254,6 +1183,18 @@ function ProfilePageContent() {
                                                     </div>
                                                 </div>
                                             ))}
+                                        </div>
+                                    )}
+                                    {userJobs.length > 4 && (
+                                        <div className="mt-8 w-full flex justify-center">
+                                            <Button
+                                                type="button"
+                                                variant="outline"
+                                                className="h-11 rounded-xl text-[10px] font-black uppercase tracking-widest border-slate-200 text-slate-700 hover:bg-slate-50"
+                                                onClick={() => setShowAllJobs((prev) => !prev)}
+                                            >
+                                                {showAllJobs ? "Daha Az Göster" : `Tümünü Göster (${userJobs.length})`}
+                                            </Button>
                                         </div>
                                     )}
                                 </div>

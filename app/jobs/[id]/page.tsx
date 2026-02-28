@@ -588,8 +588,8 @@ export default function JobDetailPage() {
                 </div>
             </div>
 
-            <main className="container pt-12">
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
+            <main className="container mx-auto px-4 sm:px-6 pt-8 md:pt-12">
+                <div className="mx-auto grid w-full max-w-[1400px] grid-cols-1 lg:grid-cols-12 gap-10">
 
                     {/* LEFT COLUMN: Main Content */}
                     <div className="lg:col-span-8 space-y-8">

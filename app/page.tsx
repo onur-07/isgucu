@@ -127,7 +127,7 @@ export default function Home() {
                     <Button className="bg-white text-yellow-700 font-black rounded-xl px-8 h-12 hover:bg-yellow-50">HEMEN İLAN VER 🎯</Button>
                   </Link>
                   <Link href="/freelancers">
-                    <Button variant="outline" className="border-white/30 text-white hover:bg-white/10 font-black rounded-xl px-8 h-12 uppercase text-[10px] tracking-widest">Freenlancer Ara</Button>
+                    <Button className="bg-slate-900 text-white border border-slate-900 hover:bg-slate-800 font-black rounded-xl px-8 h-12 uppercase text-[10px] tracking-widest">Freelancer Ara</Button>
                   </Link>
                 </div>
               </div>

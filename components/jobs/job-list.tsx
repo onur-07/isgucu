@@ -31,8 +31,6 @@ type DbJobRow = {
     status?: unknown;
 };
 
-type LocalJobRow = Record<string, unknown>;
-
 export function JobList({ limit, onTotalChange }: { limit?: number; onTotalChange?: (count: number) => void }) {
     const [jobs, setJobs] = useState<Job[]>([]);
     const [loading, setLoading] = useState(true);
@@ -45,9 +43,6 @@ export function JobList({ limit, onTotalChange }: { limit?: number; onTotalChang
                     .from('jobs')
                     .select('*')
                     .order('created_at', { ascending: false });
-
-                // 2. Fetch from LocalStorage (Mock/Fallback)
-                const localJobs = JSON.parse(localStorage.getItem("isgucu_jobs") || "[]") as LocalJobRow[];
 
                 const profileMap: Record<string, { id?: string; username?: string; avatar_url?: string; full_name?: string }> = {};
                 if (dbData && dbData.length > 0) {
@@ -105,36 +100,7 @@ export function JobList({ limit, onTotalChange }: { limit?: number; onTotalChang
                     };
                 });
 
-                const normalizedLocalJobs: Job[] = localJobs.map((j) => {
-                    const userId = String(j.user_id || "");
-                    const prof = profileMap[userId] || profileMap[userId.toLowerCase()];
-                    return {
-                        id: String(j.id || ""),
-                        title: String(j.title || ""),
-                        description: String(j.description || ""),
-                        category: String(j.category || ""),
-                        budget: String(j.budget || ""),
-                        createdAt: String(j.createdAt || j.created_at || new Date().toISOString()),
-                        user_id: userId,
-                        status: String(j.status || "open"),
-                        owner: prof ? {
-                            username: String(prof.username || ""),
-                            avatar_url: String(prof.avatar_url || ""),
-                            full_name: String(prof.full_name || ""),
-                        } : null,
-                    };
-                });
-
-                // Merge and dedupe by job id (DB row wins over local copy)
-                const byId: Record<string, Job> = {};
-                normalizedLocalJobs.forEach((j) => {
-                    byId[String(j.id)] = j;
-                });
-                normalizedDbJobs.forEach((j) => {
-                    byId[String(j.id)] = j;
-                });
-
-                const mergedJobs = Object.values(byId)
+                const mergedJobs = normalizedDbJobs
                     .filter((j) => String(j.status || "open").toLowerCase() !== "deleted")
                     .sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
 
