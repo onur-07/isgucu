@@ -196,7 +196,7 @@ export default function Home() {
           </div>
 
           <h1 className="text-5xl md:text-7xl font-bold tracking-tight bg-gradient-to-br from-gray-900 via-gray-800 to-gray-600 bg-clip-text text-transparent font-heading max-w-[900px] leading-tight mb-12 animate-in fade-in slide-in-from-bottom-5 duration-1000">
-            {managedHome?.title || "Hayalindeki Projeyi"} <br /> <span className="text-blue-600 italic">Gerçeğe Dönüştür</span>
+            Projeni <br /> <span className="text-blue-600 italic">Gerçeğe Dönüştür</span>
           </h1>
 
           {homeSummaryText.length > 0 && (
