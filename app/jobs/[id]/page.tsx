@@ -493,7 +493,6 @@ export default function JobDetailPage() {
             const summary = `Merhaba, "${job.title}" ilanı için ₺${price} bütçe ve ${days} gün teslim süresi ile teklifimi iletiyorum.`;
             const messageText = noteTrimmed ? `${summary}\n\nNot: ${noteTrimmed}` : summary;
 
-            const msgMod = sanitizeMessage(messageText);
             const receiverId = String(job.owner?.id || "").trim();
             if (!receiverId) {
                 setError("İlan sahibinin kullanıcı kaydı bulunamadı. Lütfen mesaj gönder butonunu kullanın.");
@@ -507,27 +506,16 @@ export default function JobDetailPage() {
                 receiver_id: receiverId,
                 sender_username: meKey,
                 receiver_username: otherKey,
-                message: noteTrimmed || summary,
+                message: noteTrimmed || messageText,
                 price,
                 delivery_days: days,
                 extras: { source: "job", job_id: String(job.id) },
                 status: "pending",
             };
 
-            const messagePayload = {
-                sender_username: meKey,
-                receiver_username: otherKey,
-                text: msgMod.cleanedText || messageText,
-                read: false,
-            };
-
-            const [offerIns, msgIns] = await Promise.all([
-                supabase.from("offers").insert([offerPayload]),
-                supabase.from("messages").insert([messagePayload]),
-            ]);
+            const offerIns = await supabase.from("offers").insert([offerPayload]);
 
             if (offerIns.error) throw offerIns.error;
-            if (msgIns.error) throw msgIns.error;
 
             setSuccess(true);
             setTimeout(() => {
