@@ -26,6 +26,13 @@ type CancellationRequestRow = {
     responded_at: string | null;
 };
 
+type OrderDeliveryRow = {
+    order_id: string | number;
+    kind: "delivery" | "revision_request" | "accept" | string;
+    message: string | null;
+    created_at: string;
+};
+
 const statusConfig = {
     pending: { label: "Bekliyor", icon: Clock, color: "text-yellow-600 bg-yellow-50 border-yellow-200" },
     active: { label: "Devam Ediyor", icon: Clock, color: "text-blue-600 bg-blue-50 border-blue-200" },
@@ -39,6 +46,7 @@ export default function OrdersPage() {
     const router = useRouter();
     const [orders, setOrders] = useState<Order[]>([]);
     const [cancelRequests, setCancelRequests] = useState<CancellationRequestRow[]>([]);
+    const [revisionNotesByOrder, setRevisionNotesByOrder] = useState<Record<string, string>>({});
     const [busyId, setBusyId] = useState<string>("");
 
     const [reviewOpen, setReviewOpen] = useState(false);
@@ -46,6 +54,22 @@ export default function OrdersPage() {
     const [reviewRating, setReviewRating] = useState<string>("5");
     const [reviewComment, setReviewComment] = useState<string>("");
     const norm = (v: string | null | undefined) => String(v || "").trim().toLowerCase();
+
+    const [deliveryOpen, setDeliveryOpen] = useState(false);
+    const [deliveryOrder, setDeliveryOrder] = useState<Order | null>(null);
+    const [deliveryMessage, setDeliveryMessage] = useState("");
+
+    const [cancelOpen, setCancelOpen] = useState(false);
+    const [cancelOrder, setCancelOrder] = useState<Order | null>(null);
+    const [cancelReason, setCancelReason] = useState("");
+    const [cancelRatio, setCancelRatio] = useState("50");
+
+    const [revisionOpen, setRevisionOpen] = useState(false);
+    const [revisionOrder, setRevisionOrder] = useState<Order | null>(null);
+    const [revisionReason, setRevisionReason] = useState("");
+
+    const [acceptOpen, setAcceptOpen] = useState(false);
+    const [acceptOrder, setAcceptOrder] = useState<Order | null>(null);
 
     const loadCancellationRequests = async (orderRows: Order[]) => {
         const ids = orderRows.map((o) => Number(o.id)).filter((n) => Number.isFinite(n) && n > 0);
@@ -67,12 +91,43 @@ export default function OrdersPage() {
         setCancelRequests((data || []) as unknown as CancellationRequestRow[]);
     };
 
+    const loadRevisionNotes = async (orderRows: Order[]) => {
+        const ids = orderRows.map((o) => Number(o.id)).filter((n) => Number.isFinite(n) && n > 0);
+        if (ids.length === 0) {
+            setRevisionNotesByOrder({});
+            return;
+        }
+
+        const { data, error } = await supabase
+            .from("order_deliveries")
+            .select("order_id, kind, message, created_at")
+            .eq("kind", "revision_request")
+            .in("order_id", ids)
+            .order("created_at", { ascending: false });
+
+        if (error) {
+            setRevisionNotesByOrder({});
+            return;
+        }
+
+        const rows = (data || []) as unknown as OrderDeliveryRow[];
+        const next: Record<string, string> = {};
+        for (const row of rows) {
+            const key = String(row.order_id || "");
+            if (!key || next[key]) continue;
+            const msg = String(row.message || "").trim();
+            if (msg) next[key] = msg;
+        }
+        setRevisionNotesByOrder(next);
+    };
+
     useEffect(() => {
         if (!user) { router.push("/login"); return; }
         (async () => {
             const rows = await getUserOrders(user.username, user.role as "employer" | "freelancer" | "admin", user.id);
             setOrders(rows);
             await loadCancellationRequests(rows);
+            await loadRevisionNotes(rows);
         })();
     }, [user, router]);
 
@@ -81,6 +136,7 @@ export default function OrdersPage() {
         const rows = await getUserOrders(user.username, user.role as "employer" | "freelancer" | "admin", user.id);
         setOrders(rows);
         await loadCancellationRequests(rows);
+        await loadRevisionNotes(rows);
     };
 
     const reopenRelatedJobIfAny = async (orderId: number) => {
@@ -115,16 +171,16 @@ export default function OrdersPage() {
         if (jobUpdErr) throw jobUpdErr;
     };
 
-    const handleRequestCancellation = async (order: Order) => {
+    const handleRequestCancellation = async (order: Order, reasonInput: string, ratioInput: string) => {
         if (!user) return;
         if (busyId) return;
         if (!order.id) return;
-        if (order.status !== "active" && order.status !== "delivered") return;
+        if (order.status !== "active" && order.status !== "pending" && order.status !== "delivered") return;
 
-        const reason = (window.prompt("Iptal gerekcesini yazin:", "") || "").trim();
+        const reason = String(reasonInput || "").trim();
         if (!reason) return;
 
-        const ratioRaw = (window.prompt("Odeme payi secin: 0, 25, 50, 75, 100", "50") || "").trim();
+        const ratioRaw = String(ratioInput || "").trim();
         const ratio = Number(ratioRaw);
         if (!Number.isFinite(ratio) || ratio < 0 || ratio > 100) {
             window.alert("Gecerli bir oran secin (0-100).");
@@ -208,14 +264,13 @@ export default function OrdersPage() {
         }
     };
 
-    const handleSendDelivery = async (order: Order) => {
+    const handleSendDelivery = async (order: Order, messageInput: string) => {
         if (!user) return;
         if (busyId) return;
         if (user.role !== "freelancer") return;
         if (!order.id) return;
         if (order.status !== "active" && order.status !== "pending") return;
-
-        const message = window.prompt("Teslim notu (opsiyonel):", "") ?? "";
+        const message = String(messageInput || "");
 
         setBusyId(order.id);
         try {
@@ -326,13 +381,13 @@ export default function OrdersPage() {
         await insertReview(o, rating, reviewComment);
     };
 
-    const handleRequestRevision = async (order: Order) => {
+    const handleRequestRevision = async (order: Order, reasonInput: string) => {
         if (!user) return;
         if (busyId) return;
         if (user.role !== "employer") return;
         if (order.status !== "delivered") return;
 
-        const reason = window.prompt("Revizyon isteği (gerekçe):", "") ?? "";
+        const reason = String(reasonInput || "");
         if (!reason.trim()) return;
 
         setBusyId(order.id);
@@ -373,9 +428,6 @@ export default function OrdersPage() {
             window.alert("Bu sipariş için ödeme zaten cüzdana aktarılmış.");
             return;
         }
-
-        const ok = window.confirm("Teslimi onaylayıp siparişi tamamlamak istiyor musun?");
-        if (!ok) return;
 
         setBusyId(order.id);
         try {
@@ -425,6 +477,77 @@ export default function OrdersPage() {
         } finally {
             setBusyId("");
         }
+    };
+
+    const openDeliveryModal = (order: Order) => {
+        setDeliveryOrder(order);
+        setDeliveryMessage("");
+        setDeliveryOpen(true);
+    };
+
+    const submitDeliveryModal = async () => {
+        if (!deliveryOrder) return;
+        const order = deliveryOrder;
+        setDeliveryOpen(false);
+        setDeliveryOrder(null);
+        await handleSendDelivery(order, deliveryMessage);
+    };
+
+    const openCancelModal = (order: Order) => {
+        setCancelOrder(order);
+        setCancelReason("");
+        setCancelRatio("50");
+        setCancelOpen(true);
+    };
+
+    const submitCancelModal = async () => {
+        if (!cancelOrder) return;
+        const reason = cancelReason.trim();
+        const ratioNum = Number(cancelRatio);
+        if (!reason) {
+            window.alert("Lütfen iptal gerekçesini yazın.");
+            return;
+        }
+        if (!Number.isFinite(ratioNum) || ratioNum < 0 || ratioNum > 100) {
+            window.alert("Geçerli bir oran girin (0-100).");
+            return;
+        }
+        const order = cancelOrder;
+        setCancelOpen(false);
+        setCancelOrder(null);
+        await handleRequestCancellation(order, reason, String(ratioNum));
+    };
+
+    const openRevisionModal = (order: Order) => {
+        setRevisionOrder(order);
+        setRevisionReason("");
+        setRevisionOpen(true);
+    };
+
+    const submitRevisionModal = async () => {
+        if (!revisionOrder) return;
+        const reason = revisionReason.trim();
+        if (!reason) {
+            window.alert("Lütfen revizyon gerekçesini yazın.");
+            return;
+        }
+        const order = revisionOrder;
+        setRevisionOpen(false);
+        setRevisionOrder(null);
+        await handleRequestRevision(order, reason);
+    };
+
+    const openAcceptModal = (order: Order) => {
+        setAcceptOrder(order);
+        setAcceptOpen(true);
+    };
+
+    const submitAcceptModal = async () => {
+        if (!acceptOrder) return;
+        const order = acceptOrder;
+        setAcceptOpen(false);
+        setAcceptOrder(null);
+        await handleAcceptDelivery(order);
     };
 
     if (!user) return null;
@@ -488,6 +611,100 @@ export default function OrdersPage() {
                             <Button onClick={submitReviewModal} disabled={!!busyId} className="bg-slate-900 hover:bg-slate-800 text-white">
                                 Kaydet
                             </Button>
+                        </div>
+                    </div>
+                </div>
+            )}
+            {deliveryOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+                    <div className="w-full max-w-lg rounded-2xl bg-white shadow-2xl border border-slate-100">
+                        <div className="p-5 border-b border-slate-100 flex items-center justify-between">
+                            <h3 className="font-black text-slate-900">Siparişi Teslim Et</h3>
+                            <Button variant="outline" size="sm" onClick={() => setDeliveryOpen(false)}>Kapat</Button>
+                        </div>
+                        <div className="p-5 space-y-3">
+                            <div className="text-xs text-gray-500">Teslim notu (opsiyonel)</div>
+                            <Textarea
+                                value={deliveryMessage}
+                                onChange={(e) => setDeliveryMessage(e.target.value)}
+                                className="min-h-[120px]"
+                                placeholder="Yaptığınız işleri, teslim dosyalarını veya kısa notunuzu yazın."
+                            />
+                        </div>
+                        <div className="p-5 border-t border-slate-100 flex flex-col sm:flex-row gap-2 sm:justify-end">
+                            <Button variant="outline" onClick={() => setDeliveryOpen(false)}>Vazgeç</Button>
+                            <Button onClick={submitDeliveryModal} disabled={!!busyId} className="bg-purple-600 hover:bg-purple-700 text-white">Teslim Et</Button>
+                        </div>
+                    </div>
+                </div>
+            )}
+            {cancelOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+                    <div className="w-full max-w-lg rounded-2xl bg-white shadow-2xl border border-slate-100">
+                        <div className="p-5 border-b border-slate-100 flex items-center justify-between">
+                            <h3 className="font-black text-slate-900">İade / İptal Talebi</h3>
+                            <Button variant="outline" size="sm" onClick={() => setCancelOpen(false)}>Kapat</Button>
+                        </div>
+                        <div className="p-5 space-y-4">
+                            <div className="space-y-2">
+                                <div className="text-xs text-gray-500">Gerekçe</div>
+                                <Textarea
+                                    value={cancelReason}
+                                    onChange={(e) => setCancelReason(e.target.value)}
+                                    className="min-h-[120px]"
+                                    placeholder="İptal/iade talebinin nedenini yazın."
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <div className="text-xs text-gray-500">Ödeme Payı (%)</div>
+                                <Input
+                                    value={cancelRatio}
+                                    onChange={(e) => setCancelRatio(e.target.value.replace(/[^\d]/g, ""))}
+                                    inputMode="numeric"
+                                    placeholder="0 - 100"
+                                />
+                            </div>
+                        </div>
+                        <div className="p-5 border-t border-slate-100 flex flex-col sm:flex-row gap-2 sm:justify-end">
+                            <Button variant="outline" onClick={() => setCancelOpen(false)}>Vazgeç</Button>
+                            <Button onClick={submitCancelModal} disabled={!!busyId} className="bg-red-600 hover:bg-red-700 text-white">Talep Gönder</Button>
+                        </div>
+                    </div>
+                </div>
+            )}
+            {revisionOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+                    <div className="w-full max-w-lg rounded-2xl bg-white shadow-2xl border border-slate-100">
+                        <div className="p-5 border-b border-slate-100 flex items-center justify-between">
+                            <h3 className="font-black text-slate-900">Revizyon Gerekçesi</h3>
+                            <Button variant="outline" size="sm" onClick={() => setRevisionOpen(false)}>Kapat</Button>
+                        </div>
+                        <div className="p-5 space-y-2">
+                            <div className="text-xs text-gray-500">Freelancer'a gönderilecek not</div>
+                            <Textarea
+                                value={revisionReason}
+                                onChange={(e) => setRevisionReason(e.target.value)}
+                                className="min-h-[130px]"
+                                placeholder="Nelerin düzenlenmesini istediğinizi net yazın."
+                            />
+                        </div>
+                        <div className="p-5 border-t border-slate-100 flex flex-col sm:flex-row gap-2 sm:justify-end">
+                            <Button variant="outline" onClick={() => setRevisionOpen(false)}>Vazgeç</Button>
+                            <Button onClick={submitRevisionModal} disabled={!!busyId} className="bg-gray-800 hover:bg-gray-900 text-white">Revizyon İste</Button>
+                        </div>
+                    </div>
+                </div>
+            )}
+            {acceptOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+                    <div className="w-full max-w-md rounded-2xl bg-white shadow-2xl border border-slate-100">
+                        <div className="p-5 border-b border-slate-100">
+                            <h3 className="font-black text-slate-900">Teslim Onayı</h3>
+                            <p className="text-sm text-gray-500 mt-1">Siparişi onaylayınca tamamlandı durumuna geçer.</p>
+                        </div>
+                        <div className="p-5 flex flex-col sm:flex-row gap-2 sm:justify-end">
+                            <Button variant="outline" onClick={() => setAcceptOpen(false)}>Vazgeç</Button>
+                            <Button onClick={submitAcceptModal} disabled={!!busyId} className="bg-green-600 hover:bg-green-700 text-white">Onayla</Button>
                         </div>
                     </div>
                 </div>
@@ -576,7 +793,7 @@ export default function OrdersPage() {
                                                 <Button
                                                     size="sm"
                                                     disabled={busy || cancelPending}
-                                                    onClick={() => handleRequestCancellation(order)}
+                                                    onClick={() => openCancelModal(order)}
                                                     className="bg-red-50 hover:bg-red-100 text-red-700 border border-red-200"
                                                 >
                                                     Iptal Talebi
@@ -586,7 +803,7 @@ export default function OrdersPage() {
                                                 <Button
                                                     size="sm"
                                                     disabled={busy}
-                                                    onClick={() => handleSendDelivery(order)}
+                                                    onClick={() => openDeliveryModal(order)}
                                                     className="bg-purple-600 hover:bg-purple-700 text-white"
                                                 >
                                                     📦 Siparişi Teslim Et
@@ -599,7 +816,7 @@ export default function OrdersPage() {
                                                             <Button
                                                                 size="sm"
                                                                 disabled={busy}
-                                                                onClick={() => handleRequestRevision(order)}
+                                                                onClick={() => openRevisionModal(order)}
                                                                 className="bg-gray-200 hover:bg-gray-300 text-gray-900"
                                                             >
                                                                 🔁 Revizyon
@@ -607,7 +824,7 @@ export default function OrdersPage() {
                                                             <Button
                                                                 size="sm"
                                                                 disabled={busy}
-                                                                onClick={() => handleAcceptDelivery(order)}
+                                                                onClick={() => openAcceptModal(order)}
                                                                 className="bg-green-600 hover:bg-green-700 text-white"
                                                             >
                                                                 ✅ Onayla
@@ -624,6 +841,14 @@ export default function OrdersPage() {
                                         </div>
                                     </div>
                                 </div>
+                                {isMineFreelancer && revisionNotesByOrder[String(order.id)] && (
+                                    <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4">
+                                        <div className="text-[10px] font-black uppercase tracking-widest text-amber-700">Revizyon Notu</div>
+                                        <div className="mt-1 text-sm font-medium text-amber-900 whitespace-pre-wrap break-words">
+                                            {revisionNotesByOrder[String(order.id)]}
+                                        </div>
+                                    </div>
+                                )}
                                 {latestCancelReq && (
                                     <div className="mt-4 rounded-xl border border-red-100 bg-red-50/50 p-4">
                                         <div className="text-[10px] font-black uppercase tracking-widest text-red-600">
