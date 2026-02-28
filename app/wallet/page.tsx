@@ -42,7 +42,14 @@ export default function WalletPage() {
     const handleWithdraw = async () => {
         if (!user) return;
         if (busy) return;
-        if (balance.balance <= 0) return;
+        if (user.role !== "freelancer") {
+            window.alert("Para çekme işlemi sadece freelancer hesaplarında kullanılabilir.");
+            return;
+        }
+        if (balance.balance <= 0) {
+            window.alert("Çekilebilir bakiyeniz yok.");
+            return;
+        }
 
         const raw = window.prompt("Çekmek istediğiniz tutarı girin (₺):", String(balance.balance));
         if (raw === null) return;
@@ -119,7 +126,7 @@ export default function WalletPage() {
 
             {/* Action Buttons */}
             <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 mb-8 sm:items-center sm:justify-start">
-                <Button onClick={handleWithdraw} className="bg-green-600 hover:bg-green-700 text-white font-medium px-6 w-full sm:w-auto" disabled={balance.balance === 0 || busy}>
+                <Button onClick={handleWithdraw} className="bg-green-600 hover:bg-green-700 text-white font-medium px-6 w-full sm:w-auto" disabled={busy}>
                     💳 Para Çek
                 </Button>
                 <Button variant="outline" className="font-medium px-6 w-full sm:w-auto" disabled={transactions.length === 0}>
