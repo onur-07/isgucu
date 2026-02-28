@@ -866,9 +866,10 @@ function ProfilePageContent() {
                                 </div>
                                 <div className="p-5 bg-amber-50 rounded-2xl text-center space-y-1 border border-amber-100/50">
                                     <div className="text-2xl font-black text-amber-600 flex items-center justify-center gap-1">
-                                        {stats.averageRating > 0 ? stats.averageRating : "—"} <Star className="h-4 w-4 fill-amber-600" />
+                                        {stats.averageRating > 0 ? stats.averageRating.toFixed(1) : "0.0"} / 5.0
+                                        <Star className="h-4 w-4 fill-amber-600" />
                                     </div>
-                                    <div className="text-[9px] font-black text-amber-500 uppercase">Puan</div>
+                                    <div className="text-[9px] font-black text-amber-500 uppercase">Puan ({stats.reviewCount})</div>
                                 </div>
                                 <div className="p-5 bg-blue-50 rounded-2xl text-center space-y-1 border border-blue-100/50">
                                     <div className="text-xl font-black text-blue-700 leading-none py-1">

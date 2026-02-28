@@ -63,6 +63,7 @@ export default function OrdersPage() {
     const [reviewOpen, setReviewOpen] = useState(false);
     const [reviewOrder, setReviewOrder] = useState<Order | null>(null);
     const [reviewRating, setReviewRating] = useState<string>("5");
+    const [reviewHover, setReviewHover] = useState<number>(0);
     const [reviewComment, setReviewComment] = useState<string>("");
     const norm = (v: string | null | undefined) => String(v || "").trim().toLowerCase();
 
@@ -386,30 +387,13 @@ export default function OrdersPage() {
         }
     };
 
-    const handleReviewPrompt = async (order: Order) => {
-        if (!user) return;
-        if (busyId) return;
-        if (order.status !== "completed" && order.status !== "delivered") return;
-
-        const ratingRaw = window.prompt("Puan (1-5):", "5");
-        if (ratingRaw === null) return;
-        const rating = Math.round(Number(String(ratingRaw).trim()));
-        if (!Number.isFinite(rating) || rating < 1 || rating > 5) {
-            window.alert("Puan 1 ile 5 arasında olmalıdır.");
-            return;
-        }
-
-        const comment = (window.prompt("Yorum (opsiyonel):", "") ?? "").trim();
-
-        await insertReview(order, rating, comment);
-    };
-
     const openReviewModal = (order: Order) => {
         if (!user) return;
         if (busyId) return;
         if (order.status !== "completed" && order.status !== "delivered") return;
         setReviewOrder(order);
         setReviewRating("5");
+        setReviewHover(0);
         setReviewComment("");
         setReviewOpen(true);
     };
@@ -643,8 +627,26 @@ export default function OrdersPage() {
 
                         <div className="p-6 space-y-4">
                             <div className="space-y-2">
-                                <div className="text-xs font-black uppercase tracking-widest text-slate-500">Puan (1-5)</div>
-                                <Input value={reviewRating} onChange={(e) => setReviewRating(e.target.value)} className="h-11" />
+                                <div className="text-xs font-black uppercase tracking-widest text-slate-500">Puan</div>
+                                <div className="flex items-center gap-2">
+                                    {[1, 2, 3, 4, 5].map((v) => {
+                                        const active = (reviewHover || Number(reviewRating)) >= v;
+                                        return (
+                                            <button
+                                                key={v}
+                                                type="button"
+                                                onMouseEnter={() => setReviewHover(v)}
+                                                onMouseLeave={() => setReviewHover(0)}
+                                                onClick={() => setReviewRating(String(v))}
+                                                className="rounded-lg p-1 transition-transform hover:scale-110"
+                                                aria-label={`${v} yıldız`}
+                                            >
+                                                <Star className={`h-7 w-7 ${active ? "fill-amber-400 text-amber-400" : "text-slate-300"}`} />
+                                            </button>
+                                        );
+                                    })}
+                                    <span className="text-sm font-bold text-slate-600">{Number(reviewRating).toFixed(1)} / 5.0</span>
+                                </div>
                             </div>
 
                             <div className="space-y-2">
@@ -654,17 +656,7 @@ export default function OrdersPage() {
                         </div>
 
                         <div className="p-6 border-t border-slate-100 flex flex-col sm:flex-row gap-2 sm:items-center sm:justify-end">
-                            <Button
-                                variant="outline"
-                                onClick={() => {
-                                    const o = reviewOrder;
-                                    setReviewOpen(false);
-                                    setReviewOrder(null);
-                                    if (o) void handleReviewPrompt(o);
-                                }}
-                            >
-                                Prompt ile hızlı değerlendir
-                            </Button>
+                            <Button variant="outline" onClick={() => setReviewOpen(false)}>Vazgeç</Button>
                             <Button onClick={submitReviewModal} disabled={!!busyId} className="bg-slate-900 hover:bg-slate-800 text-white">
                                 Kaydet
                             </Button>
