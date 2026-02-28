@@ -153,8 +153,8 @@ export function JobPostingForm() {
         }
         const titleWords = wordCount(titleMod.cleanedText || formData.title);
         const descWords = wordCount(descMod.cleanedText || formData.description);
-        if (titleWords < 3 || titleWords > 12) {
-            setError("Başlık 3-12 kelime aralığında olmalıdır.");
+        if (titleWords < 2 || titleWords > 12) {
+            setError("Başlık 2-12 kelime aralığında olmalıdır.");
             setLoading(false);
             return;
         }

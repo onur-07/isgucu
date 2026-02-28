@@ -298,8 +298,8 @@ export function sanitizeListingText(text: string): { allowed: boolean; reason?: 
     "mert", "kaan", "berk", "furkan", "yusuf", "ibrahim", "abdullah", "enes", "omer",
     "ayse", "fatma", "zeynep", "elif", "hatice", "esra", "buse", "eda", "sena", "melis",
   ]);
-  const identityHints = /\b(ben|benim|adim|ismim|isimim|ad\s*soyad|ad-soyad|soyadim)\b/i;
-  const nameMatch = cleaned.match(/\b([A-Z][a-z]{2,})\s+([A-Z][a-z]{2,})\b/);
+  const identityHints = /\b(benim|adim|ismim|isimim|ad\s*soyad|ad-soyad|soyadim)\b/i;
+  const nameMatch = cleaned.match(/\b([\p{Lu}][\p{Ll}]{2,})\s+([\p{Lu}][\p{Ll}]{2,})\b/u);
   if (nameMatch) {
     const first = String(nameMatch[1] || "").toLocaleLowerCase("tr-TR");
     const hasIdentityHint = identityHints.test(cleaned);
