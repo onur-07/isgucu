@@ -26,9 +26,13 @@ import {
 // These are now handled by local state or shared lib to allow admin edits
 // We create helper functions to get the merged data
 const getMergedCategories = () => {
-    if (typeof window === "undefined") return DEFAULT_CATEGORIES;
+    if (typeof window === "undefined") {
+        return DEFAULT_CATEGORIES.filter((c) => c.id !== "freelancerlik" && c.title !== "Freelancerlık");
+    }
     const adminData = JSON.parse(localStorage.getItem("isgucu_admin_categories") || "[]");
-    return [...DEFAULT_CATEGORIES, ...adminData];
+    return [...DEFAULT_CATEGORIES, ...adminData].filter(
+        (c: { id?: string; title?: string }) => String(c?.id || "") !== "freelancerlik" && String(c?.title || "").trim() !== "Freelancerlık"
+    );
 };
 
 const getMergedSubCategories = () => {
@@ -38,6 +42,7 @@ const getMergedSubCategories = () => {
     Object.keys(adminData).forEach(cat => {
         merged[cat] = [...(merged[cat] || []), ...adminData[cat]];
     });
+    delete merged.freelancerlik;
     return merged;
 };
 
@@ -48,6 +53,14 @@ const getMergedServiceTypes = () => {
     Object.keys(adminData).forEach(sub => {
         merged[sub] = [...(merged[sub] || []), ...adminData[sub]];
     });
+    delete merged["Profil & Portföy"];
+    delete merged["Teklif & Fiyatlandırma"];
+    delete merged["Müşteri İletişimi"];
+    delete merged["Proje Yönetimi"];
+    delete merged["CV & LinkedIn"];
+    delete merged["Sözleşme & Fatura"];
+    delete merged["Zaman Yönetimi"];
+    delete merged["Kariyer Danışmanlığı"];
     return merged;
 };
 

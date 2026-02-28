@@ -20,10 +20,20 @@ import { AlertCircle, CheckCircle2, Upload, FileText, X, ShieldCheck, Loader2 } 
 import { sanitizeListingText } from "@/lib/utils";
 
 const getMergedJobCategories = () => {
-    if (typeof window === "undefined") return DEFAULT_CATEGORIES.map((c) => c.title);
+    if (typeof window === "undefined") {
+        return DEFAULT_CATEGORIES
+            .map((c) => c.title)
+            .filter((title) => String(title || "").trim() !== "Freelancerlık");
+    }
     const adminData = JSON.parse(localStorage.getItem("isgucu_admin_categories") || "[]");
     const merged = [...DEFAULT_CATEGORIES, ...adminData] as Array<{ title?: string }>;
-    return Array.from(new Set(merged.map((c) => String(c?.title || "").trim()).filter(Boolean)));
+    return Array.from(
+        new Set(
+            merged
+                .map((c) => String(c?.title || "").trim())
+                .filter((title) => Boolean(title) && title !== "Freelancerlık")
+        )
+    );
 };
 
 export function JobPostingForm() {

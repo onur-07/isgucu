@@ -66,12 +66,16 @@ export default function AdminCategoriesPage() {
                 const storedSubs = JSON.parse(localStorage.getItem("isgucu_admin_subcategories") || "{}");
                 const storedServices = JSON.parse(localStorage.getItem("isgucu_admin_servicetypes") || "{}");
 
-                setCategories([...DEFAULT_CATEGORIES, ...storedCats]);
+                const mergedCategories = [...DEFAULT_CATEGORIES, ...storedCats].filter(
+                    (c: { id?: string; title?: string }) => String(c?.id || "") !== "freelancerlik" && String(c?.title || "").trim() !== "Freelancerlık"
+                );
+                setCategories(mergedCategories);
 
                 const mergedSubs: any = { ...DEFAULT_SUB_CATEGORIES };
                 Object.keys(storedSubs).forEach((k) => {
                     mergedSubs[k] = [...(mergedSubs[k] || []), ...storedSubs[k]];
                 });
+                delete mergedSubs.freelancerlik;
                 setSubCategories(mergedSubs);
 
                 const mergedServices: any = { ...DEFAULT_SERVICE_TYPES };

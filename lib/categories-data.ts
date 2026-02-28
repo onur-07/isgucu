@@ -14,12 +14,12 @@ export const CATEGORIES_DETAILED: Category[] = [
     { id: "yazilim", title: "Yazılım & Teknoloji", icon: "💻", color: "bg-gray-100" },
     { id: "ai", title: "Yapay Zeka (AI)", icon: "🤖", color: "bg-indigo-50" },
     { id: "is", title: "İş & Yönetim", icon: "📊", color: "bg-purple-50" },
-    { id: "freelancerlik", title: "Freelancerlık", icon: "🧑‍💼", color: "bg-emerald-50" },
+    { id: "danismanlik", title: "Danışmanlık & Koçluk", icon: "🧭", color: "bg-emerald-50" },
 ];
 
 export const SUB_CATEGORIES_DATA: Record<string, string[]> = {
     yazilim: [
-        "Web Yazılım", "Wordpress", "Mobil Uygulamalar", "Web Sitesi Oluşturucular & CMS",
+        "Web Yazılım", "WordPress", "Mobil Uygulamalar", "Web Sitesi Oluşturucular & CMS",
         "E-ticaret", "Oyun Geliştirme", "Siber Güvenlik", "Veri Bilimi", "Masaüstü Uygulamalar",
         "DevOps & Bulut", "QA & Test Etme"
     ],
@@ -51,16 +51,20 @@ export const SUB_CATEGORIES_DATA: Record<string, string[]> = {
         "Sanal Asistan", "Pazar Araştırması", "İş Planı Hazırlama", "Finansal Analiz",
         "Hukuki Danışmanlık", "Sunum Hazırlama", "İş Geliştirme", "E-ticaret Yönetimi"
     ],
-    freelancerlik: [
-        "Profil & Portföy", "Teklif & Fiyatlandırma", "Müşteri İletişimi", "Proje Yönetimi",
-        "CV & LinkedIn", "Sözleşme & Fatura", "Zaman Yönetimi", "Kariyer Danışmanlığı"
+    danismanlik: [
+        "Freelance Kariyer Koçluğu",
+        "Portföy ve Profil Danışmanlığı",
+        "Teklif Stratejisi",
+        "Müşteri İletişimi Yönetimi",
+        "Zaman ve Süreç Yönetimi",
+        "Sözleşme ve Fiyatlandırma Danışmanlığı"
     ]
 };
 
 export const SERVICE_TYPES_DATA: Record<string, string[]> = {
     // Yazılım
     "Web Yazılım": ["Python/Django", "React/Next.js", "PHP/Laravel", "Node.js", "Hata Giderme", "API Entegrasyonu", "Veritabanı Tasarımı"],
-    "Wordpress": ["Tema Kurulumu", "E-ticaret (WooCommerce)", "Hız Optimizasyonu", "Güvenlik & Bakım", "Özel Eklenti Geliştirme"],
+    "WordPress": ["Tema Kurulumu", "E-ticaret (WooCommerce)", "Hız Optimizasyonu", "Güvenlik & Bakım", "Özel Eklenti Geliştirme"],
     "Siber Güvenlik": ["Penetrasyon Testi", "Web Güvenliği", "Zafiyet Analizi", "DDoS Koruması"],
 
     // Grafik
@@ -68,25 +72,24 @@ export const SERVICE_TYPES_DATA: Record<string, string[]> = {
     "UI/UX Tasarımı": ["Mobil Uygulama Arayüzü", "Web Sitesi Arayüzü", "Landing Page Tasarımı", "Prototipleme (Figma)"],
 
     // Dijital Pazarlama
-    "Google Ads": ["Kurulum & Yönetim", "Yeniden Pazarlama", "Youtube Reklamları", "Merchant Center Kurulumu"],
+    "Google Ads": ["Kurulum & Yönetim", "Yeniden Pazarlama", "YouTube Reklamları", "Merchant Center Kurulumu"],
     "SEO": ["Teknik SEO", "Backlink Çalışması", "Anahtar Kelime Araştırması", "Sektörel SEO"],
 
     // AI
-    "AI Sanatı & Prompt Mühendisliği": ["Midjourney Prompts", "DALL-E Görüntü Üretimi", "Stable Diffusion Eğitimi"],
+    "AI Sanatı & Prompt Mühendisliği": ["Midjourney Promptları", "DALL-E Görüntü Üretimi", "Stable Diffusion Eğitimi"],
     "AI Uygulama Geliştirme": ["AI Chatbot", "OpenAI API Entegrasyonu", "Llama Model Deployment"],
 
     // Ses
     "Seslendirme": ["Reklam Seslendirmesi", "Kitap Seslendirmesi", "Santral Seslendirme", "Dublaj", "Oyun Karakteri"],
 
-    // Freelancerlık
-    "Profil & Portföy": ["Profil Düzenleme", "Portföy Hazırlama", "Bio Yazımı", "Profil Tasarımı"],
-    "Teklif & Fiyatlandırma": ["Teklif Metni", "Paket & Fiyatlandırma", "Satış Stratejisi", "Gig Optimizasyonu"],
-    "Müşteri İletişimi": ["Mesaj Şablonları", "Brief Hazırlama", "Müşteri Yönetimi", "İtiraz Yönetimi"],
-    "Proje Yönetimi": ["Task Planı", "Sprint Planlama", "Teslimat Süreci", "Revizyon Yönetimi"],
-    "CV & LinkedIn": ["CV Düzenleme", "LinkedIn Profil", "Ön Yazı", "ATS Uyum"],
-    "Sözleşme & Fatura": ["Sözleşme Şablonu", "Fatura Süreci", "Ödeme Planı", "Teklif Şartları"],
-    "Zaman Yönetimi": ["Takvim Planlama", "Odak & Verimlilik", "Çalışma Rutini", "İş Takibi"],
-    "Kariyer Danışmanlığı": ["Hedef Belirleme", "Uzmanlık Seçimi", "Pazar Analizi", "Büyüme Planı"],
+    // Danışmanlık & Koçluk
+    "Freelance Kariyer Koçluğu": ["Niş Belirleme", "Hedef Pazar Analizi", "Kariyer Yol Haritası", "Gelir Artırma Planı"],
+    "Portföy ve Profil Danışmanlığı": ["Profil Optimizasyonu", "Portföy Kurgusu", "Bio Yazımı", "Başlık ve Etiket Revizesi"],
+    "Teklif Stratejisi": ["Teklif Metni Hazırlama", "Fiyatlandırma Planı", "Paket Kurgusu", "Satış Dönüşüm İyileştirmesi"],
+    "Müşteri İletişimi Yönetimi": ["Mesaj Şablonları", "Brief Toplama Akışı", "İtiraz Yönetimi", "Müşteri Memnuniyeti Süreci"],
+    "Zaman ve Süreç Yönetimi": ["Teslim Planı", "Revizyon Akışı", "İş Takip Sistemi", "Verimlilik Rutinleri"],
+    "Sözleşme ve Fiyatlandırma Danışmanlığı": ["Sözleşme Şablonu", "Ödeme Planı", "Teslim Kriterleri", "Risk ve Kapsam Yönetimi"],
 
-    "default": ["Freelance Dan\u0131\u015fmanl\u0131k", "\u00d6zel Freelancer Projesi", "Teknik Uygulama Deste\u011fi", "Analiz ve Raporlama"]
+    default: ["Genel Danışmanlık", "Özel Proje", "Teknik Destek", "Analiz ve Raporlama"]
 };
+
