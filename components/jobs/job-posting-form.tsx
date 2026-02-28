@@ -182,9 +182,13 @@ export function JobPostingForm() {
             for (const file of attachments) {
                 const safeName = toSafeFileName(file.name);
                 const filePath = `${user.id}/${Date.now()}-${safeName}`;
+                const bytes = new Uint8Array(await file.arrayBuffer());
                 const { error: uploadError } = await supabase.storage
                     .from('job-attachments')
-                    .upload(filePath, file);
+                    .upload(filePath, bytes, {
+                        contentType: file.type || "application/octet-stream",
+                        upsert: false,
+                    });
 
                 if (uploadError) {
                     console.error("File upload error:", uploadError);
