@@ -1208,6 +1208,18 @@ function AdminPageContent() {
                                                 />
                                                 Footer menüde göster
                                             </label>
+                                            <label className="flex items-center gap-2">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={!!page.overrideBuiltIn}
+                                                    onChange={(e) => {
+                                                        const next = [...(siteConfig.managedPages || [])];
+                                                        next[i] = { ...next[i], overrideBuiltIn: e.target.checked };
+                                                        setSiteConfig({ ...siteConfig, managedPages: next });
+                                                    }}
+                                                />
+                                                Mevcut sayfayı bu içerikle değiştir
+                                            </label>
                                             {!page.system && (
                                                 <Button
                                                     variant="ghost"
@@ -1243,6 +1255,7 @@ function AdminPageContent() {
                                                     enabled: true,
                                                     showInHeader: true,
                                                     showInFooter: false,
+                                                    overrideBuiltIn: false,
                                                 } as any,
                                             ],
                                         });

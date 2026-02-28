@@ -64,11 +64,13 @@ export default function MessageThreadPage() {
     const [realtimeReady, setRealtimeReady] = useState<boolean>(false);
 
     const [otherUserId, setOtherUserId] = useState<string>("");
+
     const [offerOpen, setOfferOpen] = useState<boolean>(false);
     const [offerPrice, setOfferPrice] = useState<string>("");
     const [offerDays, setOfferDays] = useState<string>("");
     const [offerNote, setOfferNote] = useState<string>("");
     const fileInputRef = useRef<HTMLInputElement | null>(null);
+    const composerRef = useRef<HTMLTextAreaElement | null>(null);
     const prefillKeyRef = useRef<string>("");
 
     const listRef = useRef<HTMLDivElement | null>(null);
@@ -543,6 +545,13 @@ export default function MessageThreadPage() {
         setMessages((prev) => [...prev, optimistic]);
         setText("");
 
+        // Keep typing uninterrupted after Enter-to-send.
+        setTimeout(() => {
+            try {
+                composerRef.current?.focus();
+            } catch {}
+        }, 0);
+
         try {
             const startedAt = performance.now();
             console.log("[send] start", { meKey, otherKey, textLen: payload.text?.length || 0 });
@@ -626,6 +635,11 @@ export default function MessageThreadPage() {
             }
         } finally {
             setSending(false);
+            setTimeout(() => {
+                try {
+                    composerRef.current?.focus();
+                } catch {}
+            }, 0);
         }
     };
 
@@ -1071,6 +1085,7 @@ export default function MessageThreadPage() {
                         </div>
 
                         <Textarea
+                            ref={composerRef}
                             value={text}
                             onChange={(e) => setText(e.target.value)}
                             onKeyDown={handleComposerKeyDown}

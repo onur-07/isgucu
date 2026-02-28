@@ -17,6 +17,7 @@ import { useAuth } from "@/components/auth/auth-context";
 import { supabase } from "@/lib/supabase";
 import { CATEGORIES_DETAILED as DEFAULT_CATEGORIES } from "@/lib/categories-data";
 import { AlertCircle, CheckCircle2, Upload, FileText, X, ShieldCheck, Loader2 } from "lucide-react";
+import { sanitizeListingText } from "@/lib/utils";
 
 const getMergedJobCategories = () => {
     if (typeof window === "undefined") return DEFAULT_CATEGORIES.map((c) => c.title);
@@ -45,6 +46,27 @@ export function JobPostingForm() {
     const categories = getMergedJobCategories();
 
     const toObjectUrl = (file: File) => URL.createObjectURL(file);
+
+    const wordCount = (value: string) => String(value || "").trim().split(/\s+/).filter(Boolean).length;
+
+    const toSafeFileName = (name: string) => {
+        const trimmed = String(name || "").trim();
+        if (!trimmed) return `file-${Date.now()}`;
+        const lastDot = trimmed.lastIndexOf(".");
+        const base = lastDot > 0 ? trimmed.slice(0, lastDot) : trimmed;
+        const ext = lastDot > 0 ? trimmed.slice(lastDot + 1) : "";
+        const safeBase = base
+            .toLowerCase()
+            .replace(/\s+/g, "-")
+            .replace(/[^a-z0-9\-_.]/g, "")
+            .replace(/-+/g, "-")
+            .slice(0, 60) || `file-${Date.now()}`;
+        const safeExt = ext
+            .toLowerCase()
+            .replace(/[^a-z0-9]/g, "")
+            .slice(0, 10);
+        return safeExt ? `${safeBase}.${safeExt}` : safeBase;
+    };
 
     const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const files = Array.from(e.target.files || []);
@@ -106,11 +128,37 @@ export function JobPostingForm() {
         setLoading(true);
         setError(null);
 
+        const titleMod = sanitizeListingText(formData.title);
+        if (!titleMod.allowed) {
+            setError(titleMod.reason || "Başlık kurallara uygun değil.");
+            setLoading(false);
+            return;
+        }
+        const descMod = sanitizeListingText(formData.description);
+        if (!descMod.allowed) {
+            setError(descMod.reason || "Açıklama kurallara uygun değil.");
+            setLoading(false);
+            return;
+        }
+        const titleWords = wordCount(titleMod.cleanedText || formData.title);
+        const descWords = wordCount(descMod.cleanedText || formData.description);
+        if (titleWords < 3 || titleWords > 12) {
+            setError("Başlık 3-12 kelime aralığında olmalıdır.");
+            setLoading(false);
+            return;
+        }
+        if (descWords < 20 || descWords > 200) {
+            setError("Açıklama 20-200 kelime aralığında olmalıdır.");
+            setLoading(false);
+            return;
+        }
+
         try {
             // 1. Upload files to Supabase Storage
             const uploadedPaths: string[] = [];
             for (const file of attachments) {
-                const filePath = `${user.id}/${Date.now()}-${file.name}`;
+                const safeName = toSafeFileName(file.name);
+                const filePath = `${user.id}/${Date.now()}-${safeName}`;
                 const { data: uploadData, error: uploadError } = await supabase.storage
                     .from('job-attachments')
                     .upload(filePath, file);
@@ -129,8 +177,8 @@ export function JobPostingForm() {
                 .from('jobs')
                 .insert({
                     user_id: user.id || (user as any).username,
-                    title: formData.title,
-                    description: formData.description,
+                    title: titleMod.cleanedText || formData.title,
+                    description: descMod.cleanedText || formData.description,
                     category: formData.category,
                     budget: formData.budget,
                     attachments: uploadedPaths,

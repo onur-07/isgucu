@@ -215,6 +215,12 @@ export default function JobDetailPage() {
             }
 
             const ownerPrefix = String(job.userId || "").trim();
+            const fileNameFromPath = (path: string) => {
+                const clean = String(path || "").trim();
+                if (!clean) return "";
+                const parts = clean.split("/").filter(Boolean);
+                return parts.length ? parts[parts.length - 1] : clean;
+            };
             const toStoragePathFromUrl = (url: string) => {
                 try {
                     const u = new URL(url);
@@ -235,7 +241,25 @@ export default function JobDetailPage() {
                 const signedUrl = String((signed as any)?.data?.signedUrl || "");
                 if (signedUrl) return signedUrl;
 
-                return supabase.storage.from("job-attachments").getPublicUrl(cleanPath).data.publicUrl || "";
+                const publicUrl = supabase.storage.from("job-attachments").getPublicUrl(cleanPath).data.publicUrl || "";
+                return publicUrl;
+            };
+
+            const tryFindInFolder = async (searchName: string) => {
+                const cleanName = String(searchName || "").trim();
+                if (!cleanName) return "";
+                if (!ownerPrefix) return "";
+                try {
+                    const { data } = await supabase.storage
+                        .from("job-attachments")
+                        .list(ownerPrefix, { limit: 200, search: cleanName });
+                    const found = (data || []).find((x: any) => String(x?.name || "") === cleanName)
+                        || (data || []).find((x: any) => String(x?.name || "").endsWith(cleanName));
+                    if (!found?.name) return "";
+                    return `${ownerPrefix}/${found.name}`;
+                } catch {
+                    return "";
+                }
             };
 
             const resolved = await Promise.all(
@@ -252,6 +276,13 @@ export default function JobDetailPage() {
                         if (pathFromUrl) {
                             const signedFromUrl = await resolveFromPath(pathFromUrl);
                             if (signedFromUrl) return signedFromUrl;
+
+                            const searchName = fileNameFromPath(pathFromUrl);
+                            const maybePath = await tryFindInFolder(searchName);
+                            if (maybePath) {
+                                const resolvedFromFound = await resolveFromPath(maybePath);
+                                if (resolvedFromFound) return resolvedFromFound;
+                            }
                         }
                         return rawFile;
                     }
@@ -259,6 +290,13 @@ export default function JobDetailPage() {
                     if (rawFile.includes("/")) {
                         const signedFromPath = await resolveFromPath(rawFile);
                         if (signedFromPath) return signedFromPath;
+
+                        const searchName = fileNameFromPath(rawFile);
+                        const maybePath = await tryFindInFolder(searchName);
+                        if (maybePath) {
+                            const resolvedFromFound = await resolveFromPath(maybePath);
+                            if (resolvedFromFound) return resolvedFromFound;
+                        }
                     }
 
                     if (!ownerPrefix) return "";

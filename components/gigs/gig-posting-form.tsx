@@ -16,6 +16,7 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/components/auth/auth-context";
 import { ImagePlus, Package, X } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+import { sanitizeListingText } from "@/lib/utils";
 import {
     CATEGORIES_DETAILED as DEFAULT_CATEGORIES,
     SUB_CATEGORIES_DATA as DEFAULT_SUB_CATEGORIES,
@@ -335,6 +336,8 @@ export function GigPostingForm() {
 
     const sanitizeGigTitle = (value: string) => value.replace(/^ben,\s*/i, "").trimStart();
 
+    const wordCount = (value: string) => String(value || "").trim().split(/\s+/).filter(Boolean).length;
+
     const activePackageKeys = (["basic", "standard", "premium"] as const).filter((key) => activePackages[key]);
 
     const isStep3Valid = () => {
@@ -479,6 +482,28 @@ export function GigPostingForm() {
             alert(validationMessage);
             return;
         }
+
+        const titleValue = sanitizeGigTitle(formData.title);
+        const titleMod = sanitizeListingText(titleValue);
+        if (!titleMod.allowed) {
+            alert(titleMod.reason || "Başlık kurallara uygun değil.");
+            return;
+        }
+        const descMod = sanitizeListingText(formData.description);
+        if (!descMod.allowed) {
+            alert(descMod.reason || "Açıklama kurallara uygun değil.");
+            return;
+        }
+        const titleWords = wordCount(titleMod.cleanedText || titleValue);
+        const descWords = wordCount(descMod.cleanedText || formData.description);
+        if (titleWords < 3 || titleWords > 12) {
+            alert("Başlık 3-12 kelime aralığında olmalıdır.");
+            return;
+        }
+        if (descWords < 20 || descWords > 200) {
+            alert("Açıklama 20-200 kelime aralığında olmalıdır.");
+            return;
+        }
         setLoading(true);
         const activePks: Record<string, PackageData> = {};
         Object.keys(activePackages).forEach(key => {
@@ -525,8 +550,8 @@ export function GigPostingForm() {
                     .from("gigs")
                     .insert({
                         user_id: user.id,
-                        title: sanitizeGigTitle(formData.title),
-                        description: formData.description,
+                        title: titleMod.cleanedText || titleValue,
+                        description: descMod.cleanedText || formData.description,
                         category: formData.category,
                         price: packages.basic.price,
                         is_active: true,

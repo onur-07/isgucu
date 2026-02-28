@@ -99,11 +99,11 @@ export function Header() {
     ];
 
     const roleLinks = user?.role === "employer"
-        ? [{ href: "/post-job", label: "Ä°ÅŸ Ä°lanÄ± Ver", color: "text-blue-600 font-semibold" }]
+        ? [{ href: "/post-job", label: "İş İlanı Ver", color: "text-blue-600 font-semibold" }]
         : user?.role === "freelancer"
-            ? [{ href: "/post-gig", label: "Hizmet Ä°lanÄ± Ver", color: "text-green-600 font-semibold" }]
+            ? [{ href: "/post-gig", label: "Hizmet İlanı Ver", color: "text-green-600 font-semibold" }]
             : user?.role === "admin"
-                ? [{ href: "/admin", label: "YÃ¶netim Paneli", color: "text-red-600 font-semibold" }]
+                ? [{ href: "/admin", label: "Yönetim Paneli", color: "text-red-600 font-semibold" }]
                 : [];
 
     return (
@@ -129,7 +129,7 @@ export function Header() {
                     <Link href="/" className="flex items-center space-x-2">
                         <img
                             src={siteConfig.logoUrl || "/logo.png"}
-                            alt="Ä°ÅŸgÃ¼cÃ¼ Logo"
+                            alt="İşgücü Logo"
                             className="h-12 md:h-20 w-auto object-contain transition-all"
                         />
                         <span className="font-heading text-2xl md:text-3xl font-bold bg-gradient-to-r from-blue-700 to-indigo-700 bg-clip-text text-transparent hidden sm:block">
@@ -201,23 +201,23 @@ export function Header() {
                                     <div className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-xl border border-gray-100 py-2 z-50 animate-in fade-in slide-in-from-top-2 duration-200">
                                         <div className="px-4 py-2 border-b border-gray-100">
                                             <p className="text-sm font-semibold text-gray-900">{maskFullName(user.fullName) || user.username}</p>
-                                            <p className="text-xs text-gray-500 capitalize">{user.role === "employer" ? "Ä°ÅŸ Veren" : user.role === "freelancer" ? "Freelancer" : "YÃ¶netici"}</p>
+                                            <p className="text-xs text-gray-500 capitalize">{user.role === "employer" ? "İş Veren" : user.role === "freelancer" ? "Freelancer" : "Yönetici"}</p>
                                         </div>
                                         <Link href="/profile" className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors" onClick={() => setProfileOpen(false)}>
                                             <User className="h-4 w-4" /> Profilim
                                         </Link>
                                         <Link href="/orders" className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors" onClick={() => setProfileOpen(false)}>
-                                            ğŸ“‹ SipariÅŸlerim
+                                            📋 Siparişlerim
                                         </Link>
                                         <Link href="/wallet" className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors" onClick={() => setProfileOpen(false)}>
-                                            ğŸ’° CÃ¼zdanÄ±m
+                                            💰 Cüzdanım
                                         </Link>
                                         <Link href="/support" className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors" onClick={() => setProfileOpen(false)}>
-                                            ğŸ§ Destek
+                                            🎧 Destek
                                         </Link>
                                         {user.role === "admin" && (
                                             <Link href="/admin" className="flex items-center gap-3 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors" onClick={() => setProfileOpen(false)}>
-                                                âš™ï¸ YÃ¶netim Paneli
+                                                ⚙️ Yönetim Paneli
                                             </Link>
                                         )}
                                         <div className="border-t border-gray-100 mt-1 pt-1">
@@ -225,7 +225,7 @@ export function Header() {
                                                 onClick={handleLogout}
                                                 className="flex items-center gap-3 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 w-full text-left transition-colors"
                                             >
-                                                ğŸšª Ã‡Ä±kÄ±ÅŸ Yap
+                                                🚪 Çıkış Yap
                                             </button>
                                         </div>
                                     </div>
@@ -235,10 +235,10 @@ export function Header() {
                     ) : (
                         <>
                             <Link href="/login">
-                                <Button variant="ghost" size="sm">GiriÅŸ Yap</Button>
+                                <Button variant="ghost" size="sm">Giriş Yap</Button>
                             </Link>
                             <Link href="/register">
-                                <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white">Ãœye Ol</Button>
+                                <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white">Üye Ol</Button>
                             </Link>
                         </>
                     )}
@@ -272,26 +272,26 @@ export function Header() {
                             <>
                                 <div className="border-t my-2" />
                                 <Link href="/profile" className="px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-lg" onClick={() => setMobileOpen(false)}>
-                                    ğŸ‘¤ Profilim
+                                    👤 Profilim
                                 </Link>
                                 <Link href="/orders" className="px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-lg" onClick={() => setMobileOpen(false)}>
-                                    ğŸ“‹ SipariÅŸlerim
+                                    📋 Siparişlerim
                                 </Link>
                                 <Link href="/wallet" className="px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-lg" onClick={() => setMobileOpen(false)}>
-                                    ğŸ’° CÃ¼zdanÄ±m
+                                    💰 Cüzdanım
                                 </Link>
                                 <Link href="/messages" className="px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-lg" onClick={() => setMobileOpen(false)}>
-                                    ğŸ’¬ Mesajlar
+                                    💬 Mesajlar
                                 </Link>
                                 <Link href="/notifications" className="px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-lg" onClick={() => setMobileOpen(false)}>
-                                    ğŸ”” Bildirimler
+                                    🔔 Bildirimler
                                 </Link>
                                 <Link href="/support" className="px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-lg" onClick={() => setMobileOpen(false)}>
-                                    ğŸ§ Destek
+                                    🎧 Destek
                                 </Link>
                                 <div className="border-t my-2" />
                                 <button onClick={handleLogout} className="px-4 py-3 text-sm font-medium text-red-600 hover:bg-red-50 rounded-lg text-left">
-                                    ğŸšª Ã‡Ä±kÄ±ÅŸ Yap
+                                    🚪 Çıkış Yap
                                 </button>
                             </>
                         ) : (
@@ -299,10 +299,10 @@ export function Header() {
                                 <div className="border-t my-2" />
                                 <div className="flex gap-3 px-4 py-2">
                                     <Link href="/login" className="flex-1" onClick={() => setMobileOpen(false)}>
-                                        <Button variant="outline" className="w-full">GiriÅŸ Yap</Button>
+                                        <Button variant="outline" className="w-full">Giriş Yap</Button>
                                     </Link>
                                     <Link href="/register" className="flex-1" onClick={() => setMobileOpen(false)}>
-                                        <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white">Ãœye Ol</Button>
+                                        <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white">Üye Ol</Button>
                                     </Link>
                                 </div>
                             </>
@@ -313,4 +313,5 @@ export function Header() {
         </header>
     );
 }
+
 

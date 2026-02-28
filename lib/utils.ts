@@ -217,3 +217,99 @@ export function sanitizeMessage(text: string): { allowed: boolean; reason?: stri
 
   return { allowed: true, cleanedText: cleaned };
 }
+
+export function sanitizeListingText(text: string): { allowed: boolean; reason?: string; cleanedText?: string } {
+  const raw = String(text || "");
+  const cleaned = raw.replace(/[\r\n\t]+/g, " ").replace(/\s+/g, " ").trim();
+  if (!cleaned) return { allowed: false, reason: "Bu alan boş bırakılamaz." };
+
+  const lower = cleaned.toLowerCase();
+  const digitsOnly = cleaned.replace(/\D/g, "");
+  const alnumOnly = cleaned.replace(/[^a-zA-Z0-9]/g, "");
+
+  const looksLikeTrMobile =
+    /^05\d{9}$/.test(digitsOnly) ||
+    /^5\d{9}$/.test(digitsOnly) ||
+    /^905\d{9}$/.test(digitsOnly) ||
+    /^00905\d{9}$/.test(digitsOnly);
+  if (looksLikeTrMobile) {
+    return { allowed: false, reason: "Güvenlik nedeniyle telefon numarası/iletişim bilgisi yazılamaz." };
+  }
+
+  if (/TR\d{24}/i.test(alnumOnly)) {
+    return { allowed: false, reason: "Güvenlik nedeniyle IBAN yazılamaz." };
+  }
+
+  const normalizedForEmail = cleaned.replace(/\s+/g, "");
+  if (/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/.test(cleaned) || /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/.test(normalizedForEmail)) {
+    return { allowed: false, reason: "Güvenlik nedeniyle e-posta/iletişim bilgisi yazılamaz." };
+  }
+
+  const contactHints = [
+    "whatsapp",
+    "wp",
+    "wapp",
+    "telegram",
+    "tg",
+    "instagram",
+    "insta",
+    "dm",
+    "direct",
+    "iban",
+    "ıban",
+    "telefon",
+    "tel",
+    "gsm",
+    "numara",
+    "mail",
+    "gmail",
+    "hotmail",
+    "outlook",
+    "t.me",
+    "wa.me",
+  ];
+  if (contactHints.some((h) => lower.includes(h)) || lower.includes("@")) {
+    return { allowed: false, reason: "Güvenlik nedeniyle iletişim bilgisi paylaşılamaz." };
+  }
+
+  const expanded = [
+    ...PROFANITY_WORDS,
+    "amk",
+    "aq",
+    "siktir",
+    "orospu",
+    "piç",
+    "yavşak",
+    "ibne",
+  ];
+  for (const word of expanded) {
+    if (lower.includes(word)) {
+      return { allowed: false, reason: "Kullandığınız içerikte kurallara aykırı ifadeler bulunmaktadır." };
+    }
+  }
+
+  const nonNameTokens = new Set([
+    "selam",
+    "merhaba",
+    "ben",
+    "biz",
+    "sayın",
+    "sn",
+    "sn.",
+    "iyi",
+    "nasılsın",
+    "nasılsin",
+    "teşekkür",
+    "tesekkur",
+  ]);
+  const nameMatch = cleaned.match(/\b([A-ZÇĞİÖŞÜ][a-zçğıöşü]{2,})\s+([A-ZÇĞİÖŞÜ][a-zçğıöşü]{2,})\b/);
+  if (nameMatch) {
+    const a = String(nameMatch[1] || "").toLocaleLowerCase("tr-TR");
+    const b = String(nameMatch[2] || "").toLocaleLowerCase("tr-TR");
+    if (!nonNameTokens.has(a) && !nonNameTokens.has(b)) {
+      return { allowed: false, reason: "Güvenlik nedeniyle ad/soyad veya kişisel bilgi yazılamaz." };
+    }
+  }
+
+  return { allowed: true, cleanedText: cleaned };
+}

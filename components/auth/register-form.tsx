@@ -94,7 +94,13 @@ export function RegisterForm() {
                     setSuccess(true);
                     if (authData.session) {
                         setHasSession(true);
-                        setTimeout(() => router.push("/"), 1500);
+                        setTimeout(() => {
+                            if (role === "freelancer") {
+                                router.push("/profile?onboarding=skills");
+                            } else {
+                                router.push("/");
+                            }
+                        }, 1500);
                     } else {
                         setHasSession(false);
                         // User needs to confirm email or just go to login

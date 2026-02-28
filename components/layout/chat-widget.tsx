@@ -74,6 +74,10 @@ export function ChatWidget() {
     const [offerDays, setOfferDays] = useState("");
     const [offerNote, setOfferNote] = useState("");
 
+    const unreadTotal = useMemo(() => {
+        return (items || []).reduce((sum, x) => sum + (Number(x?.unreadCount || 0) || 0), 0);
+    }, [items]);
+
     const listRef = useRef<HTMLDivElement | null>(null);
     const fileInputRef = useRef<HTMLInputElement | null>(null);
     const composerRef = useRef<HTMLTextAreaElement | null>(null);
@@ -445,8 +449,6 @@ export function ChatWidget() {
         return items;
     }, [messages, offers]);
 
-    const unreadTotal = useMemo(() => items.reduce((acc, x) => acc + (x.unreadCount || 0), 0), [items]);
-
     const handleSend = async () => {
         if (!meKey || !activeOther) return;
         const trimmed = text.trim();
@@ -454,7 +456,7 @@ export function ChatWidget() {
 
         const mod = sanitizeMessage(trimmed);
         if (!mod.allowed) {
-            setError(mod.reason || "Bu içerik gönderilemez");
+            setError(mod.reason || "Mesaj gönderilemedi.");
             return;
         }
 
@@ -474,39 +476,36 @@ export function ChatWidget() {
             id: tempId,
             sender_username: meKey,
             receiver_username: otherKey,
-            text: mod.cleanedText || trimmed,
+            text: payload.text,
+            file_data: null,
             read: true,
             created_at: new Date().toISOString(),
         };
+
         setMessages((prev) => [...prev, optimistic]);
         setText("");
 
+        setTimeout(() => {
+            try {
+                composerRef.current?.focus();
+            } catch {}
+        }, 0);
+
         try {
-            await withTimeout(insertMessageRest(payload as any, 20000), 20000, "Mesaj gönderme");
+            const ok = await withTimeout(insertMessageRest(payload as any, 20000), 20000, "Mesaj gönderme");
+            if (!ok) throw new Error("Mesaj gönderilemedi");
             setError("");
         } catch (e: any) {
             setMessages((prev) => prev.filter((m) => String(m.id) !== String(tempId)));
             const friendly = friendlySupabaseError(e, "Mesaj gönderilemedi");
             setError(friendly);
-
-            try {
-                const msg = String(e?.message || "").toLowerCase();
-                if (msg.includes("pii_blocked")) {
-                    const { data } = await supabase.auth.getSession();
-                    const token = data?.session?.access_token;
-                    if (token) {
-                        fetch("/api/security/pii-attempt", {
-                            method: "POST",
-                            headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-                            body: JSON.stringify({ kind: msg.includes("phone") ? "phone" : msg.includes("iban") ? "iban" : msg.includes("email") ? "email" : "pii", other: activeOther, path: "(widget)" }),
-                        }).catch(() => {});
-                    }
-                }
-            } catch {
-                // ignore
-            }
         } finally {
             setSending(false);
+            setTimeout(() => {
+                try {
+                    composerRef.current?.focus();
+                } catch {}
+            }, 0);
         }
     };
 
