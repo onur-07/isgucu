@@ -38,11 +38,18 @@ export function JobList({ limit, onTotalChange }: { limit?: number; onTotalChang
     useEffect(() => {
         const fetchJobs = async () => {
             try {
-                // 1. Fetch from Supabase
-                const { data: dbData } = await supabase
-                    .from('jobs')
-                    .select('*')
-                    .order('created_at', { ascending: false });
+                // 1) Fetch jobs + active offer-order links (best effort)
+                const [{ data: dbData }, { data: activeOfferOrders }] = await Promise.all([
+                    supabase
+                        .from('jobs')
+                        .select('*')
+                        .order('created_at', { ascending: false }),
+                    supabase
+                        .from("orders")
+                        .select("package_key, status")
+                        .like("package_key", "offer:%")
+                        .in("status", ["pending", "active", "delivered", "completed"]),
+                ]);
 
                 const profileMap: Record<string, { id?: string; username?: string; avatar_url?: string; full_name?: string }> = {};
                 if (dbData && dbData.length > 0) {
@@ -100,8 +107,35 @@ export function JobList({ limit, onTotalChange }: { limit?: number; onTotalChang
                     };
                 });
 
+                // 2) Derive "occupied" job ids from accepted offers that became active orders
+                const occupiedJobIds = new Set<string>();
+                const offerOrderIds = Array.from(new Set((activeOfferOrders || [])
+                    .map((r: any) => String(r?.package_key || ""))
+                    .filter((k: string) => k.startsWith("offer:"))
+                    .map((k: string) => Number(k.slice("offer:".length)))
+                    .filter((n: number) => Number.isFinite(n) && n > 0)));
+
+                if (offerOrderIds.length > 0) {
+                    const { data: linkedOffers } = await supabase
+                        .from("offers")
+                        .select("id, extras")
+                        .in("id", offerOrderIds);
+
+                    for (const offer of (linkedOffers || []) as any[]) {
+                        const extras = offer?.extras as { source?: string; job_id?: string | number } | null | undefined;
+                        if (!extras || String(extras.source || "") !== "job") continue;
+                        const jobIdNum = Number(extras.job_id);
+                        if (Number.isFinite(jobIdNum) && jobIdNum > 0) occupiedJobIds.add(String(jobIdNum));
+                    }
+                }
+
                 const mergedJobs = normalizedDbJobs
-                    .filter((j) => String(j.status || "open").toLowerCase() === "open")
+                    .filter((j) => {
+                        const status = String(j.status || "open").toLowerCase();
+                        if (status !== "open") return false;
+                        if (occupiedJobIds.has(String(j.id))) return false;
+                        return true;
+                    })
                     .sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
 
                 setJobs(mergedJobs);

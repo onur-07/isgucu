@@ -47,6 +47,16 @@ type TimelineItem =
     | { type: "message"; id: string; at: number; data: ChatMessage }
     | { type: "offer"; id: string; at: number; data: OfferRow };
 
+const OFFER_STATUS_LABELS: Record<string, string> = {
+    pending: "Bekliyor",
+    accepted: "Kabul Edildi",
+    rejected: "Reddedildi",
+    cancelled: "İptal Edildi",
+};
+
+const offerStatusLabel = (status: string | null | undefined) =>
+    OFFER_STATUS_LABELS[String(status || "pending").toLowerCase()] || "Bekliyor";
+
 type IncomingToast = {
     sender: string;
     text: string;
@@ -776,7 +786,7 @@ export function ChatWidget() {
                                                         <div className={`max-w-[92%] rounded-2xl px-3 py-2 border ${mine ? "bg-blue-50 border-blue-100" : "bg-white border-gray-200"}`}>
                                                             <div className="flex items-center justify-between gap-2">
                                                                 <div className="text-[10px] font-black uppercase tracking-widest text-gray-500">Teklif</div>
-                                                                <div className="text-[10px] font-black text-gray-500">{String(o.status || "pending")}</div>
+                                                                <div className="text-[10px] font-black text-gray-500">{offerStatusLabel(String(o.status || "pending").toLowerCase())}</div>
                                                             </div>
                                                             <div className="mt-2 grid grid-cols-2 gap-2">
                                                                 <div className="rounded-xl bg-gray-50 p-2">

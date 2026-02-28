@@ -44,6 +44,16 @@ type TimelineItem =
     | { type: "message"; id: string; at: number; data: ChatMessage }
     | { type: "offer"; id: string; at: number; data: OfferRow };
 
+const OFFER_STATUS_LABELS: Record<string, string> = {
+    pending: "Bekliyor",
+    accepted: "Kabul Edildi",
+    rejected: "Reddedildi",
+    cancelled: "İptal Edildi",
+};
+
+const offerStatusLabel = (status: string | null | undefined) =>
+    OFFER_STATUS_LABELS[String(status || "pending").toLowerCase()] || "Bekliyor";
+
 export default function MessageThreadPage() {
     const router = useRouter();
     const searchParams = useSearchParams();
@@ -1025,7 +1035,8 @@ export default function MessageThreadPage() {
                             const o = it.data;
                             const mine = usernameKey(o.sender_username) === meKey;
                             const receiverIsMe = String(o.receiver_id || "") === String(user?.id || "");
-                            const pending = String(o.status) === "pending";
+                            const statusKey = String(o.status || "pending").toLowerCase();
+                            const pending = statusKey === "pending";
 
                             return (
                                 <div key={it.id} className={`flex ${mine ? "justify-end" : "justify-start"}`}>
@@ -1034,14 +1045,14 @@ export default function MessageThreadPage() {
                                             <div className="text-xs font-black uppercase tracking-widest text-gray-500">Teklif</div>
                                             <div
                                                 className={`text-[10px] font-black uppercase tracking-widest ${
-                                                    o.status === "accepted"
+                                                    statusKey === "accepted"
                                                         ? "text-emerald-600"
-                                                        : o.status === "rejected"
+                                                        : statusKey === "rejected"
                                                         ? "text-red-600"
                                                         : "text-gray-500"
                                                 }`}
                                             >
-                                                {String(o.status || "pending")}
+                                                {offerStatusLabel(statusKey)}
                                             </div>
                                         </div>
 
