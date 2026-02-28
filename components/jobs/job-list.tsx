@@ -44,6 +44,8 @@ type GigRow = {
 const STOPWORDS = new Set([
     "ve", "ile", "icin", "için", "veya", "ya", "da", "de", "bir", "bu", "o", "su", "şu", "en", "cok", "çok",
     "hizmet", "ilan", "is", "iş", "proje", "freelancer", "uzman", "teklif", "yeni", "gibi", "olan", "olur",
+    "diye", "var", "yok", "istiyorum", "istiyorum", "yapacagim", "yapacağım", "yaptiracagim", "yaptıracağım",
+    "yaptir", "yaptır", "lazim", "lazım", "arayorum", "ariyorum",
 ]);
 
 const CATEGORY_SEO_MAP: Record<string, string[]> = {
@@ -116,7 +118,24 @@ const matchesQuery = (job: Job, query: string) => {
     if (qTokens.length === 0) return true;
 
     const fields = buildSearchFields(job);
-    const matchedCount = qTokens.filter((t) => fields.all.includes(t)).length;
+    const searchableTokens = tokenize(fields.all);
+    const similarToken = (qToken: string, sToken: string) => {
+        if (sToken.includes(qToken) || qToken.includes(sToken)) return true;
+        if (qToken.length >= 3 && sToken.length >= 3) {
+            const qRoot = qToken.slice(0, 3);
+            const sRoot = sToken.slice(0, 3);
+            if (qRoot === sRoot) return true;
+        }
+        return false;
+    };
+
+    const phrase = fold(query);
+    if (phrase.length >= 3 && (fields.title.includes(phrase) || fields.category.includes(phrase) || fields.description.includes(phrase))) {
+        return true;
+    }
+
+    const matchedTokens = qTokens.filter((qToken) => searchableTokens.some((sToken) => similarToken(qToken, sToken)));
+    const matchedCount = matchedTokens.length;
     const titleMatched = qTokens.some((t) => fields.title.includes(t));
     const categoryMatched = qTokens.some((t) => fields.category.includes(t));
     const tagMatched = qTokens.some((t) => fields.tags.includes(t));
@@ -125,7 +144,7 @@ const matchesQuery = (job: Job, query: string) => {
     if (titleMatched || categoryMatched || tagMatched) return true;
 
     // Cok kelimeli aramada tum kelimeler yerine en az %50 eslesme yeterli.
-    const minRequired = Math.max(1, Math.ceil(qTokens.length * 0.5));
+    const minRequired = Math.max(1, Math.floor(qTokens.length * 0.4));
     return matchedCount >= minRequired;
 };
 
@@ -332,4 +351,3 @@ export function JobList({
         </div>
     );
 }
-
