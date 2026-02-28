@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Clock, CheckCircle2, XCircle, MessageCircle, Star, PackageOpen } from "lucide-react";
 import { getUserOrders, type Order } from "@/lib/data-service";
+import { supabase } from "@/lib/supabase";
 
 const statusConfig = {
     pending: { label: "Bekliyor", icon: Clock, color: "text-yellow-600 bg-yellow-50 border-yellow-200" },
@@ -19,6 +20,7 @@ export default function OrdersPage() {
     const { user } = useAuth();
     const router = useRouter();
     const [orders, setOrders] = useState<Order[]>([]);
+    const [busyId, setBusyId] = useState<string>("");
 
     useEffect(() => {
         if (!user) { router.push("/login"); return; }
@@ -27,6 +29,147 @@ export default function OrdersPage() {
             setOrders(rows);
         })();
     }, [user, router]);
+
+    const refresh = async () => {
+        if (!user) return;
+        const rows = await getUserOrders(user.username, user.role as "employer" | "freelancer" | "admin");
+        setOrders(rows);
+    };
+
+    const handleSendDelivery = async (order: Order) => {
+        if (!user) return;
+        if (busyId) return;
+        if (user.role !== "freelancer") return;
+        if (!order.id) return;
+
+        const message = window.prompt("Teslim notu (opsiyonel):", "") ?? "";
+
+        setBusyId(order.id);
+        try {
+            const { error: insErr } = await supabase.from("order_deliveries").insert([
+                {
+                    order_id: Number(order.id),
+                    sender_id: user.id,
+                    sender_role: "freelancer",
+                    kind: "delivery",
+                    message: message.trim() || null,
+                    files: null,
+                },
+            ]);
+            if (insErr) throw insErr;
+
+            const { error: updErr } = await supabase
+                .from("orders")
+                .update({ status: "delivered" })
+                .eq("id", Number(order.id));
+            if (updErr) throw updErr;
+
+            await refresh();
+        } catch (e: any) {
+            window.alert("Teslim gönderilemedi: " + String(e?.message || e));
+        } finally {
+            setBusyId("");
+        }
+    };
+
+    const handleRequestRevision = async (order: Order) => {
+        if (!user) return;
+        if (busyId) return;
+        if (user.role !== "employer") return;
+        if (order.status !== "delivered") return;
+
+        const reason = window.prompt("Revizyon isteği (gerekçe):", "") ?? "";
+        if (!reason.trim()) return;
+
+        setBusyId(order.id);
+        try {
+            const { error: insErr } = await supabase.from("order_deliveries").insert([
+                {
+                    order_id: Number(order.id),
+                    sender_id: user.id,
+                    sender_role: "employer",
+                    kind: "revision_request",
+                    message: reason.trim(),
+                    files: null,
+                },
+            ]);
+            if (insErr) throw insErr;
+
+            const { error: updErr } = await supabase
+                .from("orders")
+                .update({ status: "active" })
+                .eq("id", Number(order.id));
+            if (updErr) throw updErr;
+
+            await refresh();
+        } catch (e: any) {
+            window.alert("Revizyon isteği gönderilemedi: " + String(e?.message || e));
+        } finally {
+            setBusyId("");
+        }
+    };
+
+    const handleAcceptDelivery = async (order: Order) => {
+        if (!user) return;
+        if (busyId) return;
+        if (user.role !== "employer") return;
+        if (order.status !== "delivered") return;
+        if (order.paidToSeller) {
+            window.alert("Bu sipariş için ödeme zaten cüzdana aktarılmış.");
+            return;
+        }
+
+        const ok = window.confirm("Teslimi onaylayıp siparişi tamamlamak istiyor musun?");
+        if (!ok) return;
+
+        setBusyId(order.id);
+        try {
+            const { error: insErr } = await supabase.from("order_deliveries").insert([
+                {
+                    order_id: Number(order.id),
+                    sender_id: user.id,
+                    sender_role: "employer",
+                    kind: "accept",
+                    message: null,
+                    files: null,
+                },
+            ]);
+            if (insErr) throw insErr;
+
+            const { error: updErr } = await supabase
+                .from("orders")
+                .update({ status: "completed" })
+                .eq("id", Number(order.id));
+            if (updErr) throw updErr;
+
+            if (!order.sellerId) throw new Error("Satıcı bilgisi bulunamadı");
+            const creditAmount = Number(order.price);
+            if (!Number.isFinite(creditAmount) || creditAmount <= 0) throw new Error("Tutar geçersiz");
+
+            const { error: ledErr } = await supabase.from("wallet_ledger").insert([
+                {
+                    user_id: order.sellerId,
+                    order_id: Number(order.id),
+                    type: "credit",
+                    amount: creditAmount,
+                    description: `Sipariş kazancı (#${order.id})`,
+                },
+            ]);
+            if (ledErr) throw ledErr;
+
+            const { error: paidErr } = await supabase
+                .from("orders")
+                .update({ paid_to_seller: true })
+                .eq("id", Number(order.id));
+            if (paidErr) throw paidErr;
+
+            await refresh();
+        } catch (e: any) {
+            window.alert("Onay işlemi başarısız: " + String(e?.message || e));
+        } finally {
+            setBusyId("");
+        }
+    };
 
     if (!user) return null;
 
@@ -75,6 +218,9 @@ export default function OrdersPage() {
                     {orders.map((order) => {
                         const config = statusConfig[order.status];
                         const StatusIcon = config.icon;
+                        const isMineFreelancer = user.role === "freelancer" && user.username === order.freelancer;
+                        const isMineEmployer = user.role === "employer" && user.username === order.client;
+                        const busy = busyId === order.id;
 
                         return (
                             <div key={order.id} className="bg-white border rounded-xl p-6 hover:shadow-md transition-shadow">
@@ -104,10 +250,39 @@ export default function OrdersPage() {
                                             <Button variant="ghost" size="icon" title="Mesaj Gönder">
                                                 <MessageCircle className="h-4 w-4" />
                                             </Button>
-                                            {order.status === "delivered" && (
-                                                <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white">
-                                                    ✅ Onayla
+                                            {order.status === "active" && isMineFreelancer && (
+                                                <Button
+                                                    size="sm"
+                                                    disabled={busy}
+                                                    onClick={() => handleSendDelivery(order)}
+                                                    className="bg-purple-600 hover:bg-purple-700 text-white"
+                                                >
+                                                    📦 Teslim Gönder
                                                 </Button>
+                                            )}
+                                            {order.status === "delivered" && (
+                                                <>
+                                                    {isMineEmployer && (
+                                                        <>
+                                                            <Button
+                                                                size="sm"
+                                                                disabled={busy}
+                                                                onClick={() => handleRequestRevision(order)}
+                                                                className="bg-gray-200 hover:bg-gray-300 text-gray-900"
+                                                            >
+                                                                🔁 Revizyon
+                                                            </Button>
+                                                            <Button
+                                                                size="sm"
+                                                                disabled={busy}
+                                                                onClick={() => handleAcceptDelivery(order)}
+                                                                className="bg-green-600 hover:bg-green-700 text-white"
+                                                            >
+                                                                ✅ Onayla
+                                                            </Button>
+                                                        </>
+                                                    )}
+                                                </>
                                             )}
                                             {order.status === "completed" && (
                                                 <Button variant="outline" size="sm">

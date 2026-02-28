@@ -35,7 +35,7 @@ function AdminPageContent() {
     const [stats, setStats] = useState<PlatformStats | null>(null);
     const [loading, setLoading] = useState(true);
     const [totalUsersCount, setTotalUsersCount] = useState(0);
-    const [activeTab, setActiveTab] = useState<"overview" | "users" | "support" | "categories" | "deletions" | "site_settings">("overview");
+    const [activeTab, setActiveTab] = useState<"overview" | "users" | "support" | "payouts" | "categories" | "deletions" | "site_settings">("overview");
     const [tickets, setTickets] = useState<SupportTicket[]>([]);
     const [usernameToId, setUsernameToId] = useState<Record<string, string>>({});
     const [replyInputs, setReplyInputs] = useState<Record<string, string>>({});
@@ -45,7 +45,7 @@ function AdminPageContent() {
 
     const parseTabFromUrl = (raw: string | null) => {
         const v = String(raw || "").trim();
-        if (v === "overview" || v === "users" || v === "support" || v === "deletions" || v === "site_settings") return v;
+        if (v === "overview" || v === "users" || v === "support" || v === "payouts" || v === "deletions" || v === "site_settings") return v;
         return null;
     };
 
@@ -465,6 +465,7 @@ function AdminPageContent() {
                     { key: "overview" as const, label: "📊 Genel Bakış", count: null },
                     { key: "users" as const, label: "👥 Üyeler", count: totalUsersCount },
                     { key: "support" as const, label: "🎧 Destek", count: openTicketsCount > 0 ? openTicketsCount : null },
+                    { key: "payouts" as const, label: "💸 Ödeme Talepleri", count: null },
                     { key: "deletions" as const, label: "⚠️ Silme Talepleri", count: deletionRequests.length > 0 ? deletionRequests.length : null },
                     { key: "categories" as const, label: "📂 Kategoriler", count: null },
                     { key: "site_settings" as const, label: "⚙️ Site Ayarları", count: null },
@@ -473,6 +474,18 @@ function AdminPageContent() {
                         <Link
                             key={tab.key}
                             href="/admin/categories"
+                            prefetch
+                            className={`px-5 py-3 text-[10px] font-black uppercase tracking-widest border-b-2 transition-colors relative whitespace-nowrap ${activeTab === tab.key
+                                ? "border-blue-600 text-blue-600"
+                                : "border-transparent text-gray-400 hover:text-gray-700"
+                                }`}
+                        >
+                            {tab.label}
+                        </Link>
+                    ) : tab.key === "payouts" ? (
+                        <Link
+                            key={tab.key}
+                            href="/admin/payouts"
                             prefetch
                             className={`px-5 py-3 text-[10px] font-black uppercase tracking-widest border-b-2 transition-colors relative whitespace-nowrap ${activeTab === tab.key
                                 ? "border-blue-600 text-blue-600"

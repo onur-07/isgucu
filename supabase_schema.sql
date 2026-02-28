@@ -86,7 +86,42 @@ CREATE TABLE IF NOT EXISTS orders (
   total_days INTEGER DEFAULT 0,
   extras JSONB,
   status TEXT CHECK (status IN ('pending', 'active', 'delivered', 'completed', 'cancelled')) DEFAULT 'pending',
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL,
+  paid_to_seller BOOLEAN DEFAULT FALSE
+);
+
+-- ORDER DELIVERIES / REVISIONS
+CREATE TABLE IF NOT EXISTS order_deliveries (
+  id BIGSERIAL PRIMARY KEY,
+  order_id BIGINT REFERENCES orders(id) ON DELETE CASCADE NOT NULL,
+  sender_id UUID REFERENCES auth.users ON DELETE CASCADE NOT NULL,
+  sender_role TEXT CHECK (sender_role IN ('freelancer', 'employer')) NOT NULL,
+  kind TEXT CHECK (kind IN ('delivery', 'revision_request', 'accept')) NOT NULL,
+  message TEXT,
+  files JSONB,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
+);
+
+-- WALLET LEDGER (credits/debits)
+CREATE TABLE IF NOT EXISTS wallet_ledger (
+  id BIGSERIAL PRIMARY KEY,
+  user_id UUID REFERENCES auth.users ON DELETE CASCADE NOT NULL,
+  order_id BIGINT REFERENCES orders(id) ON DELETE SET NULL,
+  type TEXT CHECK (type IN ('credit', 'debit')) NOT NULL,
+  amount DECIMAL NOT NULL,
+  description TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
+);
+
+-- PAYOUT REQUESTS (withdrawals)
+CREATE TABLE IF NOT EXISTS payout_requests (
+  id BIGSERIAL PRIMARY KEY,
+  user_id UUID REFERENCES auth.users ON DELETE CASCADE NOT NULL,
+  amount DECIMAL NOT NULL,
+  status TEXT CHECK (status IN ('pending', 'approved', 'rejected')) DEFAULT 'pending',
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL,
+  approved_at TIMESTAMP WITH TIME ZONE,
+  approved_by UUID REFERENCES auth.users ON DELETE SET NULL
 );
 
 -- SUPPORT TICKETS
@@ -123,6 +158,9 @@ ALTER TABLE offers ENABLE ROW LEVEL SECURITY;
 ALTER TABLE orders ENABLE ROW LEVEL SECURITY;
 ALTER TABLE support_tickets ENABLE ROW LEVEL SECURITY;
 ALTER TABLE account_deletion_requests ENABLE ROW LEVEL SECURITY;
+ALTER TABLE order_deliveries ENABLE ROW LEVEL SECURITY;
+ALTER TABLE wallet_ledger ENABLE ROW LEVEL SECURITY;
+ALTER TABLE payout_requests ENABLE ROW LEVEL SECURITY;
 
 -- Policies
 DROP POLICY IF EXISTS "Public profiles are viewable by everyone" ON profiles;
@@ -158,6 +196,82 @@ DROP POLICY IF EXISTS "Users can view their orders" ON orders;
 CREATE POLICY "Users can view their orders" ON orders FOR SELECT USING (auth.uid() = buyer_id OR auth.uid() = seller_id);
 DROP POLICY IF EXISTS "Buyer can create order" ON orders;
 CREATE POLICY "Buyer can create order" ON orders FOR INSERT WITH CHECK (auth.uid() = buyer_id);
+
+DROP POLICY IF EXISTS "Users can update their orders" ON orders;
+CREATE POLICY "Users can update their orders" ON orders FOR UPDATE USING (auth.uid() = buyer_id OR auth.uid() = seller_id);
+
+DROP POLICY IF EXISTS "Users can view their deliveries" ON order_deliveries;
+CREATE POLICY "Users can view their deliveries" ON order_deliveries
+  FOR SELECT
+  USING (
+    EXISTS (
+      SELECT 1 FROM orders o
+      WHERE o.id = order_deliveries.order_id
+        AND (auth.uid() = o.buyer_id OR auth.uid() = o.seller_id)
+    )
+  );
+
+DROP POLICY IF EXISTS "Users can create deliveries" ON order_deliveries;
+CREATE POLICY "Users can create deliveries" ON order_deliveries
+  FOR INSERT
+  WITH CHECK (
+    auth.uid() = sender_id
+    AND EXISTS (
+      SELECT 1 FROM orders o
+      WHERE o.id = order_deliveries.order_id
+        AND (auth.uid() = o.buyer_id OR auth.uid() = o.seller_id)
+    )
+  );
+
+DROP POLICY IF EXISTS "Users can view their wallet ledger" ON wallet_ledger;
+CREATE POLICY "Users can view their wallet ledger" ON wallet_ledger
+  FOR SELECT
+  USING (
+    auth.uid() = user_id
+    OR EXISTS (SELECT 1 FROM profiles p WHERE p.id = auth.uid() AND p.role = 'admin')
+  );
+
+DROP POLICY IF EXISTS "Admins can insert wallet ledger" ON wallet_ledger;
+CREATE POLICY "Admins can insert wallet ledger" ON wallet_ledger
+  FOR INSERT
+  WITH CHECK (
+    EXISTS (SELECT 1 FROM profiles p WHERE p.id = auth.uid() AND p.role = 'admin')
+  );
+
+DROP POLICY IF EXISTS "Buyer can credit seller on completion" ON wallet_ledger;
+CREATE POLICY "Buyer can credit seller on completion" ON wallet_ledger
+  FOR INSERT
+  WITH CHECK (
+    type = 'credit'
+    AND amount >= 0
+    AND order_id IS NOT NULL
+    AND EXISTS (
+      SELECT 1 FROM orders o
+      WHERE o.id = wallet_ledger.order_id
+        AND auth.uid() = o.buyer_id
+        AND wallet_ledger.user_id = o.seller_id
+        AND o.status = 'completed'
+        AND o.paid_to_seller = FALSE
+    )
+  );
+
+DROP POLICY IF EXISTS "Users can create payout requests" ON payout_requests;
+CREATE POLICY "Users can create payout requests" ON payout_requests
+  FOR INSERT
+  WITH CHECK (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Users can view payout requests" ON payout_requests;
+CREATE POLICY "Users can view payout requests" ON payout_requests
+  FOR SELECT
+  USING (
+    auth.uid() = user_id
+    OR EXISTS (SELECT 1 FROM profiles p WHERE p.id = auth.uid() AND p.role = 'admin')
+  );
+
+DROP POLICY IF EXISTS "Admins can update payout requests" ON payout_requests;
+CREATE POLICY "Admins can update payout requests" ON payout_requests
+  FOR UPDATE
+  USING (EXISTS (SELECT 1 FROM profiles p WHERE p.id = auth.uid() AND p.role = 'admin'));
 
 DROP POLICY IF EXISTS "Public tickets" ON support_tickets;
 CREATE POLICY "Public tickets" ON support_tickets FOR ALL USING (true);

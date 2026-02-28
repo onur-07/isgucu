@@ -82,7 +82,7 @@ export function friendlySupabaseError(err: unknown, fallback: string): string {
 }
 
 export function sanitizeMessage(text: string): { allowed: boolean; reason?: string; cleanedText?: string } {
-  let cleaned = text;
+  const cleaned = text;
   const lower = text.toLowerCase();
 
   // Normalize for robust detection (spaces / dots / dashes / emojis / etc.)
@@ -118,58 +118,23 @@ export function sanitizeMessage(text: string): { allowed: boolean; reason?: stri
     return { allowed: false, reason: "GÃ¼venlik nedeniyle iletiÅŸim bilgisi paylaÅŸÄ±mÄ± yasaktÄ±r." };
   }
 
-  // 4. Mask Full Names inside the message (e.g. "Selam Ben Ahmet YÄ±lmaz" -> "Selam Ben Ahmet Y.")
-  // Heuristic: find two consecutive capitalized words that look like Name + Surname.
-  // Avoid masking common non-name tokens.
-  const nonNameTokens = new Set([
-    "Selam",
-    "Merhaba",
-    "Ben",
-    "Biz",
-    "SayÄ±n",
-    "Sn",
-    "Sn.",
-    "Ä°yi",
-    "Iyi",
-    "NasÄ±lsÄ±n",
-    "Nasilsin",
-    "TeÅŸekkÃ¼r",
-    "Tesekkur",
+  // 4. Name/surname check:
+  // Only block clear personal identity patterns. Do not mask generic phrases (e.g. "Tahmini Fiyat").
+  const firstNameLike = new Set([
+    "ahmet", "mehmet", "ali", "veli", "hasan", "huseyin", "mustafa", "emre", "onur",
+    "mert", "kaan", "berk", "furkan", "yusuf", "ibrahim", "abdullah", "enes", "omer",
+    "ayse", "fatma", "zeynep", "elif", "hatice", "esra", "buse", "eda", "sena", "melis",
   ]);
-
-  cleaned = cleaned.replace(
-    /\b([A-ZÃ‡ÄÄ°Ã–ÅÃœ][a-zÃ§ÄŸÄ±Ã¶ÅŸÃ¼]{2,})\s+([A-ZÃ‡ÄÄ°Ã–ÅÃœ][a-zÃ§ÄŸÄ±Ã¶ÅŸÃ¼]{2,})\b/g,
-    (m, a, b) => {
-      const first = String(a);
-      const last = String(b);
-      if (nonNameTokens.has(first) || nonNameTokens.has(last)) return m;
-      return `${first} ${last.charAt(0).toUpperCase()}.`;
+  const identityHints = /\b(benim|adim|ismim|isimim|ad\s*soyad|ad-soyad|soyadim)\b/i;
+  const nameMatch = cleaned.match(/\b([\p{Lu}][\p{Ll}]{2,})\s+([\p{Lu}][\p{Ll}]{2,})\b/u);
+  if (nameMatch) {
+    const first = String(nameMatch[1] || "").toLocaleLowerCase("tr-TR");
+    const hasIdentityHint = identityHints.test(cleaned);
+    const looksLikeRealName = firstNameLike.has(first);
+    if (hasIdentityHint || looksLikeRealName) {
+      return { allowed: false, reason: "Guvenlik nedeniyle ad/soyad veya kisisel bilgi yazilamaz." };
     }
-  );
-
-  // 4.1 Mask spaced-letter full names (e.g. "A h m e t  Y Ä± l m a z" -> "Ahmet Y.")
-  // Pattern: sequences of single-letter tokens separated by spaces, with 2+ spaces between name and surname groups.
-  cleaned = cleaned.replace(
-    /\b(?:[A-Za-zÃ‡ÄÄ°Ã–ÅÃœÃ§ÄŸÄ±Ã¶ÅŸÃ¼]\s+){2,}[A-Za-zÃ‡ÄÄ°Ã–ÅÃœÃ§ÄŸÄ±Ã¶ÅŸÃ¼](?:\s{2,}(?:[A-Za-zÃ‡ÄÄ°Ã–ÅÃœÃ§ÄŸÄ±Ã¶ÅŸÃ¼]\s+){2,}[A-Za-zÃ‡ÄÄ°Ã–ÅÃœÃ§ÄŸÄ±Ã¶ÅŸÃ¼])\b/g,
-    (m) => {
-      const groups = m.trim().split(/\s{2,}/).map((g) => g.replace(/\s+/g, "")).filter(Boolean);
-      if (groups.length !== 2) return m;
-      const [g1, g2] = groups;
-      if (g1.length < 3 || g2.length < 3) return m;
-
-      const cap = (s: string) => {
-        const t = String(s);
-        const first = t.charAt(0).toUpperCase();
-        const rest = t.slice(1).toLowerCase();
-        return `${first}${rest}`;
-      };
-
-      const first = cap(g1);
-      const last = cap(g2);
-      if (nonNameTokens.has(first) || nonNameTokens.has(last)) return m;
-      return `${first} ${last.charAt(0).toUpperCase()}.`;
-    }
-  );
+  }
 
   // 3.1 Social / contact hints
   const contactHints = [

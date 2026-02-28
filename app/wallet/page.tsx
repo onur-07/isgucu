@@ -6,21 +6,77 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ArrowUpRight, ArrowDownLeft, TrendingUp, Wallet, CreditCard, Banknote } from "lucide-react";
 import { getUserTransactions, getUserBalance, type Transaction } from "@/lib/data-service";
+import { supabase } from "@/lib/supabase";
 
 export default function WalletPage() {
     const { user } = useAuth();
     const router = useRouter();
     const [transactions, setTransactions] = useState<Transaction[]>([]);
     const [balance, setBalance] = useState({ balance: 0, totalEarned: 0, pending: 0 });
+    const [busy, setBusy] = useState(false);
 
     useEffect(() => {
         if (!user) { router.push("/login"); return; }
+        let alive = true;
         const id = window.setTimeout(() => {
-            setTransactions(getUserTransactions(user.username));
-            setBalance(getUserBalance(user.username));
+            (async () => {
+                try {
+                    const [txs, bal] = await Promise.all([
+                        getUserTransactions(user.username),
+                        getUserBalance(user.username),
+                    ]);
+                    if (!alive) return;
+                    setTransactions(txs);
+                    setBalance(bal);
+                } catch (e) {
+                    console.error("Wallet load error:", e);
+                }
+            })();
         }, 0);
-        return () => window.clearTimeout(id);
+        return () => {
+            alive = false;
+            window.clearTimeout(id);
+        };
     }, [user, router]);
+
+    const handleWithdraw = async () => {
+        if (!user) return;
+        if (busy) return;
+        if (balance.balance <= 0) return;
+
+        const raw = window.prompt("Çekmek istediğiniz tutarı girin (₺):", String(balance.balance));
+        if (raw === null) return;
+        const amount = Number(String(raw).replace(",", ".").trim());
+        if (!Number.isFinite(amount) || amount <= 0) {
+            window.alert("Geçerli bir tutar girin.");
+            return;
+        }
+        if (amount > balance.balance) {
+            window.alert("Çekmek istediğiniz tutar mevcut bakiyeden büyük olamaz.");
+            return;
+        }
+
+        setBusy(true);
+        try {
+            const { error } = await supabase.from("payout_requests").insert([
+                { user_id: user.id, amount, status: "pending" },
+            ]);
+            if (error) {
+                window.alert("Para çekme talebi oluşturulamadı: " + (error.message || "Bilinmeyen hata"));
+                return;
+            }
+
+            const [txs, bal] = await Promise.all([
+                getUserTransactions(user.username),
+                getUserBalance(user.username),
+            ]);
+            setTransactions(txs);
+            setBalance(bal);
+            window.alert("Para çekme talebiniz admin onayına gönderildi.");
+        } finally {
+            setBusy(false);
+        }
+    };
 
     if (!user) return null;
 
@@ -63,7 +119,7 @@ export default function WalletPage() {
 
             {/* Action Buttons */}
             <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 mb-8 sm:items-center sm:justify-start">
-                <Button className="bg-green-600 hover:bg-green-700 text-white font-medium px-6 w-full sm:w-auto" disabled={balance.balance === 0}>
+                <Button onClick={handleWithdraw} className="bg-green-600 hover:bg-green-700 text-white font-medium px-6 w-full sm:w-auto" disabled={balance.balance === 0 || busy}>
                     💳 Para Çek
                 </Button>
                 <Button variant="outline" className="font-medium px-6 w-full sm:w-auto" disabled={transactions.length === 0}>

@@ -55,8 +55,11 @@ export interface Order {
     title: string;
     client: string;
     freelancer: string;
+    buyerId?: string;
+    sellerId?: string;
     price: number;
     status: "pending" | "active" | "delivered" | "completed" | "cancelled";
+    paidToSeller?: boolean;
     createdAt: string;
     dueDate: string;
 }
@@ -154,14 +157,129 @@ export async function updateUserInfo(userId: string, updates: Record<string, unk
 }
 
 // ===== TRANSACTIONS & BALANCE =====
-export function getUserTransactions(_username: string): Transaction[] {
-    void _username;
-    return [];
+export async function getUserTransactions(username: string): Promise<Transaction[]> {
+    if (!username) return [];
+
+    const { data: me, error: meErr } = await supabase
+        .from("profiles")
+        .select("id")
+        .eq("username", username)
+        .maybeSingle();
+    if (meErr || !me?.id) {
+        if (meErr) console.error("Error fetching profile id:", meErr);
+        return [];
+    }
+
+    const [{ data: ledgerRows, error: ledgerErr }, { data: payoutRows, error: payoutErr }] = await Promise.all([
+        supabase
+            .from("wallet_ledger")
+            .select("id, type, amount, description, created_at")
+            .eq("user_id", me.id)
+            .order("created_at", { ascending: false })
+            .limit(50),
+        supabase
+            .from("payout_requests")
+            .select("id, amount, status, created_at")
+            .eq("user_id", me.id)
+            .order("created_at", { ascending: false })
+            .limit(50),
+    ]);
+
+    if (ledgerErr) console.error("Error fetching wallet_ledger:", ledgerErr);
+    if (payoutErr) console.error("Error fetching payout_requests:", payoutErr);
+
+    const ledger = Array.isArray(ledgerRows) ? ledgerRows : [];
+    const payouts = Array.isArray(payoutRows) ? payoutRows : [];
+
+    const txs: Transaction[] = [];
+    for (const r of ledger) {
+        const typeRaw = String((r as any)?.type || "").toLowerCase();
+        const amountNum = Number((r as any)?.amount ?? 0);
+        const txType: Transaction["type"] = typeRaw === "debit" ? "withdrawal" : "income";
+        const createdAt = (r as any)?.created_at ? new Date(String((r as any).created_at)).toLocaleString("tr-TR") : "";
+        txs.push({
+            id: String((r as any)?.id ?? ""),
+            user: username,
+            type: txType,
+            description: String((r as any)?.description || (txType === "income" ? "Kazanç" : "Çekim")),
+            amount: Number.isFinite(amountNum) ? amountNum : 0,
+            date: createdAt,
+        });
+    }
+
+    for (const r of payouts) {
+        const status = String((r as any)?.status || "pending").toLowerCase();
+        if (status !== "pending") continue;
+        const amountNum = Number((r as any)?.amount ?? 0);
+        const createdAt = (r as any)?.created_at ? new Date(String((r as any).created_at)).toLocaleString("tr-TR") : "";
+        txs.push({
+            id: `payout-${String((r as any)?.id ?? "")}`,
+            user: username,
+            type: "pending",
+            description: "Para çekme talebi (bekliyor)",
+            amount: Number.isFinite(amountNum) ? amountNum : 0,
+            date: createdAt,
+        });
+    }
+
+    return txs.sort((a, b) => {
+        const ta = new Date(a.date).getTime();
+        const tb = new Date(b.date).getTime();
+        if (Number.isFinite(ta) && Number.isFinite(tb)) return tb - ta;
+        return 0;
+    });
 }
 
-export function getUserBalance(_username: string) {
-    void _username;
-    return { balance: 0, totalEarned: 0, pending: 0 };
+export async function getUserBalance(username: string) {
+    if (!username) return { balance: 0, totalEarned: 0, pending: 0 };
+
+    const { data: me, error: meErr } = await supabase
+        .from("profiles")
+        .select("id")
+        .eq("username", username)
+        .maybeSingle();
+    if (meErr || !me?.id) {
+        if (meErr) console.error("Error fetching profile id:", meErr);
+        return { balance: 0, totalEarned: 0, pending: 0 };
+    }
+
+    const [{ data: ledgerRows, error: ledgerErr }, { data: pendingRows, error: pendingErr }] = await Promise.all([
+        supabase
+            .from("wallet_ledger")
+            .select("type, amount")
+            .eq("user_id", me.id),
+        supabase
+            .from("payout_requests")
+            .select("amount")
+            .eq("user_id", me.id)
+            .eq("status", "pending"),
+    ]);
+
+    if (ledgerErr) console.error("Error fetching wallet_ledger:", ledgerErr);
+    if (pendingErr) console.error("Error fetching payout_requests:", pendingErr);
+
+    const ledger = Array.isArray(ledgerRows) ? ledgerRows : [];
+    const pending = Array.isArray(pendingRows) ? pendingRows : [];
+
+    let credits = 0;
+    let debits = 0;
+    for (const r of ledger) {
+        const typeRaw = String((r as any)?.type || "").toLowerCase();
+        const amountNum = Number((r as any)?.amount ?? 0);
+        if (!Number.isFinite(amountNum)) continue;
+        if (typeRaw === "debit") debits += amountNum;
+        else credits += amountNum;
+    }
+    const pendingSum = pending.reduce((s, r) => {
+        const n = Number((r as any)?.amount ?? 0);
+        return s + (Number.isFinite(n) ? n : 0);
+    }, 0);
+
+    return {
+        balance: Math.max(0, credits - debits - pendingSum),
+        totalEarned: Math.max(0, credits),
+        pending: Math.max(0, pendingSum),
+    };
 }
 
 // ===== STATS & REVIEWS =====
@@ -189,7 +307,7 @@ export async function getUserOrders(username: string, _role: "employer" | "freel
     if (!username) return [];
     const { data, error } = await supabase
         .from("orders")
-        .select("id, gig_id, buyer_username, seller_username, total_price, total_days, status, created_at, gigs(title)")
+        .select("id, gig_id, buyer_id, seller_id, buyer_username, seller_username, total_price, total_days, status, created_at, paid_to_seller, gigs(title)")
         .or(`buyer_username.eq.${username},seller_username.eq.${username}`)
         .order("created_at", { ascending: false });
 
@@ -200,12 +318,15 @@ export async function getUserOrders(username: string, _role: "employer" | "freel
 
     type OrderRow = {
         id?: unknown;
+        buyer_id?: unknown;
+        seller_id?: unknown;
         buyer_username?: unknown;
         seller_username?: unknown;
         total_price?: unknown;
         total_days?: unknown;
         status?: unknown;
         created_at?: unknown;
+        paid_to_seller?: unknown;
         gigs?: { title?: unknown } | null;
     };
 
@@ -230,8 +351,11 @@ export async function getUserOrders(username: string, _role: "employer" | "freel
             title,
             client: String(o.buyer_username || ""),
             freelancer: String(o.seller_username || ""),
+            buyerId: o?.buyer_id != null ? String(o.buyer_id) : undefined,
+            sellerId: o?.seller_id != null ? String(o.seller_id) : undefined,
             price: Number.isFinite(priceNum) ? priceNum : 0,
             status: normalizedStatus,
+            paidToSeller: Boolean(o?.paid_to_seller),
             createdAt,
             dueDate,
         } as Order;
