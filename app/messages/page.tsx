@@ -219,24 +219,23 @@ export default function MessagesPage() {
                                     </div>
 
                                     <div className="flex-1 min-w-0">
-                                        <div className="text-center sm:text-left">
+                                        <div className="flex items-start justify-between gap-3">
                                             <div className="font-black text-gray-900 truncate">
                                                 {displayUsername(c.otherUsername)}
                                             </div>
-                                            <div className="text-xs text-gray-500 line-clamp-1 mt-1">
-                                                {c.lastText || "(dosya/teklif)"}
+                                            <div className="text-[10px] font-bold text-gray-400 whitespace-nowrap shrink-0">
+                                                {c.lastAt ? new Date(c.lastAt).toLocaleString("tr-TR") : ""}
                                             </div>
                                         </div>
-                                    </div>
-
-                                    <div className="flex flex-col items-end justify-center gap-2 shrink-0">
-                                        {c.unreadCount > 0 && (
-                                            <div className="h-6 min-w-6 px-2 bg-red-500 text-white text-[10px] font-black rounded-full flex items-center justify-center">
-                                                {c.unreadCount}
+                                        <div className="mt-1 flex items-center justify-between gap-3">
+                                            <div className="text-xs text-gray-500 line-clamp-1 min-w-0">
+                                                {c.lastText || "(dosya/teklif)"}
                                             </div>
-                                        )}
-                                        <div className="text-[10px] font-bold text-gray-400 whitespace-nowrap">
-                                            {c.lastAt ? new Date(c.lastAt).toLocaleString("tr-TR") : ""}
+                                            {c.unreadCount > 0 && (
+                                                <div className="h-6 min-w-6 px-2 bg-red-500 text-white text-[10px] font-black rounded-full flex items-center justify-center shrink-0">
+                                                    {c.unreadCount}
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
                                 </div>
