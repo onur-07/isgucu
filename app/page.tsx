@@ -447,7 +447,7 @@ export default function Home() {
       <section className="w-full py-24 bg-gradient-to-r from-blue-700 to-indigo-800 text-white relative overflow-hidden">
         <div className="absolute inset-0 bg-[url('/grid.svg')] opacity-10"></div>
         <div className="container mx-auto px-4 text-center space-y-8 relative z-10">
-          <h2 className="text-4xl md:text-6xl font-black font-heading tracking-tighter">İşgücü'ne Katılın</h2>
+          <h2 className="text-4xl md:text-6xl font-black font-heading tracking-tighter">İşgücü&rsquo;ne Katılın</h2>
           <p className="max-w-[700px] mx-auto text-blue-100 md:text-lg font-bold">
             Yeteneklerinizi kazanca dönüştürün veya projeniz için en iyi uzmanı hemen bulun.
           </p>

@@ -46,6 +46,25 @@ type JobDetail = {
     } | null;
 };
 
+type ProfileRow = {
+    id: string;
+    username: string;
+    full_name?: string | null;
+    avatar_url?: string | null;
+};
+
+type StorageListItem = {
+    name?: string;
+};
+
+const getErrorMessage = (err: unknown, fallback: string) => {
+    if (typeof err === "object" && err !== null && "message" in err) {
+        const msg = (err as { message?: unknown }).message;
+        if (typeof msg === "string" && msg.trim()) return msg;
+    }
+    return fallback;
+};
+
 export default function JobDetailPage() {
     const params = useParams<{ id: string }>();
     const router = useRouter();
@@ -94,7 +113,7 @@ export default function JobDetailPage() {
 
                 if (row) {
                     // 2. Fetch Owner Profile - try by ID first, then by username
-                    let profileData: any = null;
+                    let profileData: ProfileRow | null = null;
 
                     // Try UUID match first
                     const { data: byId } = await supabase
@@ -131,8 +150,8 @@ export default function JobDetailPage() {
                         owner: profileData ? {
                             id: profileData.id,
                             username: profileData.username,
-                            fullName: profileData.full_name,
-                            avatarUrl: profileData.avatar_url
+                            fullName: profileData.full_name ?? undefined,
+                            avatarUrl: profileData.avatar_url ?? undefined
                         } : null
                     };
                 }
@@ -140,16 +159,16 @@ export default function JobDetailPage() {
                 // 3. Fallback to LocalStorage
                 if (!finalJob) {
                     console.log("Job not found in Supabase, checking local storage...");
-                    const localJobs = JSON.parse(localStorage.getItem("isgucu_jobs") || "[]");
+                    const localJobs = JSON.parse(localStorage.getItem("isgucu_jobs") || "[]") as Array<Record<string, unknown>>;
                     const numericId = Number(jobId);
 
-                    const localRow = localJobs.find((x: any) =>
+                    const localRow = localJobs.find((x) =>
                         String(x.id) === String(jobId) || (Number.isFinite(numericId) && Number(x.id) === numericId)
                     );
 
                     if (localRow) {
                         // Try to fetch profile for local job's user_id too
-                        let localProfile: any = null;
+                        let localProfile: ProfileRow | null = null;
                         const localUserId = String(localRow.user_id || "");
 
                         if (localUserId) {
@@ -172,7 +191,7 @@ export default function JobDetailPage() {
                         }
 
                         finalJob = {
-                            id: localRow.id,
+                            id: typeof localRow.id === "number" ? localRow.id : String(localRow.id || ""),
                             userId: localUserId,
                             title: String(localRow.title || ""),
                             description: String(localRow.description || ""),
@@ -180,12 +199,14 @@ export default function JobDetailPage() {
                             budget: String(localRow.budget || ""),
                             createdAt: String(localRow.created_at || localRow.createdAt || new Date().toISOString()),
                             status: String(localRow.status || "open"),
-                            attachments: localRow.attachments || [],
+                            attachments: Array.isArray(localRow.attachments)
+                                ? localRow.attachments.map((x) => String(x))
+                                : [],
                             owner: localProfile ? {
                                 id: localProfile.id,
                                 username: localProfile.username,
-                                fullName: localProfile.full_name,
-                                avatarUrl: localProfile.avatar_url
+                                fullName: localProfile.full_name ?? undefined,
+                                avatarUrl: localProfile.avatar_url ?? undefined
                             } : null
                         };
                     }
@@ -196,7 +217,7 @@ export default function JobDetailPage() {
                 } else {
                     setJob(finalJob);
                 }
-            } catch (e: any) {
+            } catch (e: unknown) {
                 console.error("Critical Job fetch error:", e);
                 setError("İlan yüklenirken sistem hatası oluştu.");
             } finally {
@@ -214,7 +235,15 @@ export default function JobDetailPage() {
                 return;
             }
 
-            const ownerPrefix = String(job.userId || "").trim();
+            const ownerPrefixCandidates = Array.from(
+                new Set(
+                    [
+                        String(job.userId || "").trim(),
+                        String(job.owner?.id || "").trim(),
+                        String(job.owner?.username || "").trim(),
+                    ].filter(Boolean)
+                )
+            );
             const fileNameFromPath = (path: string) => {
                 const clean = String(path || "").trim();
                 if (!clean) return "";
@@ -238,7 +267,7 @@ export default function JobDetailPage() {
                 if (!cleanPath) return "";
 
                 const signed = await supabase.storage.from("job-attachments").createSignedUrl(cleanPath, 60 * 60);
-                const signedUrl = String((signed as any)?.data?.signedUrl || "");
+                const signedUrl = String(signed.data?.signedUrl || "");
                 if (signedUrl) return signedUrl;
 
                 const publicUrl = supabase.storage.from("job-attachments").getPublicUrl(cleanPath).data.publicUrl || "";
@@ -248,18 +277,23 @@ export default function JobDetailPage() {
             const tryFindInFolder = async (searchName: string) => {
                 const cleanName = String(searchName || "").trim();
                 if (!cleanName) return "";
-                if (!ownerPrefix) return "";
-                try {
-                    const { data } = await supabase.storage
-                        .from("job-attachments")
-                        .list(ownerPrefix, { limit: 200, search: cleanName });
-                    const found = (data || []).find((x: any) => String(x?.name || "") === cleanName)
-                        || (data || []).find((x: any) => String(x?.name || "").endsWith(cleanName));
-                    if (!found?.name) return "";
-                    return `${ownerPrefix}/${found.name}`;
-                } catch {
-                    return "";
+                if (ownerPrefixCandidates.length === 0) return "";
+
+                for (const prefix of ownerPrefixCandidates) {
+                    try {
+                        const { data } = await supabase.storage
+                            .from("job-attachments")
+                            .list(prefix, { limit: 500 });
+                        const rows = (data || []) as StorageListItem[];
+                        const found = rows.find((x) => String(x?.name || "") === cleanName)
+                            || rows.find((x) => String(x?.name || "").endsWith(cleanName))
+                            || rows.find((x) => String(x?.name || "").includes(cleanName));
+                        if (found?.name) return `${prefix}/${found.name}`;
+                    } catch {
+                        // try next prefix
+                    }
                 }
+                return "";
             };
 
             const resolved = await Promise.all(
@@ -272,6 +306,7 @@ export default function JobDetailPage() {
                     }
 
                     if (rawFile.startsWith("http")) {
+                        const isJobAttachmentUrl = rawFile.includes("/storage/v1/object/public/job-attachments/");
                         const pathFromUrl = toStoragePathFromUrl(rawFile);
                         if (pathFromUrl) {
                             const signedFromUrl = await resolveFromPath(pathFromUrl);
@@ -284,7 +319,7 @@ export default function JobDetailPage() {
                                 if (resolvedFromFound) return resolvedFromFound;
                             }
                         }
-                        return rawFile;
+                        return isJobAttachmentUrl ? "" : rawFile;
                     }
 
                     if (rawFile.includes("/")) {
@@ -299,14 +334,12 @@ export default function JobDetailPage() {
                         }
                     }
 
-                    if (!ownerPrefix) return "";
+                    if (ownerPrefixCandidates.length === 0) return "";
 
                     try {
-                        const { data } = await supabase.storage.from("job-attachments").list(ownerPrefix, { limit: 100, search: rawFile });
-                        const found = (data || []).find((x: any) => String(x?.name || "").endsWith(rawFile));
-                        if (!found?.name) return "";
-                        const path = `${ownerPrefix}/${found.name}`;
-                        return await resolveFromPath(path);
+                        const maybePath = await tryFindInFolder(rawFile);
+                        if (!maybePath) return "";
+                        return await resolveFromPath(maybePath);
                     } catch {
                         return "";
                     }
@@ -413,9 +446,9 @@ export default function JobDetailPage() {
             setTimeout(() => {
                 router.push(`/messages/${encodeURIComponent(employerUsername)}`);
             }, 1500);
-        } catch (e: any) {
+        } catch (e: unknown) {
             console.error("Proposal error:", e);
-            setError("Teklif gönderilirken bir hata oluştu: " + (e.message || "Bilinmiyor"));
+            setError("Teklif gönderilirken bir hata oluştu: " + getErrorMessage(e, "Bilinmiyor"));
         } finally {
             setSending(false);
         }

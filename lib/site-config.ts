@@ -74,7 +74,7 @@ const DEFAULT_CONFIG: SiteConfig = {
             title: "Anasayfa",
             slug: "/",
             menuLabel: "Anasayfa",
-            summary: "Landing hero ve SEO metin ayarları",
+            summary: "Anasayfa metin ayarları",
             content: "Anasayfa hero içeriğini buradan yönetebilirsin.",
             enabled: true,
             showInHeader: false,
@@ -218,7 +218,18 @@ export function getSiteConfig(): SiteConfig {
             headerLinks: Array.isArray(parsed?.headerLinks) ? parsed.headerLinks : DEFAULT_CONFIG.headerLinks,
             footerLinks: Array.isArray(parsed?.footerLinks) ? parsed.footerLinks : DEFAULT_CONFIG.footerLinks,
             socialLinks: Array.isArray(parsed?.socialLinks) ? parsed.socialLinks : DEFAULT_CONFIG.socialLinks,
-            managedPages: Array.isArray(parsed?.managedPages) ? parsed.managedPages : DEFAULT_CONFIG.managedPages,
+            managedPages: (Array.isArray(parsed?.managedPages) ? parsed.managedPages : DEFAULT_CONFIG.managedPages).map((p: Partial<ManagedPage>) => {
+                const page = { ...p };
+                // Backward-compat text cleanup for old values stored in localStorage.
+                if (page?.id === "home-system" && String(page.summary || "").includes("Landing hero ve SEO metin ayarları")) {
+                    page.summary = "Anasayfa metin ayarları";
+                }
+                if (page?.id === "about-system") {
+                    if (String(page.title || "").trim() === "Hakkımızda") page.title = "Biz Kimiz";
+                    if (String(page.menuLabel || "").trim() === "Hakkımızda") page.menuLabel = "Biz Kimiz";
+                }
+                return page;
+            }),
             announcement: {
                 ...DEFAULT_CONFIG.announcement,
                 ...(parsed?.announcement || {}),

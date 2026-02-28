@@ -5,7 +5,7 @@ import { useState, useEffect } from "react";
 import { maskFullName, usernameKey } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/components/auth/auth-context";
-import { Menu, X, Bell, MessageCircle, User, ChevronDown, Headphones } from "lucide-react";
+import { Menu, X, Bell, MessageCircle, User, ChevronDown } from "lucide-react";
 import { getSiteConfig } from "@/lib/site-config";
 
 export function Header() {
@@ -53,12 +53,13 @@ export function Header() {
             setNotifCount(defaultNotifs.length);
             return;
         }
-        const notifications = JSON.parse(raw);
-        const unread = notifications.filter((n: any) => !n.read).length;
+        const notifications = JSON.parse(raw) as Array<{ read?: boolean }>;
+        const unread = notifications.filter((n) => !n.read).length;
         setNotifCount(unread);
     };
 
     useEffect(() => {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         updateCounts();
         const handleConfigUpdate = () => setSiteConfig(getSiteConfig());
         window.addEventListener("storage", updateCounts);
@@ -185,7 +186,7 @@ export function Header() {
                                     <div className="h-8 w-8 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 overflow-hidden flex items-center justify-center text-white text-sm font-bold">
                                         {user.avatarUrl ? (
                                             <img
-                                                src={`${user.avatarUrl}${user.avatarUrl.includes("?") ? "&" : "?"}u=${Date.now()}`}
+                                                src={user.avatarUrl}
                                                 alt="Profil"
                                                 className="h-full w-full object-cover"
                                             />
