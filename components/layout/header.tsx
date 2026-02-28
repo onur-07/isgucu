@@ -161,6 +161,7 @@ export function Header() {
             : user?.role === "admin"
                 ? [{ href: "/admin", label: "Yönetim Paneli", color: "text-red-600 font-semibold" }]
                 : [];
+    const ordersLabel = user?.role === "freelancer" ? "İşlerim" : "Siparişlerim";
 
     return (
         <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -269,7 +270,7 @@ export function Header() {
                                             <User className="h-4 w-4" /> Profilim
                                         </Link>
                                         <Link href="/orders" className="flex items-center justify-between gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors" onClick={() => setProfileOpen(false)}>
-                                            <span>📋 Siparişlerim</span>
+                                            <span>📋 {ordersLabel}</span>
                                             {orderApprovalCount > 0 && (
                                                 <span className="h-5 min-w-5 px-1.5 bg-red-500 text-white text-[10px] font-black rounded-full flex items-center justify-center">
                                                     {orderApprovalCount}
@@ -342,7 +343,7 @@ export function Header() {
                                     👤 Profilim
                                 </Link>
                                 <Link href="/orders" className="px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-lg flex items-center justify-between gap-3" onClick={() => setMobileOpen(false)}>
-                                    <span>📋 Siparişlerim</span>
+                                    <span>📋 {ordersLabel}</span>
                                     {orderApprovalCount > 0 && (
                                         <span className="h-5 min-w-5 px-1.5 bg-red-500 text-white text-[10px] font-black rounded-full flex items-center justify-center">
                                             {orderApprovalCount}

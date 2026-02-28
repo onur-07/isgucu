@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useAuth } from "@/components/auth/auth-context";
 import { useRouter } from "next/navigation";
@@ -30,8 +30,8 @@ const statusConfig = {
     pending: { label: "Bekliyor", icon: Clock, color: "text-yellow-600 bg-yellow-50 border-yellow-200" },
     active: { label: "Devam Ediyor", icon: Clock, color: "text-blue-600 bg-blue-50 border-blue-200" },
     delivered: { label: "Teslim Edildi", icon: CheckCircle2, color: "text-purple-600 bg-purple-50 border-purple-200" },
-    completed: { label: "Tamamlandı", icon: CheckCircle2, color: "text-green-600 bg-green-50 border-green-200" },
-    cancelled: { label: "İptal Edildi", icon: XCircle, color: "text-red-600 bg-red-50 border-red-200" },
+    completed: { label: "TamamlandÄ±", icon: CheckCircle2, color: "text-green-600 bg-green-50 border-green-200" },
+    cancelled: { label: "Ä°ptal Edildi", icon: XCircle, color: "text-red-600 bg-red-50 border-red-200" },
 };
 
 export default function OrdersPage() {
@@ -205,7 +205,7 @@ export default function OrdersPage() {
             await refresh();
             if (typeof window !== "undefined") window.dispatchEvent(new Event("orders_updated"));
         } catch (e: any) {
-            window.alert("Teslim gönderilemedi: " + String(e?.message || e));
+            window.alert("Teslim gÃ¶nderilemedi: " + String(e?.message || e));
         } finally {
             setBusyId("");
         }
@@ -218,7 +218,7 @@ export default function OrdersPage() {
 
         const otherId = user.role === "employer" ? order.sellerId : order.buyerId;
         if (!otherId) {
-            window.alert("Karşı taraf bilgisi bulunamadı.");
+            window.alert("KarÅŸÄ± taraf bilgisi bulunamadÄ±.");
             return;
         }
 
@@ -236,15 +236,15 @@ export default function OrdersPage() {
             if (error) {
                 const msg = String(error.message || "");
                 if (msg.toLowerCase().includes("duplicate") || msg.toLowerCase().includes("unique")) {
-                    window.alert("Bu sipariş için zaten değerlendirme yapmışsın.");
+                    window.alert("Bu sipariÅŸ iÃ§in zaten deÄŸerlendirme yapmÄ±ÅŸsÄ±n.");
                 } else {
-                    window.alert("Değerlendirme kaydedilemedi: " + msg);
+                    window.alert("DeÄŸerlendirme kaydedilemedi: " + msg);
                 }
                 return;
             }
-            window.alert("Değerlendirmen kaydedildi.");
+            window.alert("DeÄŸerlendirmen kaydedildi.");
         } catch (e: any) {
-            window.alert("Değerlendirme kaydedilemedi: " + String(e?.message || e));
+            window.alert("DeÄŸerlendirme kaydedilemedi: " + String(e?.message || e));
         } finally {
             setBusyId("");
         }
@@ -259,7 +259,7 @@ export default function OrdersPage() {
         if (ratingRaw === null) return;
         const rating = Math.round(Number(String(ratingRaw).trim()));
         if (!Number.isFinite(rating) || rating < 1 || rating > 5) {
-            window.alert("Puan 1 ile 5 arasında olmalıdır.");
+            window.alert("Puan 1 ile 5 arasÄ±nda olmalÄ±dÄ±r.");
             return;
         }
 
@@ -282,7 +282,7 @@ export default function OrdersPage() {
         if (!reviewOrder) return;
         const rating = Math.round(Number(String(reviewRating).trim()));
         if (!Number.isFinite(rating) || rating < 1 || rating > 5) {
-            window.alert("Puan 1 ile 5 arasında olmalıdır.");
+            window.alert("Puan 1 ile 5 arasÄ±nda olmalÄ±dÄ±r.");
             return;
         }
         setReviewOpen(false);
@@ -297,7 +297,7 @@ export default function OrdersPage() {
         if (user.role !== "employer") return;
         if (order.status !== "delivered") return;
 
-        const reason = window.prompt("Revizyon isteği (gerekçe):", "") ?? "";
+        const reason = window.prompt("Revizyon isteÄŸi (gerekÃ§e):", "") ?? "";
         if (!reason.trim()) return;
 
         setBusyId(order.id);
@@ -323,7 +323,7 @@ export default function OrdersPage() {
             await refresh();
             if (typeof window !== "undefined") window.dispatchEvent(new Event("orders_updated"));
         } catch (e: any) {
-            window.alert("Revizyon isteği gönderilemedi: " + String(e?.message || e));
+            window.alert("Revizyon isteÄŸi gÃ¶nderilemedi: " + String(e?.message || e));
         } finally {
             setBusyId("");
         }
@@ -335,11 +335,11 @@ export default function OrdersPage() {
         if (user.role !== "employer") return;
         if (order.status !== "delivered") return;
         if (order.paidToSeller) {
-            window.alert("Bu sipariş için ödeme zaten cüzdana aktarılmış.");
+            window.alert("Bu sipariÅŸ iÃ§in Ã¶deme zaten cÃ¼zdana aktarÄ±lmÄ±ÅŸ.");
             return;
         }
 
-        const ok = window.confirm("Teslimi onaylayıp siparişi tamamlamak istiyor musun?");
+        const ok = window.confirm("Teslimi onaylayÄ±p sipariÅŸi tamamlamak istiyor musun?");
         if (!ok) return;
 
         setBusyId(order.id);
@@ -362,9 +362,9 @@ export default function OrdersPage() {
                 .eq("id", Number(order.id));
             if (updErr) throw updErr;
 
-            if (!order.sellerId) throw new Error("Satıcı bilgisi bulunamadı");
+            if (!order.sellerId) throw new Error("SatÄ±cÄ± bilgisi bulunamadÄ±");
             const creditAmount = Number(order.price);
-            if (!Number.isFinite(creditAmount) || creditAmount <= 0) throw new Error("Tutar geçersiz");
+            if (!Number.isFinite(creditAmount) || creditAmount <= 0) throw new Error("Tutar geÃ§ersiz");
 
             const { error: ledErr } = await supabase.from("wallet_ledger").insert([
                 {
@@ -372,7 +372,7 @@ export default function OrdersPage() {
                     order_id: Number(order.id),
                     type: "credit",
                     amount: creditAmount,
-                    description: `Sipariş kazancı (#${order.id})`,
+                    description: `SipariÅŸ kazancÄ± (#${order.id})`,
                 },
             ]);
             if (ledErr) throw ledErr;
@@ -386,7 +386,7 @@ export default function OrdersPage() {
             await refresh();
             if (typeof window !== "undefined") window.dispatchEvent(new Event("orders_updated"));
         } catch (e: any) {
-            window.alert("Onay işlemi başarısız: " + String(e?.message || e));
+            window.alert("Onay iÅŸlemi baÅŸarÄ±sÄ±z: " + String(e?.message || e));
         } finally {
             setBusyId("");
         }
@@ -398,6 +398,11 @@ export default function OrdersPage() {
     const active = orders.filter(o => o.status === "active").length;
     const delivered = orders.filter(o => o.status === "delivered").length;
     const completed = orders.filter(o => o.status === "completed").length;
+    const pageTitle = user.role === "freelancer" ? "İşlerim" : "Siparişlerim";
+    const pageDescription =
+        user.role === "freelancer"
+            ? "Aldığın işleri buradan takip edebilirsin."
+            : "Tüm siparişlerini buradan takip edebilirsin.";
 
     return (
         <div className="mx-auto w-full max-w-5xl px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
@@ -407,7 +412,7 @@ export default function OrdersPage() {
                         <div className="p-6 border-b border-slate-100 flex items-center justify-between">
                             <div className="flex items-center gap-2">
                                 <Star className="h-5 w-5 text-amber-500" />
-                                <h3 className="font-black text-slate-900">Değerlendirme</h3>
+                                <h3 className="font-black text-slate-900">DeÄŸerlendirme</h3>
                             </div>
                             <Button
                                 variant="outline"
@@ -443,7 +448,7 @@ export default function OrdersPage() {
                                     if (o) void handleReviewPrompt(o);
                                 }}
                             >
-                                Prompt ile hızlı değerlendir
+                                Prompt ile hÄ±zlÄ± deÄŸerlendir
                             </Button>
                             <Button onClick={submitReviewModal} disabled={!!busyId} className="bg-slate-900 hover:bg-slate-800 text-white">
                                 Kaydet
@@ -453,8 +458,8 @@ export default function OrdersPage() {
                 </div>
             )}
             <div className="mb-8 text-center sm:text-left">
-                <h1 className="text-3xl font-bold font-heading">📋 Siparişlerim</h1>
-                <p className="text-gray-500 mt-1">Tüm siparişlerini buradan takip edebilirsin.</p>
+                <h1 className="text-3xl font-bold font-heading">📋 {pageTitle}</h1>
+                <p className="text-gray-500 mt-1">{pageDescription}</p>
             </div>
 
             {/* Stats Cards */}
@@ -464,7 +469,7 @@ export default function OrdersPage() {
                     { label: "Bekliyor", count: pending, color: "bg-yellow-50 text-yellow-700" },
                     { label: "Devam Ediyor", count: active, color: "bg-blue-50 text-blue-700" },
                     { label: "Teslim Edildi", count: delivered, color: "bg-purple-50 text-purple-700" },
-                    { label: "Tamamlandı", count: completed, color: "bg-green-50 text-green-700" },
+                    { label: "TamamlandÄ±", count: completed, color: "bg-green-50 text-green-700" },
                 ].map((stat) => (
                     <div key={stat.label} className={`${stat.color} rounded-xl p-4 text-center border`}>
                         <div className="text-2xl font-bold">{stat.count}</div>
@@ -477,11 +482,11 @@ export default function OrdersPage() {
             {orders.length === 0 ? (
                 <div className="bg-white border rounded-2xl p-8 sm:p-12 text-center">
                     <PackageOpen className="h-16 w-16 mx-auto mb-4 text-gray-200" />
-                    <h3 className="font-semibold text-gray-700 text-lg">Henüz sipariş yok</h3>
+                    <h3 className="font-semibold text-gray-700 text-lg">HenÃ¼z sipariÅŸ yok</h3>
                     <p className="text-gray-400 mt-2 max-w-md mx-auto">
                         {user.role === "freelancer"
-                            ? "Hizmet ilanlarınız üzerinden sipariş aldığınızda burada görünecek."
-                            : "Bir freelancer'dan hizmet satın aldığınızda burada listelenecek."
+                            ? "Hizmet ilanlarÄ±nÄ±z Ã¼zerinden sipariÅŸ aldÄ±ÄŸÄ±nÄ±zda burada gÃ¶rÃ¼necek."
+                            : "Bir freelancer'dan hizmet satÄ±n aldÄ±ÄŸÄ±nÄ±zda burada listelenecek."
                         }
                     </p>
                 </div>
@@ -513,19 +518,19 @@ export default function OrdersPage() {
                                         </div>
                                         <h3 className="font-semibold text-gray-900 text-lg">{order.title}</h3>
                                         <div className="flex flex-wrap items-center gap-4 text-sm text-gray-500 mt-2">
-                                            <span>👤 {user.role === "freelancer" ? `İş Veren: ${order.client}` : `Freelancer: ${order.freelancer}`}</span>
-                                            <span>📅 {order.createdAt}</span>
-                                            <span>⏰ Teslim: {order.dueDate}</span>
+                                            <span>ğŸ‘¤ {user.role === "freelancer" ? `Ä°ÅŸ Veren: ${order.client}` : `Freelancer: ${order.freelancer}`}</span>
+                                            <span>ğŸ“… {order.createdAt}</span>
+                                            <span>â° Teslim: {order.dueDate}</span>
                                         </div>
                                     </div>
 
                                     <div className="flex flex-col sm:flex-row sm:items-center gap-4 sm:justify-end">
                                         <div className="text-center sm:text-right">
-                                            <div className="text-xl font-bold text-gray-900">₺{order.price.toLocaleString("tr-TR")}</div>
+                                            <div className="text-xl font-bold text-gray-900">â‚º{order.price.toLocaleString("tr-TR")}</div>
                                             <span className="text-xs text-gray-400">Toplam Tutar</span>
                                         </div>
                                         <div className="flex gap-2 justify-center sm:justify-end">
-                                            <Button variant="ghost" size="icon" title="Mesaj Gönder">
+                                            <Button variant="ghost" size="icon" title="Mesaj GÃ¶nder">
                                                 <MessageCircle className="h-4 w-4" />
                                             </Button>
                                             {(order.status === "active" || order.status === "delivered") && (
@@ -545,7 +550,7 @@ export default function OrdersPage() {
                                                     onClick={() => handleSendDelivery(order)}
                                                     className="bg-purple-600 hover:bg-purple-700 text-white"
                                                 >
-                                                    📦 Teslim Gönder
+                                                    ğŸ“¦ Teslim GÃ¶nder
                                                 </Button>
                                             )}
                                             {order.status === "delivered" && (
@@ -558,7 +563,7 @@ export default function OrdersPage() {
                                                                 onClick={() => handleRequestRevision(order)}
                                                                 className="bg-gray-200 hover:bg-gray-300 text-gray-900"
                                                             >
-                                                                🔁 Revizyon
+                                                                ğŸ” Revizyon
                                                             </Button>
                                                             <Button
                                                                 size="sm"
@@ -566,7 +571,7 @@ export default function OrdersPage() {
                                                                 onClick={() => handleAcceptDelivery(order)}
                                                                 className="bg-green-600 hover:bg-green-700 text-white"
                                                             >
-                                                                ✅ Onayla
+                                                                âœ… Onayla
                                                             </Button>
                                                         </>
                                                     )}
@@ -574,7 +579,7 @@ export default function OrdersPage() {
                                             )}
                                             {order.status === "completed" && (
                                                 <Button variant="outline" size="sm" disabled={busy} onClick={() => openReviewModal(order)}>
-                                                    <Star className="h-4 w-4 mr-1" /> Değerlendir
+                                                    <Star className="h-4 w-4 mr-1" /> DeÄŸerlendir
                                                 </Button>
                                             )}
                                         </div>
@@ -622,3 +627,4 @@ export default function OrdersPage() {
         </div>
     );
 }
+
