@@ -33,6 +33,11 @@ type OfferRow = {
     status: "pending" | "accepted" | "rejected" | "cancelled" | string;
     created_at: string;
     responded_at: string | null;
+    extras?: {
+        source?: string;
+        job_id?: string | number;
+        [key: string]: unknown;
+    } | null;
 };
 
 type TimelineItem =
@@ -326,7 +331,7 @@ export default function MessageThreadPage() {
                     withTimeout(
                         supabase
                             .from("offers")
-                            .select("id, sender_id, receiver_id, sender_username, receiver_username, message, price, delivery_days, status, created_at, responded_at")
+                            .select("id, sender_id, receiver_id, sender_username, receiver_username, message, price, delivery_days, status, created_at, responded_at, extras")
                             .or(
                                 `and(sender_username.ilike.${meFold},receiver_username.ilike.${otherFold}),and(sender_username.ilike.${otherFold},receiver_username.ilike.${meFold}),and(sender_username.ilike.${meKey},receiver_username.ilike.${otherKey}),and(sender_username.ilike.${otherKey},receiver_username.ilike.${meKey}),and(sender_username.ilike.${meFold},receiver_username.ilike.${otherKey}),and(sender_username.ilike.${otherKey},receiver_username.ilike.${meFold}),and(sender_username.ilike.${meKey},receiver_username.ilike.${otherFold}),and(sender_username.ilike.${otherFold},receiver_username.ilike.${meKey})`
                             )
@@ -675,7 +680,7 @@ export default function MessageThreadPage() {
         const res = (await withTimeout(
             supabase
                 .from("offers")
-                .select("id, sender_id, receiver_id, sender_username, receiver_username, message, price, delivery_days, status, created_at, responded_at")
+                .select("id, sender_id, receiver_id, sender_username, receiver_username, message, price, delivery_days, status, created_at, responded_at, extras")
                 .or(
                     `and(sender_username.ilike.${meFold},receiver_username.ilike.${otherFold}),and(sender_username.ilike.${otherFold},receiver_username.ilike.${meFold}),and(sender_username.ilike.${meKey},receiver_username.ilike.${otherKey}),and(sender_username.ilike.${otherKey},receiver_username.ilike.${meKey}),and(sender_username.ilike.${meFold},receiver_username.ilike.${otherKey}),and(sender_username.ilike.${otherKey},receiver_username.ilike.${meFold}),and(sender_username.ilike.${meKey},receiver_username.ilike.${otherFold}),and(sender_username.ilike.${otherFold},receiver_username.ilike.${meKey})`
                 )
@@ -745,8 +750,9 @@ export default function MessageThreadPage() {
         setSending(true);
         setError("");
         try {
+            let acceptedOffer: OfferRow | undefined;
             if (status === "accepted") {
-                const acceptedOffer = offers.find((o) => String(o.id) === String(offerId));
+                acceptedOffer = offers.find((o) => String(o.id) === String(offerId));
                 if (!acceptedOffer) throw new Error("Teklif bulunamadi");
 
                 const offerKey = `offer:${String(acceptedOffer.id)}`;
@@ -792,6 +798,17 @@ export default function MessageThreadPage() {
                 "Teklif yanit"
             )) as any;
             if (res?.error) throw res.error;
+            if (status === "accepted") {
+                const jobIdRaw = acceptedOffer?.extras?.source === "job" ? acceptedOffer?.extras?.job_id : null;
+                const jobIdNum = Number(jobIdRaw);
+                if (Number.isFinite(jobIdNum) && jobIdNum > 0) {
+                    const { error: jobUpdErr } = await supabase
+                        .from("jobs")
+                        .update({ status: "closed" })
+                        .eq("id", jobIdNum);
+                    if (jobUpdErr) throw jobUpdErr;
+                }
+            }
             await refreshOffers();
             if (status === "accepted") {
                 window.alert("Teklif kabul edildi. Devam akisina Siparislerim sayfasindan devam edebilirsin.");

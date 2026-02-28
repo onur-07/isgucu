@@ -48,6 +48,38 @@ export default function AdminPayoutsPage() {
         [rows]
     );
 
+    const reopenRelatedJobIfAny = async (orderId: number) => {
+        const { data: orderRow, error: ordSelErr } = await supabase
+            .from("orders")
+            .select("package_key")
+            .eq("id", orderId)
+            .maybeSingle();
+        if (ordSelErr) throw ordSelErr;
+
+        const packageKey = String((orderRow as any)?.package_key || "");
+        if (!packageKey.startsWith("offer:")) return;
+
+        const offerIdRaw = packageKey.slice("offer:".length);
+        const offerIdNum = Number(offerIdRaw);
+        const offerFilter = Number.isFinite(offerIdNum) && offerIdNum > 0
+            ? supabase.from("offers").select("extras").eq("id", offerIdNum).maybeSingle()
+            : supabase.from("offers").select("extras").eq("id", offerIdRaw).maybeSingle();
+        const { data: offerRow, error: offerSelErr } = await offerFilter;
+        if (offerSelErr) throw offerSelErr;
+
+        const extras = (offerRow as any)?.extras as { source?: string; job_id?: string | number } | null | undefined;
+        if (!extras || String(extras.source || "") !== "job") return;
+
+        const jobIdNum = Number(extras.job_id);
+        if (!Number.isFinite(jobIdNum) || jobIdNum <= 0) return;
+
+        const { error: jobUpdErr } = await supabase
+            .from("jobs")
+            .update({ status: "open" })
+            .eq("id", jobIdNum);
+        if (jobUpdErr) throw jobUpdErr;
+    };
+
     useEffect(() => {
         if (loading) return;
         if (!user) {
@@ -185,6 +217,7 @@ export default function AdminPayoutsPage() {
                     .update({ status: "cancelled" })
                     .eq("id", Number(row.order_id));
                 if (ordErr) throw ordErr;
+                await reopenRelatedJobIfAny(Number(row.order_id));
             }
 
             const nextStatus = approveCancel ? "admin_approved" : "admin_rejected";

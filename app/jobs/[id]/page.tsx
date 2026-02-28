@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
@@ -87,7 +87,7 @@ export default function JobDetailPage() {
     useEffect(() => {
         const fetchJob = async () => {
             if (!jobId) {
-                setError("İlan ID bulunamadı.");
+                setError("Ä°lan ID bulunamadÄ±.");
                 setLoading(false);
                 return;
             }
@@ -213,13 +213,13 @@ export default function JobDetailPage() {
                 }
 
                 if (!finalJob) {
-                    setError(`İlan bulunamadı. (ID: ${jobId})`);
+                    setError(`Ä°lan bulunamadÄ±. (ID: ${jobId})`);
                 } else {
                     setJob(finalJob);
                 }
             } catch (e: unknown) {
                 console.error("Critical Job fetch error:", e);
-                setError("İlan yüklenirken sistem hatası oluştu.");
+                setError("Ä°lan yÃ¼klenirken sistem hatasÄ± oluÅŸtu.");
             } finally {
                 setLoading(false);
             }
@@ -441,18 +441,23 @@ export default function JobDetailPage() {
 
         // IMPROVED ROLE CHECK: Allow admin and freelancer, but warn if not freelancer
         if (user.role !== "freelancer" && user.role !== "admin") {
-            setError("Teklif göndermek için Freelancer hesabına sahip olmalısınız.");
+            setError("Teklif gÃ¶ndermek iÃ§in Freelancer hesabÄ±na sahip olmalÄ±sÄ±nÄ±z.");
             return;
         }
 
         const employerUsername = job.owner?.username || job.userId;
         if (!employerUsername) {
-            setError("İlan sahibine ulaşılamıyor.");
+            setError("Ä°lan sahibine ulaÅŸÄ±lamÄ±yor.");
             return;
         }
 
         if (usernameKey(employerUsername) === usernameKey(user.username)) {
-            setError("Kendi ilanınıza teklif gönderemezsiniz.");
+            setError("Kendi ilanÄ±nÄ±za teklif gÃ¶nderemezsiniz.");
+            return;
+        }
+
+        if (String(job.status || "open").toLowerCase() !== "open") {
+            setError("Bu ilan şu anda teklif almaya kapalı.");
             return;
         }
 
@@ -460,17 +465,17 @@ export default function JobDetailPage() {
         const days = Number(String(offerDays || "").trim());
 
         if (!offerPrice || !offerDays) {
-            setError("Lütfen fiyat ve teslim süresi giriniz.");
+            setError("LÃ¼tfen fiyat ve teslim sÃ¼resi giriniz.");
             return;
         }
 
         if (!Number.isFinite(price) || price <= 0) {
-            setError("Geçerli bir fiyat giriniz.");
+            setError("GeÃ§erli bir fiyat giriniz.");
             return;
         }
 
         if (!Number.isFinite(days) || days <= 0) {
-            setError("Geçerli bir teslim süresi giriniz.");
+            setError("GeÃ§erli bir teslim sÃ¼resi giriniz.");
             return;
         }
 
@@ -478,7 +483,7 @@ export default function JobDetailPage() {
         if (noteTrimmed) {
             const noteMod = sanitizeMessage(noteTrimmed);
             if (!noteMod.allowed) {
-                setError(noteMod.reason || "Mesaj içeriği kurallara uygun değil.");
+                setError(noteMod.reason || "Mesaj iÃ§eriÄŸi kurallara uygun deÄŸil.");
                 return;
             }
         }
@@ -490,12 +495,12 @@ export default function JobDetailPage() {
             const meKey = usernameKey(user.username);
             const otherKey = usernameKey(employerUsername);
 
-            const summary = `Merhaba, "${job.title}" ilanı için ₺${price} bütçe ve ${days} gün teslim süresi ile teklifimi iletiyorum.`;
+            const summary = `Merhaba, "${job.title}" ilanÄ± iÃ§in â‚º${price} bÃ¼tÃ§e ve ${days} gÃ¼n teslim sÃ¼resi ile teklifimi iletiyorum.`;
             const messageText = noteTrimmed ? `${summary}\n\nNot: ${noteTrimmed}` : summary;
 
             const receiverId = String(job.owner?.id || "").trim();
             if (!receiverId) {
-                setError("İlan sahibinin kullanıcı kaydı bulunamadı. Lütfen mesaj gönder butonunu kullanın.");
+                setError("Ä°lan sahibinin kullanÄ±cÄ± kaydÄ± bulunamadÄ±. LÃ¼tfen mesaj gÃ¶nder butonunu kullanÄ±n.");
                 setSending(false);
                 return;
             }
@@ -523,7 +528,7 @@ export default function JobDetailPage() {
             }, 1500);
         } catch (e: unknown) {
             console.error("Proposal error:", e);
-            setError("Teklif gönderilirken bir hata oluştu: " + getErrorMessage(e, "Bilinmiyor"));
+            setError("Teklif gÃ¶nderilirken bir hata oluÅŸtu: " + getErrorMessage(e, "Bilinmiyor"));
         } finally {
             setSending(false);
         }
@@ -534,7 +539,7 @@ export default function JobDetailPage() {
             <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
                 <div className="flex flex-col items-center gap-4">
                     <Loader2 className="h-10 w-10 text-blue-600 animate-spin" />
-                    <p className="font-black text-[10px] uppercase tracking-[0.2em] text-slate-400">İlan Detayları Yükleniyor...</p>
+                    <p className="font-black text-[10px] uppercase tracking-[0.2em] text-slate-400">Ä°lan DetaylarÄ± YÃ¼kleniyor...</p>
                 </div>
             </div>
         );
@@ -547,11 +552,11 @@ export default function JobDetailPage() {
                     <div className="h-20 w-20 bg-red-50 text-red-600 rounded-3xl flex items-center justify-center mx-auto shadow-xl shadow-red-100">
                         <AlertCircle className="h-10 w-10" />
                     </div>
-                    <h1 className="text-3xl font-black text-slate-900 uppercase tracking-tighter">İlan Bulunamadı</h1>
-                    <p className="text-slate-500 font-medium leading-relaxed">{error || "Bu ilan arşivlenmiş veya sahibi tarafından kaldırılmış olabilir."}</p>
+                    <h1 className="text-3xl font-black text-slate-900 uppercase tracking-tighter">Ä°lan BulunamadÄ±</h1>
+                    <p className="text-slate-500 font-medium leading-relaxed">{error || "Bu ilan arÅŸivlenmiÅŸ veya sahibi tarafÄ±ndan kaldÄ±rÄ±lmÄ±ÅŸ olabilir."}</p>
                     <Link href="/jobs" className="inline-block">
                         <Button className="h-14 px-8 bg-slate-900 text-white rounded-2xl font-black uppercase text-xs tracking-widest hover:bg-black transition-all">
-                            İLANLARA GERİ DÖN
+                            Ä°LANLARA GERÄ° DÃ–N
                         </Button>
                     </Link>
                 </div>
@@ -571,14 +576,14 @@ export default function JobDetailPage() {
                         <div className="h-9 w-9 rounded-xl border border-slate-100 flex items-center justify-center group-hover:bg-slate-50">
                             <ChevronLeft className="h-5 w-5" />
                         </div>
-                        <span className="font-black text-[10px] uppercase tracking-widest">Geri Dön</span>
+                        <span className="font-black text-[10px] uppercase tracking-widest">Geri DÃ¶n</span>
                     </Link>
                     <div className="hidden md:flex items-center gap-3">
                         <div className="flex -space-x-3">
-                            <div className="h-9 w-9 rounded-full border-2 border-white bg-blue-500 flex items-center justify-center text-white text-[10px] font-black italic">İŞ</div>
+                            <div className="h-9 w-9 rounded-full border-2 border-white bg-blue-500 flex items-center justify-center text-white text-[10px] font-black italic">Ä°Å</div>
                             <div className="h-9 w-9 rounded-full border-2 border-white bg-slate-100 flex items-center justify-center text-slate-400"><User className="h-4 w-4" /></div>
                         </div>
-                        <span className="font-bold text-[10px] text-slate-400 uppercase tracking-widest">İlan Detayı</span>
+                        <span className="font-bold text-[10px] text-slate-400 uppercase tracking-widest">Ä°lan DetayÄ±</span>
                     </div>
                 </div>
             </div>
@@ -596,7 +601,7 @@ export default function JobDetailPage() {
                                     {job.category}
                                 </span>
                                 <span className="px-4 py-1.5 bg-white border border-slate-200 text-slate-400 text-[10px] font-black uppercase tracking-[0.2em] rounded-full">
-                                    AÇIK İLAN
+                                    AÃ‡IK Ä°LAN
                                 </span>
                             </div>
                             <h1 className="text-4xl md:text-5xl font-black text-slate-900 leading-[1.1] tracking-tight">
@@ -614,11 +619,11 @@ export default function JobDetailPage() {
                                 </div>
                                 <div className="flex items-center gap-2.5">
                                     <div className="h-10 w-10 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center">
-                                        <span className="text-lg font-black">₺</span>
+                                        <span className="text-lg font-black">â‚º</span>
                                     </div>
                                     <div>
-                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none">BÜTÇE ARALIĞI</p>
-                                        <p className="text-sm font-black text-emerald-700 mt-0.5 whitespace-nowrap">₺{job.budget}</p>
+                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none">BÃœTÃ‡E ARALIÄI</p>
+                                        <p className="text-sm font-black text-emerald-700 mt-0.5 whitespace-nowrap">â‚º{job.budget}</p>
                                     </div>
                                 </div>
                             </div>
@@ -632,7 +637,7 @@ export default function JobDetailPage() {
                             <div className="relative z-10">
                                 <h3 className="text-xl font-black text-slate-900 uppercase tracking-tight mb-8 flex items-center gap-3">
                                     <div className="h-1 bg-blue-600 w-8 rounded-full" />
-                                    İŞİN DETAYLARI VE KAPSAMI
+                                    Ä°ÅÄ°N DETAYLARI VE KAPSAMI
                                 </h3>
                                 <div className="prose prose-slate max-w-none">
                                     <p className="text-slate-600 font-medium leading-[1.8] text-lg lg:text-xl whitespace-pre-wrap">
@@ -672,7 +677,7 @@ export default function JobDetailPage() {
                                                                 ? "bg-slate-50 border-slate-100 group hover:border-blue-200 cursor-pointer"
                                                                 : "bg-slate-50/60 border-slate-100 cursor-not-allowed opacity-70"
                                                             }`}
-                                                        title={canOpen ? fileName : "Dosya bulunamadı veya erişim izni yok"}
+                                                        title={canOpen ? fileName : "Dosya bulunamadÄ± veya eriÅŸim izni yok"}
                                                     >
                                                         {isImage && canOpen ? (
                                                             <div className="h-10 w-10 rounded-xl overflow-hidden shadow-sm">
@@ -692,7 +697,7 @@ export default function JobDetailPage() {
                                                         )}
                                                         <div className="flex-1 overflow-hidden">
                                                             <p className="text-xs font-bold text-slate-700 truncate">{fileName}</p>
-                                                            <p className="text-[9px] font-bold text-slate-400 uppercase">{isImage ? 'Görsel' : 'Ek Dosya'}</p>
+                                                            <p className="text-[9px] font-bold text-slate-400 uppercase">{isImage ? 'GÃ¶rsel' : 'Ek Dosya'}</p>
                                                         </div>
                                                     </a>
                                                 );
@@ -709,7 +714,7 @@ export default function JobDetailPage() {
 
                         {/* Employer Info Card */}
                         <Card className="rounded-[2.5rem] border-slate-100 p-8 shadow-sm">
-                            <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-6">İLAN SAHİBİ PROFİLİ</h3>
+                            <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-6">Ä°LAN SAHÄ°BÄ° PROFÄ°LÄ°</h3>
                             <Link href={`/profile/${job.owner?.username || job.userId}`} className="flex items-center gap-4 group">
                                 <div className="h-16 w-16 rounded-[1.5rem] bg-slate-100 border-2 border-white shadow-lg overflow-hidden flex items-center justify-center group-hover:scale-105 transition-transform duration-500">
                                     {job.owner?.avatarUrl ? (
@@ -728,11 +733,11 @@ export default function JobDetailPage() {
                                 </div>
                                 <div className="flex-1">
                                     <h4 className="font-black text-slate-1000 group-hover:underline uppercase tracking-tight">
-                                        {job.owner?.fullName || job.owner?.username || "İş Veren"}
+                                        {job.owner?.fullName || job.owner?.username || "Ä°ÅŸ Veren"}
                                     </h4>
                                     <div className="flex items-center gap-1.5 mt-1 text-[10px] font-bold text-slate-400">
                                         <ShieldCheck className="h-3 w-3 text-emerald-500 fill-emerald-50" />
-                                        <span>DOĞRULANMIŞ ÜYE</span>
+                                        <span>DOÄRULANMIÅ ÃœYE</span>
                                     </div>
                                 </div>
                             </Link>
@@ -745,7 +750,7 @@ export default function JobDetailPage() {
                                     }}
                                     className="w-full h-14 bg-slate-900 hover:bg-black text-white rounded-2xl font-black uppercase text-xs tracking-widest gap-3 shadow-xl shadow-slate-200"
                                 >
-                                    <MessageCircle className="h-4.5 w-4.5" /> MESAJ GÖNDER
+                                    <MessageCircle className="h-4.5 w-4.5" /> MESAJ GÃ–NDER
                                 </Button>
                             </div>
                         </Card>
@@ -756,17 +761,17 @@ export default function JobDetailPage() {
                                 <span className="h-3 w-3 rounded-full bg-emerald-400 animate-pulse block" />
                             </div>
 
-                            <h3 className="text-xl font-black text-slate-900 uppercase tracking-tighter mb-2">HIZLI TEKLİF VER</h3>
+                            <h3 className="text-xl font-black text-slate-900 uppercase tracking-tighter mb-2">HIZLI TEKLÄ°F VER</h3>
                             <p className="text-[10px] font-bold text-slate-400 uppercase leading-relaxed mb-8 tracking-wide">
-                                Freelancer olarak en iyi fiyatınızı ve teslimat sürenizi hemen iletin.
+                                Freelancer olarak en iyi fiyatÄ±nÄ±zÄ± ve teslimat sÃ¼renizi hemen iletin.
                             </p>
 
                             <div className="space-y-5">
                                 <div className="grid grid-cols-2 gap-4">
                                     <div className="space-y-2">
-                                        <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">FİYAT (₺)</label>
+                                        <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">FÄ°YAT (â‚º)</label>
                                         <div className="relative">
-                                            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm font-black text-slate-300">₺</span>
+                                            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm font-black text-slate-300">â‚º</span>
                                             <Input
                                                 value={offerPrice}
                                                 onChange={(e) => setOfferPrice(e.target.value)}
@@ -777,7 +782,7 @@ export default function JobDetailPage() {
                                         </div>
                                     </div>
                                     <div className="space-y-2">
-                                        <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">SÜRE (GÜN)</label>
+                                        <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">SÃœRE (GÃœN)</label>
                                         <div className="relative">
                                             <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-300" />
                                             <Input
@@ -792,11 +797,11 @@ export default function JobDetailPage() {
                                 </div>
 
                                 <div className="space-y-2">
-                                    <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">TEKLİF NOTU (KISA)</label>
+                                    <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">TEKLÄ°F NOTU (KISA)</label>
                                     <Textarea
                                         value={offerNote}
                                         onChange={(e) => setOfferNote(e.target.value)}
-                                        placeholder="Neden bu iş için en uygun kişi sizsiniz?"
+                                        placeholder="Neden bu iÅŸ iÃ§in en uygun kiÅŸi sizsiniz?"
                                         className="min-h-[140px] rounded-2xl border-slate-200 p-4 font-medium text-sm focus:ring-blue-500 resize-none"
                                         disabled={!canBid || sending}
                                     />
@@ -812,7 +817,7 @@ export default function JobDetailPage() {
                                 {success && (
                                     <div className="p-4 bg-emerald-50 border border-emerald-100 text-emerald-600 rounded-2xl flex items-center gap-3 text-[10px] font-bold uppercase leading-tight">
                                         <CheckCircle2 className="h-5 w-5 shrink-0" />
-                                        TEKLİFİNİZ BAŞARIYLA İLETİLDİ!
+                                        TEKLÄ°FÄ°NÄ°Z BAÅARIYLA Ä°LETÄ°LDÄ°!
                                     </div>
                                 )}
 
@@ -824,10 +829,10 @@ export default function JobDetailPage() {
                                     {sending ? (
                                         <Loader2 className="h-5 w-5 animate-spin" />
                                     ) : success ? (
-                                        "TEKLİF GÖNDERİLDİ"
+                                        "TEKLÄ°F GÃ–NDERÄ°LDÄ°"
                                     ) : (
                                         <>
-                                            TEKLİFİ ŞİMDİ GÖNDER
+                                            TEKLÄ°FÄ° ÅÄ°MDÄ° GÃ–NDER
                                             <Send className="h-4 w-4 ml-3 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
                                         </>
                                     )}
@@ -836,9 +841,9 @@ export default function JobDetailPage() {
                                 {!user && (
                                     <div className="p-5 bg-slate-50 rounded-2xl border border-slate-100 text-center">
                                         <p className="text-[10px] font-bold text-slate-400 uppercase leading-relaxed">
-                                            Teklif vermek için giriş yapmalısınız.
+                                            Teklif vermek iÃ§in giriÅŸ yapmalÄ±sÄ±nÄ±z.
                                         </p>
-                                        <Link href="/login" className="text-[10px] font-black text-blue-600 uppercase mt-2 block hover:underline underline-offset-4">Hemen Giriş Yap →</Link>
+                                        <Link href="/login" className="text-[10px] font-black text-blue-600 uppercase mt-2 block hover:underline underline-offset-4">Hemen GiriÅŸ Yap â†’</Link>
                                     </div>
                                 )}
 
@@ -846,10 +851,10 @@ export default function JobDetailPage() {
                                     <div className="p-5 bg-orange-50 rounded-2xl border border-orange-100">
                                         <p className="text-[10px] font-black text-orange-700 uppercase leading-relaxed flex items-center gap-2">
                                             <AlertCircle className="h-3.5 w-3.5" />
-                                            Sadece Freelancer Hesabı Gereklidir
+                                            Sadece Freelancer HesabÄ± Gereklidir
                                         </p>
                                         <p className="text-[9px] font-bold text-orange-600/70 mt-1 uppercase leading-normal">
-                                            Profil ayarlarınızdan freelancer moduna geçtiğinizden emin olun.
+                                            Profil ayarlarÄ±nÄ±zdan freelancer moduna geÃ§tiÄŸinizden emin olun.
                                         </p>
                                     </div>
                                 )}
@@ -857,10 +862,10 @@ export default function JobDetailPage() {
                                 {isOwner && (
                                     <div className="p-5 bg-blue-50 rounded-2xl border border-blue-100 text-center">
                                         <p className="text-[10px] font-black text-blue-700 uppercase leading-relaxed">
-                                            Bu Kendi İlanınızdır
+                                            Bu Kendi Ä°lanÄ±nÄ±zdÄ±r
                                         </p>
                                         <p className="text-[9px] font-bold text-blue-600/70 mt-1 uppercase leading-normal">
-                                            Gelen teklifleri panelinizden yönetebilirsiniz.
+                                            Gelen teklifleri panelinizden yÃ¶netebilirsiniz.
                                         </p>
                                     </div>
                                 )}
@@ -873,3 +878,4 @@ export default function JobDetailPage() {
         </div>
     );
 }
+

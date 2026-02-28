@@ -101,7 +101,7 @@ export function JobList({ limit, onTotalChange }: { limit?: number; onTotalChang
                 });
 
                 const mergedJobs = normalizedDbJobs
-                    .filter((j) => String(j.status || "open").toLowerCase() !== "deleted")
+                    .filter((j) => String(j.status || "open").toLowerCase() === "open")
                     .sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
 
                 setJobs(mergedJobs);
