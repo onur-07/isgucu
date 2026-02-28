@@ -167,6 +167,18 @@ export function JobPostingForm() {
         try {
             // 1. Upload files to Supabase Storage
             const uploadedPaths: string[] = [];
+
+            if (attachments.length > 0) {
+                const probe = await supabase.storage
+                    .from("job-attachments")
+                    .list("", { limit: 1 });
+                if (probe.error) {
+                    throw new Error(
+                        `Dosya yükleme yapılandırması eksik veya erişim yok (job-attachments). Supabase Storage bucket/policy kontrol edin. (${probe.error.message})`
+                    );
+                }
+            }
+
             for (const file of attachments) {
                 const safeName = toSafeFileName(file.name);
                 const filePath = `${user.id}/${Date.now()}-${safeName}`;
@@ -176,7 +188,7 @@ export function JobPostingForm() {
 
                 if (uploadError) {
                     console.error("File upload error:", uploadError);
-                    throw new Error(`${file.name} dosyası yüklenemedi: ${uploadError.message}`);
+                    throw new Error(`${file.name} dosyası yüklenemedi (Storage bucket/policy kontrol edin): ${uploadError.message}`);
                 }
                 uploadedPaths.push(filePath);
             }
