@@ -12,7 +12,7 @@ export default function PostJobPage() {
     useEffect(() => {
         if (!loading && !isAuthenticated) {
             router.push("/login");
-        } else if (!loading && isAuthenticated && user?.role !== "employer") {
+        } else if (!loading && isAuthenticated && user?.role !== "admin") {
             router.push("/");
         }
     }, [isAuthenticated, loading, user, router]);

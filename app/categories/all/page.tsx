@@ -8,16 +8,63 @@ import { JobList } from "@/components/jobs/job-list";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/lib/supabase";
+import { useAuth } from "@/components/auth/auth-context";
 
 export default function CategoriesAllPage() {
+    const { user } = useAuth();
     const [query, setQuery] = useState("");
     const [activeTab, setActiveTab] = useState<"services" | "jobs" | "freelancers">("services");
     const [selectedCategoryId, setSelectedCategoryId] = useState<string>("all");
     const [gigCountsByCategory, setGigCountsByCategory] = useState<Record<string, number>>({});
+    const [freelancers, setFreelancers] = useState<Array<{ id: string; username: string; fullName?: string; avatarUrl?: string; skills?: string[] }>>([]);
+    const [freelancersLoading, setFreelancersLoading] = useState(false);
 
     const categories = useMemo(() => {
         return [{ id: "all", title: "Tümü", icon: "✨", color: "bg-gray-50" }, ...CATEGORIES_DETAILED];
     }, []);
+
+    useEffect(() => {
+        let cancelled = false;
+
+        const fetchFreelancers = async () => {
+            setFreelancersLoading(true);
+            try {
+                const res = await supabase
+                    .from("profiles")
+                    .select("id, username, full_name, avatar_url, skills, role")
+                    .eq("role", "freelancer")
+                    ;
+
+                if (res.error) throw res.error;
+                const rows = (res.data || []) as Array<any>;
+
+                const normalized = rows
+                    .filter((r) => r?.id && r?.username)
+                    .map((r) => ({
+                        id: String(r.id),
+                        username: String(r.username),
+                        fullName: r.full_name ? String(r.full_name) : undefined,
+                        avatarUrl: r.avatar_url ? String(r.avatar_url) : undefined,
+                        skills: Array.isArray(r.skills) ? (r.skills as string[]) : undefined,
+                    }));
+
+                if (!cancelled) setFreelancers(normalized);
+            } catch (e) {
+                console.error("Freelancer listesi yüklenemedi:", e);
+                if (!cancelled) setFreelancers([]);
+            } finally {
+                if (!cancelled) setFreelancersLoading(false);
+            }
+        };
+
+        if (activeTab === "freelancers") {
+            fetchFreelancers();
+        }
+
+        return () => {
+            cancelled = true;
+        };
+    }, [activeTab]);
 
     useEffect(() => {
         let cancelled = false;
@@ -59,6 +106,22 @@ export default function CategoriesAllPage() {
                 .includes(q)
         );
     }, [categories, query]);
+
+    const filteredFreelancers = useMemo(() => {
+        const q = query.trim().toLocaleLowerCase("tr-TR").normalize("NFC").replace(/\u0307/g, "");
+        if (!q) return freelancers;
+
+        const fold = (v: unknown) =>
+            String(v || "")
+                .toLocaleLowerCase("tr-TR")
+                .normalize("NFC")
+                .replace(/\u0307/g, "");
+
+        return freelancers.filter((f) => {
+            const text = [f.username, f.fullName, Array.isArray(f.skills) ? f.skills.join(" ") : ""].map(fold).join(" ");
+            return text.includes(q);
+        });
+    }, [freelancers, query]);
 
     const popularCategories = useMemo(() => {
         const list = CATEGORIES_DETAILED.map((c) => ({
@@ -150,11 +213,13 @@ export default function CategoriesAllPage() {
                                         >
                                             Temizle
                                         </Button>
-                                        <Link href="/post-gig" className="h-12">
-                                            <Button className="h-12 rounded-2xl font-black uppercase tracking-widest text-[10px]">
-                                                {activeTab === "jobs" ? "İş İlanı Ekle" : "Hizmet Ekle"}
-                                            </Button>
-                                        </Link>
+                                        {user?.role === "admin" ? (
+                                            <Link href={activeTab === "jobs" ? "/post-job" : "/post-gig"} className="h-12">
+                                                <Button className="h-12 rounded-2xl font-black uppercase tracking-widest text-[10px]">
+                                                    {activeTab === "jobs" ? "İş İlanı Ekle" : "Hizmet Ekle"}
+                                                </Button>
+                                            </Link>
+                                        ) : null}
                                     </div>
                                 </div>
                             </div>
@@ -337,37 +402,54 @@ export default function CategoriesAllPage() {
                                 </Link>
                             </div>
 
-                            <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div className="rounded-[2.5rem] border border-slate-100 bg-white p-8 shadow-sm">
-                                    <div className="text-sm font-black uppercase tracking-widest text-slate-500">Öneri</div>
-                                    <div className="mt-2 text-xl font-black text-slate-900">Kategoriden başlayarak filtrele</div>
-                                    <div className="mt-2 text-sm text-slate-600 font-semibold">
-                                        Freelancerlar sayfasında kategori seçerek uygun uzmanları daha hızlı bulabilirsin.
+                            <div className="mt-6">
+                                {freelancersLoading ? (
+                                    <div className="py-12 text-center text-sm font-bold text-gray-500">Yükleniyor...</div>
+                                ) : filteredFreelancers.length === 0 ? (
+                                    <div className="bg-white border rounded-2xl p-10 text-center">
+                                        <div className="text-sm font-bold text-gray-700">Freelancer bulunamadı.</div>
+                                        <div className="text-xs text-gray-400 mt-2">Arama kriterlerini değiştirip tekrar deneyebilirsin.</div>
                                     </div>
-                                    <div className="mt-6">
-                                        <Link href="/freelancers">
-                                            <Button className="h-12 rounded-2xl font-black uppercase tracking-widest text-[10px]">Freelancerları Gör</Button>
-                                        </Link>
-                                    </div>
-                                </div>
+                                ) : (
+                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                        {filteredFreelancers.slice(0, 18).map((f) => (
+                                            <Link
+                                                key={f.id}
+                                                href={`/profile/${f.username}`}
+                                                className="group rounded-[2rem] border border-slate-100 bg-white p-6 shadow-sm transition-all hover:shadow-xl hover:-translate-y-1"
+                                            >
+                                                <div className="flex items-center gap-4">
+                                                    <div className="h-14 w-14 rounded-2xl border border-slate-100 bg-slate-50 overflow-hidden flex items-center justify-center text-sm font-black text-slate-600">
+                                                        {f.avatarUrl ? (
+                                                            <img src={f.avatarUrl} alt={f.username} className="h-full w-full object-cover" />
+                                                        ) : (
+                                                            (f.username || "A").charAt(0).toUpperCase()
+                                                        )}
+                                                    </div>
+                                                    <div className="min-w-0">
+                                                        <div className="text-sm font-black text-slate-900 truncate group-hover:text-blue-700 transition-colors">
+                                                            {f.fullName || f.username}
+                                                        </div>
+                                                        <div className="text-xs font-bold text-slate-500 truncate">@{f.username}</div>
+                                                    </div>
+                                                </div>
 
-                                <div className="rounded-[2.5rem] border border-slate-100 bg-gradient-to-br from-indigo-50 via-white to-blue-50 p-8 shadow-sm">
-                                    <div className="text-sm font-black uppercase tracking-widest text-slate-500">Hızlı Kısayol</div>
-                                    <div className="mt-2 text-xl font-black text-slate-900">Hizmet ilanlarına göz at</div>
-                                    <div className="mt-2 text-sm text-slate-600 font-semibold">
-                                        İstersen hizmet ilanları üzerinden de uzman seçebilirsin.
+                                                <div className="mt-4 flex flex-wrap gap-2">
+                                                    {(Array.isArray(f.skills) ? f.skills : []).slice(0, 3).map((s) => (
+                                                        <span key={s} className="rounded-full bg-slate-50 border border-slate-100 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-slate-600">
+                                                            {s}
+                                                        </span>
+                                                    ))}
+                                                    {(Array.isArray(f.skills) ? f.skills : []).length > 3 ? (
+                                                        <span className="rounded-full bg-blue-50 border border-blue-100 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-blue-700">
+                                                            +{(f.skills || []).length - 3}
+                                                        </span>
+                                                    ) : null}
+                                                </div>
+                                            </Link>
+                                        ))}
                                     </div>
-                                    <div className="mt-6">
-                                        <Button
-                                            type="button"
-                                            variant="outline"
-                                            className="h-12 rounded-2xl border-slate-200 bg-white/80 font-black uppercase tracking-widest text-[10px]"
-                                            onClick={() => setActiveTab("services")}
-                                        >
-                                            Hizmetlere Dön
-                                        </Button>
-                                    </div>
-                                </div>
+                                )}
                             </div>
                         </>
                     )}

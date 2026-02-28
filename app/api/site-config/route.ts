@@ -2,6 +2,9 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
 
+export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
+
 const SITE_CONFIG_SUBJECT = "SITE_CONFIG_V1";
 const SITE_CONFIG_CATEGORY = "site_config";
 
