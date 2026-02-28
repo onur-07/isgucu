@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import Link from "next/link";
@@ -82,7 +82,7 @@ export default function MessageThreadPage() {
             return await Promise.race([
                 Promise.resolve(p),
                 new Promise<T>((_, reject) => {
-                    timeoutId = setTimeout(() => reject(new Error(`${label} zaman aşımına uğradı (${ms}ms)`)), ms);
+                    timeoutId = setTimeout(() => reject(new Error(`${label} zaman aÅŸÄ±mÄ±na uÄŸradÄ± (${ms}ms)`)), ms);
                 }),
             ]);
         } finally {
@@ -94,7 +94,7 @@ export default function MessageThreadPage() {
         if (!user || user.role !== "admin") return;
         if (!meKey || !otherKey) return;
 
-        const ok = window.confirm("Bu konuşmadaki tüm mesajları silmek istiyor musun? Bu işlem geri alınamaz.");
+        const ok = window.confirm("Bu konuÅŸmadaki tÃ¼m mesajlarÄ± silmek istiyor musun? Bu iÅŸlem geri alÄ±namaz.");
         if (!ok) return;
 
         setSending(true);
@@ -103,7 +103,7 @@ export default function MessageThreadPage() {
             const { data, error: sessErr } = await supabase.auth.getSession();
             if (sessErr) throw sessErr;
             const token = data?.session?.access_token;
-            if (!token) throw new Error("Oturum bulunamadı");
+            if (!token) throw new Error("Oturum bulunamadÄ±");
 
             const res = await fetch("/api/admin/messages/clear", {
                 method: "POST",
@@ -119,7 +119,7 @@ export default function MessageThreadPage() {
                 try {
                     const j = JSON.parse(txt);
                     if (j?.error === "missing_service_role") {
-                        throw new Error("Admin temizleme çalışmıyor: Vercel'de SUPABASE_SERVICE_ROLE_KEY eklenmemiş.");
+                        throw new Error("Admin temizleme Ã§alÄ±ÅŸmÄ±yor: Vercel'de SUPABASE_SERVICE_ROLE_KEY eklenmemiÅŸ.");
                     }
                     throw new Error(j?.details || j?.error || txt || `HTTP ${res.status}`);
                 } catch {
@@ -139,7 +139,7 @@ export default function MessageThreadPage() {
                 .limit(200);
             if (!r?.error && Array.isArray((r as any)?.data)) setMessages((r as any).data);
         } catch (e: any) {
-            setError(e?.message ? String(e.message) : "Temizleme başarısız");
+            setError(e?.message ? String(e.message) : "Temizleme baÅŸarÄ±sÄ±z");
         } finally {
             setSending(false);
         }
@@ -153,13 +153,13 @@ export default function MessageThreadPage() {
         const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
 
         if (!supabaseUrl || !supabaseAnonKey) {
-            throw new Error("Supabase ortam değişkenleri eksik");
+            throw new Error("Supabase ortam deÄŸiÅŸkenleri eksik");
         }
 
         const { data, error } = await supabase.auth.getSession();
         if (error) throw error;
         const accessToken = data?.session?.access_token;
-        if (!accessToken) throw new Error("Oturum bulunamadı (token yok)");
+        if (!accessToken) throw new Error("Oturum bulunamadÄ± (token yok)");
 
         const controller = new AbortController();
 
@@ -320,7 +320,7 @@ export default function MessageThreadPage() {
                             .order("created_at", { ascending: true })
                             .limit(200),
                         12000,
-                        "Mesaj geçmişi"
+                        "Mesaj geÃ§miÅŸi"
                     ),
                     withTimeout(
                         supabase
@@ -342,7 +342,7 @@ export default function MessageThreadPage() {
                             .limit(1)
                             .maybeSingle(),
                         8000,
-                        "Kullanıcı"
+                        "KullanÄ±cÄ±"
                     ),
                 ]);
 
@@ -372,7 +372,7 @@ export default function MessageThreadPage() {
                     .eq("read", false)
                     .then(() => {});
             } catch (err: any) {
-                setError(err?.message ? String(err.message) : "Mesajlar yüklenemedi");
+                setError(err?.message ? String(err.message) : "Mesajlar yÃ¼klenemedi");
                 setMessages([]);
                 setOffers([]);
             } finally {
@@ -516,7 +516,7 @@ export default function MessageThreadPage() {
 
         const mod = sanitizeMessage(trimmed);
         if (!mod.allowed) {
-            setError(mod.reason || "Mesaj gönderilemedi.");
+            setError(mod.reason || "Mesaj gÃ¶nderilemedi.");
             return;
         }
 
@@ -558,15 +558,15 @@ export default function MessageThreadPage() {
             let finished = false;
             let slowTimer: ReturnType<typeof setTimeout> | null = null;
             slowTimer = setTimeout(() => {
-                if (!finished) setError("Mesaj gönderiliyor... (bağlantı yavaş olabilir)");
+                if (!finished) setError("Mesaj gÃ¶nderiliyor... (baÄŸlantÄ± yavaÅŸ olabilir)");
             }, 8000);
 
             let ok = false;
             let firstErr: string | null = null;
             try {
-                ok = await withTimeout(insertMessageRest(payload as any, 20000), 20000, "Mesaj gönderme");
+                ok = await withTimeout(insertMessageRest(payload as any, 20000), 20000, "Mesaj gÃ¶nderme");
             } catch (e: any) {
-                firstErr = e?.message ? String(e.message) : "Mesaj gönderilemedi";
+                firstErr = e?.message ? String(e.message) : "Mesaj gÃ¶nderilemedi";
                 console.log("[send] insert attempt-1 failed", firstErr);
                 // 1 retry (short)
                 ok = await withTimeout(insertMessageRest(payload as any, 8000), 8000, "Mesaj yeniden deneme");
@@ -579,7 +579,7 @@ export default function MessageThreadPage() {
 
             if (!ok) {
                 setMessages((prev) => prev.filter((m) => String(m.id) !== String(tempId)));
-                setError(firstErr ? `Mesaj gönderilemedi: ${firstErr}` : "Mesaj gönderilemedi");
+                setError(firstErr ? `Mesaj gÃ¶nderilemedi: ${firstErr}` : "Mesaj gÃ¶nderilemedi");
                 return;
             }
 
@@ -613,7 +613,7 @@ export default function MessageThreadPage() {
             }, 2500);
         } catch (err: any) {
             setMessages((prev) => prev.filter((m) => String(m.id) !== String(tempId)));
-            const friendly = friendlySupabaseError(err, "Mesaj gönderilemedi");
+            const friendly = friendlySupabaseError(err, "Mesaj gÃ¶nderilemedi");
             setError(friendly);
 
             // Best-effort: notify admin (support ticket) on PII attempts
@@ -693,14 +693,14 @@ export default function MessageThreadPage() {
         const price = Number(String(offerPrice || "").replace(",", "."));
         const days = Number(String(offerDays || "").trim());
         if (!Number.isFinite(price) || price <= 0 || !Number.isFinite(days) || days <= 0) {
-            setError("Teklif için fiyat ve teslim günü gir.");
+            setError("Teklif iÃ§in fiyat ve teslim gÃ¼nÃ¼ gir.");
             return;
         }
 
         if (offerNote.trim()) {
             const mod = sanitizeMessage(offerNote.trim());
             if (!mod.allowed) {
-                setError(mod.reason || "Bu içerik gönderilemez");
+                setError(mod.reason || "Bu iÃ§erik gÃ¶nderilemez");
                 return;
             }
         }
@@ -724,7 +724,7 @@ export default function MessageThreadPage() {
             const res = (await withTimeout(
                 supabase.from("offers").insert([payload]).select("id").maybeSingle(),
                 15000,
-                "Teklif gönderme"
+                "Teklif gÃ¶nderme"
             )) as any;
 
             if (res?.error) throw res.error;
@@ -734,7 +734,7 @@ export default function MessageThreadPage() {
             setOfferNote("");
             await refreshOffers();
         } catch (e: any) {
-            setError(e?.message ? String(e.message) : "Teklif gönderilemedi");
+            setError(e?.message ? String(e.message) : "Teklif gÃ¶nderilemedi");
         } finally {
             setSending(false);
         }
@@ -744,15 +744,60 @@ export default function MessageThreadPage() {
         setSending(true);
         setError("");
         try {
+            if (status === "accepted") {
+                const acceptedOffer = offers.find((o) => String(o.id) === String(offerId));
+                if (!acceptedOffer) throw new Error("Teklif bulunamadi");
+
+                const offerKey = `offer:${String(acceptedOffer.id)}`;
+                const existingOrder = await supabase
+                    .from("orders")
+                    .select("id")
+                    .eq("package_key", offerKey)
+                    .limit(1)
+                    .maybeSingle();
+                if (existingOrder.error) throw existingOrder.error;
+
+                if (!existingOrder.data?.id) {
+                    const priceNum = Number(acceptedOffer.price);
+                    const daysNum = Number(acceptedOffer.delivery_days);
+                    if (!Number.isFinite(priceNum) || priceNum <= 0) throw new Error("Teklif fiyati gecersiz");
+                    if (!Number.isFinite(daysNum) || daysNum <= 0) throw new Error("Teklif suresi gecersiz");
+
+                    const { error: orderInsError } = await supabase.from("orders").insert([
+                        {
+                            gig_id: null,
+                            buyer_id: acceptedOffer.receiver_id,
+                            seller_id: acceptedOffer.sender_id,
+                            buyer_username: acceptedOffer.receiver_username,
+                            seller_username: acceptedOffer.sender_username,
+                            package_key: offerKey,
+                            base_price: priceNum,
+                            extras_price: 0,
+                            total_price: priceNum,
+                            base_days: daysNum,
+                            extras_days: 0,
+                            total_days: daysNum,
+                            extras: { source: "offer", offer_id: String(acceptedOffer.id) },
+                            status: "active",
+                        },
+                    ]);
+                    if (orderInsError) throw orderInsError;
+                }
+            }
+
             const res = (await withTimeout(
                 supabase.from("offers").update({ status, responded_at: new Date().toISOString() }).eq("id", offerId),
                 15000,
-                "Teklif yanıt"
+                "Teklif yanit"
             )) as any;
             if (res?.error) throw res.error;
             await refreshOffers();
+            if (status === "accepted") {
+                window.alert("Teklif kabul edildi. Devam akisina Siparislerim sayfasindan devam edebilirsin.");
+                router.push("/orders");
+            }
         } catch (e: any) {
-            setError(e?.message ? String(e.message) : "Teklif güncellenemedi");
+            setError(e?.message ? String(e.message) : "Teklif guncellenemedi");
         } finally {
             setSending(false);
         }
@@ -788,14 +833,14 @@ export default function MessageThreadPage() {
             const up = await withTimeout(
                 supabase.storage.from("chat-files").upload(path, bytes, { contentType: file.type || "application/octet-stream" }),
                 20000,
-                "Dosya yükleme"
+                "Dosya yÃ¼kleme"
             );
 
             if ((up as any)?.error) throw (up as any).error;
 
             const { data: pub } = supabase.storage.from("chat-files").getPublicUrl(path);
             const url = String((pub as any)?.publicUrl || "");
-            if (!url) throw new Error("Dosya URL alınamadı");
+            if (!url) throw new Error("Dosya URL alÄ±namadÄ±");
 
             const payload = {
                 sender_username: meKey,
@@ -811,15 +856,15 @@ export default function MessageThreadPage() {
                 read: false,
             };
 
-            const ok = await withTimeout(insertMessageRest(payload as any, 20000), 20000, "Dosya mesajı");
-            if (!ok) throw new Error("Dosya mesajı gönderilemedi");
+            const ok = await withTimeout(insertMessageRest(payload as any, 20000), 20000, "Dosya mesajÄ±");
+            if (!ok) throw new Error("Dosya mesajÄ± gÃ¶nderilemedi");
 
             setError("");
         } catch (e: any) {
             setMessages((prev) => prev.filter((m) => String(m.id) !== String(tempId)));
-            const msg = e?.message ? String(e.message) : "Dosya gönderilemedi";
+            const msg = e?.message ? String(e.message) : "Dosya gÃ¶nderilemedi";
             if (msg.toLowerCase().includes("not found") || msg.toLowerCase().includes("bucket")) {
-                setError("Dosya gönderilemedi: Supabase Storage'da 'chat-files' bucket yok. Supabase -> Storage -> New bucket: chat-files (Public) oluştur.");
+                setError("Dosya gÃ¶nderilemedi: Supabase Storage'da 'chat-files' bucket yok. Supabase -> Storage -> New bucket: chat-files (Public) oluÅŸtur.");
             } else {
                 setError(msg);
             }
@@ -845,7 +890,7 @@ export default function MessageThreadPage() {
     if (loading || pageLoading) {
         return (
             <div className="container py-10">
-                <div className="text-sm text-gray-500 font-semibold">Yükleniyor...</div>
+                <div className="text-sm text-gray-500 font-semibold">YÃ¼kleniyor...</div>
             </div>
         );
     }
@@ -865,11 +910,11 @@ export default function MessageThreadPage() {
                         onClick={handleAdminClearThread}
                         className="bg-red-600 hover:bg-red-700 text-white"
                     >
-                        Konuşmayı Temizle
+                        KonuÅŸmayÄ± Temizle
                     </Button>
                 )}
                 <Link href="/messages" className="text-sm font-bold text-blue-600 hover:text-blue-700">
-                    Mesajlara dön
+                    Mesajlara dÃ¶n
                 </Link>
             </div>
 
@@ -882,7 +927,7 @@ export default function MessageThreadPage() {
             <Card className="p-0 overflow-hidden">
                 <div ref={listRef} className="h-[60vh] overflow-auto p-4 space-y-3 bg-gray-50">
                     {timeline.length === 0 ? (
-                        <div className="text-sm text-gray-500 font-semibold">Henüz mesaj yok.</div>
+                        <div className="text-sm text-gray-500 font-semibold">HenÃ¼z mesaj yok.</div>
                     ) : (
                         timeline.map((it) => {
                             if (it.type === "message") {
@@ -967,11 +1012,11 @@ export default function MessageThreadPage() {
                                         <div className="mt-2 grid grid-cols-2 gap-2">
                                             <div className="rounded-xl bg-gray-50 p-3">
                                                 <div className="text-[10px] font-black uppercase tracking-widest text-gray-400">Fiyat</div>
-                                                <div className="text-sm font-black text-gray-900">{String(o.price)} ₺</div>
+                                                <div className="text-sm font-black text-gray-900">{String(o.price)} â‚º</div>
                                             </div>
                                             <div className="rounded-xl bg-gray-50 p-3">
                                                 <div className="text-[10px] font-black uppercase tracking-widest text-gray-400">Teslim</div>
-                                                <div className="text-sm font-black text-gray-900">{String(o.delivery_days)} gün</div>
+                                                <div className="text-sm font-black text-gray-900">{String(o.delivery_days)} gÃ¼n</div>
                                             </div>
                                         </div>
 
@@ -1007,7 +1052,7 @@ export default function MessageThreadPage() {
                         {offerOpen && (
                             <div className="rounded-2xl border bg-white p-4">
                                 <div className="flex items-center justify-between gap-3">
-                                    <div className="text-xs font-black uppercase tracking-widest text-gray-500">Teklif gönder</div>
+                                    <div className="text-xs font-black uppercase tracking-widest text-gray-500">Teklif gÃ¶nder</div>
                                     <Button type="button"
                                         disabled={sending}
                                         onClick={() => setOfferOpen(false)}
@@ -1020,14 +1065,14 @@ export default function MessageThreadPage() {
                                     <input
                                         value={offerPrice}
                                         onChange={(e) => setOfferPrice(e.target.value)}
-                                        placeholder="Fiyat (₺)"
+                                        placeholder="Fiyat (â‚º)"
                                         className="h-10 rounded-xl border px-3 text-sm font-semibold"
                                         disabled={sending}
                                     />
                                     <input
                                         value={offerDays}
                                         onChange={(e) => setOfferDays(e.target.value)}
-                                        placeholder="Teslim (gün)"
+                                        placeholder="Teslim (gÃ¼n)"
                                         className="h-10 rounded-xl border px-3 text-sm font-semibold"
                                         disabled={sending}
                                     />
@@ -1045,7 +1090,7 @@ export default function MessageThreadPage() {
                                         onClick={handleSendOffer}
                                         className="bg-blue-600 hover:bg-blue-700 text-white"
                                     >
-                                        Teklifi Gönder
+                                        Teklifi GÃ¶nder
                                     </Button>
                                 </div>
                             </div>
@@ -1080,7 +1125,7 @@ export default function MessageThreadPage() {
                                 </Button>
                             </div>
                             <div className="text-[10px] font-black uppercase tracking-widest text-gray-400">
-                                {otherUserId ? "" : "Kullanıcı bulunamadı"}
+                                {otherUserId ? "" : "KullanÄ±cÄ± bulunamadÄ±"}
                             </div>
                         </div>
 
@@ -1095,7 +1140,7 @@ export default function MessageThreadPage() {
                         />
                         <div className="flex justify-end">
                             <Button type="button" onClick={handleSend} disabled={sending || !text.trim()} className="bg-blue-600 hover:bg-blue-700 text-white">
-                                {sending ? "Gönderiliyor..." : "Gönder"}
+                                {sending ? "GÃ¶nderiliyor..." : "GÃ¶nder"}
                             </Button>
                         </div>
                     </div>
