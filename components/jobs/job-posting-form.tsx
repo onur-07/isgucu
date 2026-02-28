@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
@@ -45,9 +45,7 @@ export function JobPostingForm() {
     const [attachments, setAttachments] = useState<File[]>([]);
     const categories = getMergedJobCategories();
 
-    const toObjectUrl = (file: File) => URL.createObjectURL(file);
-
-    const wordCount = (value: string) => String(value || "").trim().split(/\s+/).filter(Boolean).length;
+        const wordCount = (value: string) => String(value || "").trim().split(/\s+/).filter(Boolean).length;
 
     const toSafeFileName = (name: string) => {
         const trimmed = String(name || "").trim();
@@ -98,11 +96,11 @@ export function JobPostingForm() {
         for (const file of files) {
             // Virus/Malware simulation check (based on extension and magic numbers usually)
             if (!allowedTypes.includes(file.type)) {
-                validationError = `${file.name} desteklenmeyen bir dosya türü. Sadece PDF ve Resim yükleyebilirsiniz.`;
+                validationError = `${file.name} desteklenmeyen bir dosya tÃ¼rÃ¼. Sadece PDF ve Resim yÃ¼kleyebilirsiniz.`;
                 break;
             }
             if (file.size > maxSize) {
-                validationError = `${file.name} çok büyük. Maksimum 10MB yükleyebilirsiniz.`;
+                validationError = `${file.name} Ã§ok bÃ¼yÃ¼k. Maksimum 10MB yÃ¼kleyebilirsiniz.`;
                 break;
             }
 
@@ -129,12 +127,12 @@ export function JobPostingForm() {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!user) {
-            setError("İlan vermek için giriş yapmalısınız.");
+            setError("Ä°lan vermek iÃ§in giriÅŸ yapmalÄ±sÄ±nÄ±z.");
             return;
         }
 
         if (user.role !== "employer") {
-            setError("İş ilanı vermek için İş Veren hesabına sahip olmalısınız.");
+            setError("Ä°ÅŸ ilanÄ± vermek iÃ§in Ä°ÅŸ Veren hesabÄ±na sahip olmalÄ±sÄ±nÄ±z.");
             return;
         }
 
@@ -143,25 +141,25 @@ export function JobPostingForm() {
 
         const titleMod = sanitizeListingText(formData.title);
         if (!titleMod.allowed) {
-            setError(titleMod.reason || "Başlık kurallara uygun değil.");
+            setError(titleMod.reason || "BaÅŸlÄ±k kurallara uygun deÄŸil.");
             setLoading(false);
             return;
         }
         const descMod = sanitizeListingText(formData.description);
         if (!descMod.allowed) {
-            setError(descMod.reason || "Açıklama kurallara uygun değil.");
+            setError(descMod.reason || "AÃ§Ä±klama kurallara uygun deÄŸil.");
             setLoading(false);
             return;
         }
         const titleWords = wordCount(titleMod.cleanedText || formData.title);
         const descWords = wordCount(descMod.cleanedText || formData.description);
         if (titleWords < 3 || titleWords > 12) {
-            setError("Başlık 3-12 kelime aralığında olmalıdır.");
+            setError("BaÅŸlÄ±k 3-12 kelime aralÄ±ÄŸÄ±nda olmalÄ±dÄ±r.");
             setLoading(false);
             return;
         }
         if (descWords < 20 || descWords > 200) {
-            setError("Açıklama 20-200 kelime aralığında olmalıdır.");
+            setError("AÃ§Ä±klama 20-200 kelime aralÄ±ÄŸÄ±nda olmalÄ±dÄ±r.");
             setLoading(false);
             return;
         }
@@ -178,11 +176,9 @@ export function JobPostingForm() {
 
                 if (uploadError) {
                     console.error("File upload error:", uploadError);
-                    // Use Object URL as fallback for local preview
-                    uploadedPaths.push(URL.createObjectURL(file));
-                } else {
-                    uploadedPaths.push(filePath);
+                    throw new Error(`${file.name} dosyasi yuklenemedi: ${uploadError.message}`);
                 }
+                uploadedPaths.push(filePath);
             }
 
             // 2. Insert job into DB
@@ -218,26 +214,10 @@ export function JobPostingForm() {
         } catch (err: unknown) {
             console.error("Job Post Error:", err);
             const errMsg = getErrorMessage(err);
-
-            // Fallback for local testing
-            const existingJobs = JSON.parse(localStorage.getItem("isgucu_jobs") || "[]");
-            const localAttachmentUrls = attachments.map(toObjectUrl);
-            const newJob = {
-                ...formData,
-                id: Date.now(),
-                created_at: new Date().toISOString(),
-                user_id: getUserIdentifier(),
-                attachments: localAttachmentUrls
-            };
-            localStorage.setItem("isgucu_jobs", JSON.stringify([newJob, ...existingJobs]));
-
-            setSuccess(true);
-            setTimeout(() => {
-                router.push("/jobs");
-            }, 2000);
-
             if (errMsg) {
-                setError("İlan verilemedi: " + errMsg);
+                setError("Ilan verilemedi: " + errMsg);
+            } else {
+                setError("Ilan verilemedi. Lutfen tekrar deneyin.");
             }
         } finally {
             setLoading(false);
@@ -250,8 +230,8 @@ export function JobPostingForm() {
                 <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-green-100 text-green-600 mb-4 scale-in animate-in">
                     <CheckCircle2 className="w-8 h-8" />
                 </div>
-                <h3 className="text-2xl font-black text-slate-800 uppercase tracking-tighter italic">İlanınız Yayınlandı!</h3>
-                <p className="text-slate-500 font-medium">İlanlar sayfasına yönlendiriliyorsunuz...</p>
+                <h3 className="text-2xl font-black text-slate-800 uppercase tracking-tighter italic">Ä°lanÄ±nÄ±z YayÄ±nlandÄ±!</h3>
+                <p className="text-slate-500 font-medium">Ä°lanlar sayfasÄ±na yÃ¶nlendiriliyorsunuz...</p>
             </div>
         );
     }
@@ -267,10 +247,10 @@ export function JobPostingForm() {
 
             <div className="space-y-6">
                 <div className="space-y-3">
-                    <Label htmlFor="title" className="font-black text-slate-700 ml-1 uppercase text-[10px] tracking-[0.2em]">İŞİN ADI / BAŞLIK</Label>
+                    <Label htmlFor="title" className="font-black text-slate-700 ml-1 uppercase text-[10px] tracking-[0.2em]">Ä°ÅÄ°N ADI / BAÅLIK</Label>
                     <Input
                         id="title"
-                        placeholder="Örn: Modern E-Ticaret Arayüz Tasarımı"
+                        placeholder="Ã–rn: Modern E-Ticaret ArayÃ¼z TasarÄ±mÄ±"
                         required
                         className="h-14 rounded-2xl border-slate-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all px-6 font-bold text-slate-800"
                         value={formData.title}
@@ -280,13 +260,13 @@ export function JobPostingForm() {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-3">
-                        <Label htmlFor="category" className="font-black text-slate-700 ml-1 uppercase text-[10px] tracking-[0.2em]">KATEGORİ SEÇİMİ</Label>
+                        <Label htmlFor="category" className="font-black text-slate-700 ml-1 uppercase text-[10px] tracking-[0.2em]">KATEGORÄ° SEÃ‡Ä°MÄ°</Label>
                         <Select
                             required
                             onValueChange={(value) => setFormData({ ...formData, category: value })}
                         >
                             <SelectTrigger className="h-14 rounded-2xl border-slate-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all px-6 font-bold text-slate-800">
-                                <SelectValue placeholder="Kategori seçiniz" />
+                                <SelectValue placeholder="Kategori seÃ§iniz" />
                             </SelectTrigger>
                             <SelectContent className="rounded-2xl border-slate-100 shadow-2xl">
                                 {categories.map((cat) => (
@@ -299,11 +279,11 @@ export function JobPostingForm() {
                     </div>
 
                     <div className="space-y-3">
-                        <Label htmlFor="budget" className="font-black text-slate-700 ml-1 uppercase text-[10px] tracking-[0.2em]">PROJE BÜTÇESİ (₺)</Label>
+                        <Label htmlFor="budget" className="font-black text-slate-700 ml-1 uppercase text-[10px] tracking-[0.2em]">PROJE BÃœTÃ‡ESÄ° (â‚º)</Label>
                         <Input
                             id="budget"
                             type="text"
-                            placeholder="Örn: 2500 - 5000"
+                            placeholder="Ã–rn: 2500 - 5000"
                             required
                             className="h-14 rounded-2xl border-slate-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all px-6 font-bold text-slate-800"
                             value={formData.budget}
@@ -313,10 +293,10 @@ export function JobPostingForm() {
                 </div>
 
                 <div className="space-y-3">
-                    <Label htmlFor="description" className="font-black text-slate-700 ml-1 uppercase text-[10px] tracking-[0.2em]">İŞİN DETAYLARI VE BEKLENTİLER</Label>
+                    <Label htmlFor="description" className="font-black text-slate-700 ml-1 uppercase text-[10px] tracking-[0.2em]">Ä°ÅÄ°N DETAYLARI VE BEKLENTÄ°LER</Label>
                     <Textarea
                         id="description"
-                        placeholder="Lütfen projeden beklentilerinizi ve gerekli yetkinlikleri detaylıca belirtin..."
+                        placeholder="LÃ¼tfen projeden beklentilerinizi ve gerekli yetkinlikleri detaylÄ±ca belirtin..."
                         className="min-h-[220px] rounded-[2rem] border-slate-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all p-8 font-medium leading-relaxed text-slate-600 resize-none"
                         required
                         value={formData.description}
@@ -326,7 +306,7 @@ export function JobPostingForm() {
 
                 {/* File Upload Section */}
                 <div className="space-y-3">
-                    <Label className="font-black text-slate-700 ml-1 uppercase text-[10px] tracking-[0.2em]">DOSYA VE TASARIM ÖRNEKLERİ (İSTEĞE BAĞLI)</Label>
+                    <Label className="font-black text-slate-700 ml-1 uppercase text-[10px] tracking-[0.2em]">DOSYA VE TASARIM Ã–RNEKLERÄ° (Ä°STEÄE BAÄLI)</Label>
                     <div
                         onClick={() => fileInputRef.current?.click()}
                         className="relative group cursor-pointer border-2 border-dashed border-slate-200 rounded-[2rem] p-10 hover:border-blue-500 hover:bg-blue-50/30 transition-all flex flex-col items-center justify-center gap-4 bg-slate-50/50"
@@ -346,7 +326,7 @@ export function JobPostingForm() {
 
                         <div className="text-center">
                             <p className="font-black text-slate-800 uppercase text-sm tracking-tight">
-                                {scanning ? "VİRÜS KONTROLÜ YAPILIYOR..." : "DOSYA SEÇ VEYA SÜRÜKLE"}
+                                {scanning ? "VÄ°RÃœS KONTROLÃœ YAPILIYOR..." : "DOSYA SEÃ‡ VEYA SÃœRÃœKLE"}
                             </p>
                             <p className="text-[10px] font-bold text-slate-400 mt-2 uppercase tracking-widest">SADECE PDF, JPG, PNG VE WEBP (MAKS 10MB)</p>
                         </div>
@@ -355,7 +335,7 @@ export function JobPostingForm() {
                             <div className="absolute inset-0 bg-white/60 backdrop-blur-[2px] rounded-[2rem] flex items-center justify-center">
                                 <div className="flex items-center gap-3 bg-white px-6 py-4 rounded-3xl shadow-2xl border border-blue-50">
                                     <ShieldCheck className="h-6 w-6 text-blue-600 animate-pulse" />
-                                    <span className="font-black text-blue-900 text-xs uppercase tracking-widest">GÜVENLİK TARAŞI AKTİF</span>
+                                    <span className="font-black text-blue-900 text-xs uppercase tracking-widest">GÃœVENLÄ°K TARAÅI AKTÄ°F</span>
                                 </div>
                             </div>
                         )}
@@ -371,7 +351,7 @@ export function JobPostingForm() {
                                         </div>
                                         <div className="overflow-hidden">
                                             <p className="font-bold text-xs text-slate-900 truncate uppercase">{file.name}</p>
-                                            <p className="text-[9px] font-bold text-slate-400 uppercase">{(file.size / 1024 / 1024).toFixed(2)} MB • GÜVENLİ</p>
+                                            <p className="text-[9px] font-bold text-slate-400 uppercase">{(file.size / 1024 / 1024).toFixed(2)} MB â€¢ GÃœVENLÄ°</p>
                                         </div>
                                     </div>
                                     <button
@@ -399,13 +379,14 @@ export function JobPostingForm() {
                         <span>YAYINLANIYOR...</span>
                     </>
                 ) : (
-                    "HEMEN ÜCRETSİZ İLAN VER"
+                    "HEMEN ÃœCRETSÄ°Z Ä°LAN VER"
                 )}
             </Button>
 
             <p className="text-center text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                İLAN YAYINLAYARAK TÜM <span className="text-slate-900 cursor-pointer hover:underline">ŞARTLARI VE GÜVENLİK KURALLARINI</span> KABUL ETMİŞ SAYILIRSINIZ.
+                Ä°LAN YAYINLAYARAK TÃœM <span className="text-slate-900 cursor-pointer hover:underline">ÅARTLARI VE GÃœVENLÄ°K KURALLARINI</span> KABUL ETMÄ°Å SAYILIRSINIZ.
             </p>
         </form>
     );
 }
+
