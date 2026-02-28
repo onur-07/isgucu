@@ -22,6 +22,17 @@ type ProfileMini = {
     iban: string | null;
 };
 
+type CancelEscalationRow = {
+    id: string | number;
+    order_id: string | number;
+    requester_username: string;
+    responder_username: string;
+    compensation_rate: number;
+    reason: string | null;
+    status: string;
+    created_at: string;
+};
+
 export default function AdminPayoutsPage() {
     const { user, loading } = useAuth();
     const router = useRouter();
@@ -30,6 +41,7 @@ export default function AdminPayoutsPage() {
     const [profiles, setProfiles] = useState<Record<string, ProfileMini>>({});
     const [busyId, setBusyId] = useState<string>("");
     const [error, setError] = useState<string>("");
+    const [cancelEscalations, setCancelEscalations] = useState<CancelEscalationRow[]>([]);
 
     const pendingRows = useMemo(
         () => rows.filter((r) => String(r.status || "").toLowerCase() === "pending"),
@@ -94,6 +106,21 @@ export default function AdminPayoutsPage() {
                 };
             }
             setProfiles(next);
+
+            const threeDaysAgo = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString();
+            const { data: cancelRows, error: cancelErr } = await supabase
+                .from("order_cancellation_requests")
+                .select("id, order_id, requester_username, responder_username, compensation_rate, reason, status, created_at")
+                .eq("status", "pending")
+                .lte("created_at", threeDaysAgo)
+                .order("created_at", { ascending: true })
+                .limit(200);
+
+            if (cancelErr) {
+                setCancelEscalations([]);
+            } else {
+                setCancelEscalations((cancelRows || []) as unknown as CancelEscalationRow[]);
+            }
         })();
     }, [user, loading, router]);
 
@@ -131,6 +158,45 @@ export default function AdminPayoutsPage() {
             setRows((prev) => prev.map((r) => (String(r.id) === id ? { ...r, status: "approved" } : r)));
         } catch (e: any) {
             setError(String(e?.message || e || "Onay başarısız"));
+        } finally {
+            setBusyId("");
+        }
+    };
+
+    const resolveCancelEscalation = async (row: CancelEscalationRow, approveCancel: boolean) => {
+        if (!user || user.role !== "admin") return;
+        if (busyId) return;
+        const rowId = String(row.id || "");
+        if (!rowId) return;
+
+        const ok = window.confirm(
+            approveCancel
+                ? `Bu iptal talebini onaylayip siparisi iptal etmek istiyor musun? (#${String(row.order_id)})`
+                : `Bu iptal talebini reddetmek istiyor musun? (#${String(row.order_id)})`
+        );
+        if (!ok) return;
+
+        setBusyId(`cancel-${rowId}`);
+        setError("");
+        try {
+            if (approveCancel) {
+                const { error: ordErr } = await supabase
+                    .from("orders")
+                    .update({ status: "cancelled" })
+                    .eq("id", Number(row.order_id));
+                if (ordErr) throw ordErr;
+            }
+
+            const nextStatus = approveCancel ? "admin_approved" : "admin_rejected";
+            const { error: reqErr } = await supabase
+                .from("order_cancellation_requests")
+                .update({ status: nextStatus, responded_at: new Date().toISOString(), resolved_by_admin_id: user.id })
+                .eq("id", Number(row.id));
+            if (reqErr) throw reqErr;
+
+            setCancelEscalations((prev) => prev.filter((x) => String(x.id) !== rowId));
+        } catch (e: any) {
+            setError(String(e?.message || e || "Iptal talebi guncellenemedi"));
         } finally {
             setBusyId("");
         }
@@ -206,6 +272,48 @@ export default function AdminPayoutsPage() {
                                         </div>
                                         <Button disabled={busy} onClick={() => approve(r)} className="bg-emerald-600 hover:bg-emerald-700 text-white font-black">
                                             {busy ? "Onaylanıyor..." : "Ödemeyi Onayla"}
+                                        </Button>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                )}
+            </div>
+
+            <div className="mt-8 bg-white border rounded-[2rem] overflow-hidden shadow-sm">
+                <div className="p-8 border-b bg-gray-50/30 flex items-center justify-between">
+                    <h3 className="font-black text-gray-900 text-lg uppercase tracking-tight">3+ Gun Bekleyen Iptal Talepleri ({cancelEscalations.length})</h3>
+                </div>
+
+                {cancelEscalations.length === 0 ? (
+                    <div className="p-12 text-center text-gray-500 font-semibold">3 gunu gecen bekleyen iptal talebi yok.</div>
+                ) : (
+                    <div className="divide-y">
+                        {cancelEscalations.map((r) => {
+                            const busy = busyId === `cancel-${String(r.id)}`;
+                            return (
+                                <div key={String(r.id)} className="p-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                                    <div className="min-w-0">
+                                        <div className="text-xs font-mono text-gray-400">Talep #{String(r.id)} - Siparis #{String(r.order_id)}</div>
+                                        <div className="font-black text-gray-900 truncate">
+                                            {r.requester_username} -> {r.responder_username}
+                                        </div>
+                                        <div className="text-xs text-gray-500 font-bold mt-1">
+                                            Pay orani: %{Math.round(Number(r.compensation_rate || 0) * 100)}
+                                        </div>
+                                        {r.reason && <div className="text-xs text-gray-600 mt-1">{r.reason}</div>}
+                                        <div className="text-[10px] text-gray-400 font-bold mt-1">
+                                            {r.created_at ? new Date(r.created_at).toLocaleString("tr-TR") : ""}
+                                        </div>
+                                    </div>
+
+                                    <div className="flex items-center justify-end gap-2">
+                                        <Button disabled={busy} onClick={() => resolveCancelEscalation(r, false)} className="bg-gray-200 hover:bg-gray-300 text-gray-900 font-black">
+                                            Reddet
+                                        </Button>
+                                        <Button disabled={busy} onClick={() => resolveCancelEscalation(r, true)} className="bg-red-600 hover:bg-red-700 text-white font-black">
+                                            Iptali Onayla
                                         </Button>
                                     </div>
                                 </div>

@@ -528,6 +528,16 @@ export default function OrdersPage() {
                                             <Button variant="ghost" size="icon" title="Mesaj Gönder">
                                                 <MessageCircle className="h-4 w-4" />
                                             </Button>
+                                            {(order.status === "active" || order.status === "delivered") && (
+                                                <Button
+                                                    size="sm"
+                                                    disabled={busy || cancelPending}
+                                                    onClick={() => handleRequestCancellation(order)}
+                                                    className="bg-red-50 hover:bg-red-100 text-red-700 border border-red-200"
+                                                >
+                                                    Iptal Talebi
+                                                </Button>
+                                            )}
                                             {order.status === "active" && isMineFreelancer && (
                                                 <Button
                                                     size="sm"
@@ -570,6 +580,40 @@ export default function OrdersPage() {
                                         </div>
                                     </div>
                                 </div>
+                                {latestCancelReq && (
+                                    <div className="mt-4 rounded-xl border border-red-100 bg-red-50/50 p-4">
+                                        <div className="text-[10px] font-black uppercase tracking-widest text-red-600">
+                                            Iptal Talebi - {String(latestCancelReq.status || "").toUpperCase()}
+                                        </div>
+                                        <div className="mt-2 text-xs text-gray-700">
+                                            Talep: <strong>{latestCancelReq.requester_username}</strong> - Pay orani:{" "}
+                                            <strong>%{Math.round(Number(latestCancelReq.compensation_rate || 0) * 100)}</strong>
+                                        </div>
+                                        {latestCancelReq.reason && (
+                                            <div className="mt-1 text-xs text-gray-600">{latestCancelReq.reason}</div>
+                                        )}
+                                        {canRespondCancel && (
+                                            <div className="mt-3 flex gap-2 justify-end">
+                                                <Button
+                                                    size="sm"
+                                                    disabled={busyId === `cancel-${String(latestCancelReq.id)}`}
+                                                    onClick={() => handleRespondCancellation(latestCancelReq, "rejected")}
+                                                    className="bg-gray-200 hover:bg-gray-300 text-gray-900"
+                                                >
+                                                    Reddet
+                                                </Button>
+                                                <Button
+                                                    size="sm"
+                                                    disabled={busyId === `cancel-${String(latestCancelReq.id)}`}
+                                                    onClick={() => handleRespondCancellation(latestCancelReq, "accepted")}
+                                                    className="bg-red-600 hover:bg-red-700 text-white"
+                                                >
+                                                    Iptali Onayla
+                                                </Button>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
                             </div>
                         );
                     })}

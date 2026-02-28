@@ -204,21 +204,32 @@ export default function MessagesPage() {
             )}
 
             {items.length === 0 ? (
-                <Card className="p-6">
-                    <div className="text-sm font-semibold text-gray-700">Henüz mesaj yok.</div>
-                    <div className="text-xs text-gray-500 mt-1">Bir kullanıcıyla konuşma başlatınca burada görünecek.</div>
+                <Card className="p-10 text-center border rounded-2xl bg-white">
+                    <div className="text-sm font-black text-gray-800">Henüz mesaj yok.</div>
+                    <div className="text-xs text-gray-500 mt-2">Bir kullanıcıyla konuşma başlatınca burada görünecek.</div>
                 </Card>
             ) : (
                 <div className="grid gap-3">
                     {items.map((c) => (
                         <Link key={c.otherUsername} href={`/messages/${encodeURIComponent(c.otherUsername)}`}>
-                            <Card className="p-4 hover:bg-gray-50 transition-colors">
-                                <div className="flex items-center justify-between gap-4">
-                                    <div className="min-w-0">
-                                        <div className="font-bold text-gray-900 truncate">{displayUsername(c.otherUsername)}</div>
-                                        <div className="text-xs text-gray-500 truncate mt-1">{c.lastText || "(dosya/teklif)"}</div>
+                            <Card className="p-5 rounded-2xl border bg-white hover:shadow-lg hover:border-gray-200 transition-all">
+                                <div className="flex items-center gap-4">
+                                    <div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-700 text-white flex items-center justify-center font-black shrink-0">
+                                        {displayUsername(c.otherUsername).charAt(0).toUpperCase()}
                                     </div>
-                                    <div className="flex items-center gap-3">
+
+                                    <div className="flex-1 min-w-0">
+                                        <div className="text-center sm:text-left">
+                                            <div className="font-black text-gray-900 truncate">
+                                                {displayUsername(c.otherUsername)}
+                                            </div>
+                                            <div className="text-xs text-gray-500 line-clamp-1 mt-1">
+                                                {c.lastText || "(dosya/teklif)"}
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="flex flex-col items-end justify-center gap-2 shrink-0">
                                         {c.unreadCount > 0 && (
                                             <div className="h-6 min-w-6 px-2 bg-red-500 text-white text-[10px] font-black rounded-full flex items-center justify-center">
                                                 {c.unreadCount}
