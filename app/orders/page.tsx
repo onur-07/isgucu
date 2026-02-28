@@ -212,6 +212,7 @@ export default function OrdersPage() {
         if (busyId) return;
         if (user.role !== "freelancer") return;
         if (!order.id) return;
+        if (order.status !== "active" && order.status !== "pending") return;
 
         const message = window.prompt("Teslim notu (opsiyonel):", "") ?? "";
 
@@ -566,7 +567,7 @@ export default function OrdersPage() {
                                             <Button variant="ghost" size="icon" title="Mesaj Gönder">
                                                 <MessageCircle className="h-4 w-4" />
                                             </Button>
-                                            {(order.status === "active" || order.status === "delivered") && (
+                                            {(order.status === "active" || order.status === "pending" || order.status === "delivered") && (
                                                 <Button
                                                     size="sm"
                                                     disabled={busy || cancelPending}
@@ -576,14 +577,14 @@ export default function OrdersPage() {
                                                     Iptal Talebi
                                                 </Button>
                                             )}
-                                            {order.status === "active" && isMineFreelancer && (
+                                            {(order.status === "active" || order.status === "pending") && isMineFreelancer && (
                                                 <Button
                                                     size="sm"
                                                     disabled={busy}
                                                     onClick={() => handleSendDelivery(order)}
                                                     className="bg-purple-600 hover:bg-purple-700 text-white"
                                                 >
-                                                    📦 Teslim Gönder
+                                                    📦 Siparişi Teslim Et
                                                 </Button>
                                             )}
                                             {order.status === "delivered" && (
