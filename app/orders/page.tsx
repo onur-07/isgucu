@@ -33,6 +33,17 @@ type OrderDeliveryRow = {
     created_at: string;
 };
 
+type NotificationItem = {
+    id: string;
+    type: "message" | "order" | "review" | "system";
+    title: string;
+    description: string;
+    time: string;
+    read: boolean;
+    actionUrl?: string;
+    actionLabel?: string;
+};
+
 const statusConfig = {
     pending: { label: "Bekliyor", icon: Clock, color: "text-yellow-600 bg-yellow-50 border-yellow-200" },
     active: { label: "Devam Ediyor", icon: Clock, color: "text-blue-600 bg-blue-50 border-blue-200" },
@@ -70,6 +81,18 @@ export default function OrdersPage() {
 
     const [acceptOpen, setAcceptOpen] = useState(false);
     const [acceptOrder, setAcceptOrder] = useState<Order | null>(null);
+    const [openedFromNotif, setOpenedFromNotif] = useState(false);
+
+    const notificationKey = (username: string) => `isgucu_notifications_${norm(username)}`;
+
+    const pushNotificationForUser = (username: string, notif: NotificationItem) => {
+        if (typeof window === "undefined") return;
+        const key = notificationKey(username);
+        const raw = localStorage.getItem(key);
+        const list = raw ? (JSON.parse(raw) as NotificationItem[]) : [];
+        list.unshift(notif);
+        localStorage.setItem(key, JSON.stringify(list.slice(0, 100)));
+    };
 
     const loadCancellationRequests = async (orderRows: Order[]) => {
         const ids = orderRows.map((o) => Number(o.id)).filter((n) => Number.isFinite(n) && n > 0);
@@ -293,6 +316,29 @@ export default function OrdersPage() {
             if (updErr) throw updErr;
 
             await refresh();
+            const actionUrl = `/orders?reviewOrder=${encodeURIComponent(String(order.id))}`;
+            const now = new Date().toLocaleString("tr-TR");
+            pushNotificationForUser(order.client, {
+                id: `review-employer-${Date.now()}-${String(order.id)}`,
+                type: "review",
+                title: "Siparişinizi Değerlendirin",
+                description: "Teslim alındıktan sonra süreci değerlendirmeniz iki taraf için de çok kıymetli.",
+                time: now,
+                read: false,
+                actionUrl,
+                actionLabel: "Değerlendir",
+            });
+            pushNotificationForUser(order.freelancer, {
+                id: `review-freelancer-${Date.now()}-${String(order.id)}`,
+                type: "review",
+                title: "İşinizi Değerlendirin",
+                description: "Bu sipariş için kısa bir değerlendirme bırakabilirsiniz. Geri bildiriminiz önemlidir.",
+                time: now,
+                read: false,
+                actionUrl,
+                actionLabel: "Değerlendir",
+            });
+            if (typeof window !== "undefined") window.dispatchEvent(new Event("storage_updated"));
             if (typeof window !== "undefined") window.dispatchEvent(new Event("orders_updated"));
         } catch (e: any) {
             window.alert("Teslim gönderilemedi: " + String(e?.message || e));
@@ -304,7 +350,7 @@ export default function OrdersPage() {
     const insertReview = async (order: Order, rating: number, comment: string) => {
         if (!user) return;
         if (busyId) return;
-        if (order.status !== "completed") return;
+        if (order.status !== "completed" && order.status !== "delivered") return;
 
         const otherId = user.role === "employer" ? order.sellerId : order.buyerId;
         if (!otherId) {
@@ -343,7 +389,7 @@ export default function OrdersPage() {
     const handleReviewPrompt = async (order: Order) => {
         if (!user) return;
         if (busyId) return;
-        if (order.status !== "completed") return;
+        if (order.status !== "completed" && order.status !== "delivered") return;
 
         const ratingRaw = window.prompt("Puan (1-5):", "5");
         if (ratingRaw === null) return;
@@ -361,7 +407,7 @@ export default function OrdersPage() {
     const openReviewModal = (order: Order) => {
         if (!user) return;
         if (busyId) return;
-        if (order.status !== "completed") return;
+        if (order.status !== "completed" && order.status !== "delivered") return;
         setReviewOrder(order);
         setReviewRating("5");
         setReviewComment("");
@@ -549,6 +595,17 @@ export default function OrdersPage() {
         setAcceptOrder(null);
         await handleAcceptDelivery(order);
     };
+
+    useEffect(() => {
+        if (openedFromNotif) return;
+        if (typeof window === "undefined") return;
+        const reviewOrderId = String(new URLSearchParams(window.location.search).get("reviewOrder") || "").trim();
+        if (!reviewOrderId) return;
+        const target = orders.find((o) => String(o.id) === reviewOrderId);
+        if (!target) return;
+        setOpenedFromNotif(true);
+        openReviewModal(target);
+    }, [orders, openedFromNotif]);
 
     if (!user) return null;
 

@@ -73,7 +73,7 @@ export function Header() {
     }, []);
 
     const updateOrderApprovalCount = useCallback(async () => {
-        if (!user || user.role !== "employer") {
+        if (!user || (user.role !== "employer" && user.role !== "freelancer")) {
             setOrderApprovalCount(0);
             return;
         }
@@ -86,11 +86,21 @@ export function Header() {
         const k = usernameKey(raw);
         const f = usernameFold(raw);
 
-        const res = await supabase
+        const base = supabase
             .from("orders")
-            .select("id", { count: "exact", head: true })
-            .eq("status", "delivered")
-            .or(`buyer_username.ilike.${raw},buyer_username.ilike.${k},buyer_username.ilike.${f}`);
+            .select("id", { count: "exact", head: true });
+
+        const res = user.role === "employer"
+            ? await base
+                .eq("status", "delivered")
+                .or(
+                    `buyer_id.eq.${user.id},buyer_username.ilike.${raw},buyer_username.ilike.${k},buyer_username.ilike.${f}`
+                )
+            : await base
+                .in("status", ["pending", "active", "delivered"])
+                .or(
+                    `seller_id.eq.${user.id},seller_username.ilike.${raw},seller_username.ilike.${k},seller_username.ilike.${f}`
+                );
 
         if (res.error) {
             setOrderApprovalCount(0);

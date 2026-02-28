@@ -2,6 +2,7 @@
 
 import { useAuth } from "@/components/auth/auth-context";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Bell, MessageCircle, Star, Briefcase, Trash2 } from "lucide-react";
 import { usernameKey } from "@/lib/utils";
@@ -13,6 +14,8 @@ interface Notification {
     description: string;
     time: string;
     read: boolean;
+    actionUrl?: string;
+    actionLabel?: string;
 }
 
 const iconMap = {
@@ -165,6 +168,17 @@ export default function NotificationsPage() {
                                         <span className="text-xs text-gray-400 shrink-0 ml-2">{notif.time}</span>
                                     </div>
                                     <p className="text-sm text-gray-500 mt-0.5">{notif.description}</p>
+                                    {notif.actionUrl && (
+                                        <div className="mt-2">
+                                            <Link
+                                                href={notif.actionUrl}
+                                                onClick={() => markRead(notif.id)}
+                                                className="inline-flex items-center rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-3 py-1.5"
+                                            >
+                                                {notif.actionLabel || "İncele"}
+                                            </Link>
+                                        </div>
+                                    )}
                                 </div>
                                 <div className="flex items-center gap-2 shrink-0">
                                     {!notif.read && <div className="h-2.5 w-2.5 bg-blue-500 rounded-full" />}
