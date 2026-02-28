@@ -1,8 +1,8 @@
 "use client";
 
 import { useAuth } from "@/components/auth/auth-context";
-import { useRouter } from "next/navigation";
-import { useEffect, useState, useRef } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useState, useRef } from "react";
 import { formatDistance } from "date-fns";
 import { tr } from "date-fns/locale";
 import { Button } from "@/components/ui/button";
@@ -34,9 +34,10 @@ interface ProfileData {
     avatarUrl: string;
 }
 
-export default function ProfilePage() {
+function ProfilePageContent() {
     const { user, refreshProfile, loading: authLoading } = useAuth();
     const router = useRouter();
+    const searchParams = useSearchParams();
     const [editing, setEditing] = useState(false);
     const [saved, setSaved] = useState(false);
     const [saving, setSaving] = useState(false);
@@ -65,6 +66,9 @@ export default function ProfilePage() {
     const [deletionReason, setDeletionReason] = useState("");
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const skillsSectionRef = useRef<HTMLDivElement | null>(null);
+    const skillInputRef = useRef<HTMLInputElement | null>(null);
+    const onboardingHandledRef = useRef(false);
 
     const sanitizeUrl = (url: string) => {
         return (url || "")
@@ -194,18 +198,43 @@ export default function ProfilePage() {
             (async () => {
                 setGigsLoading(true);
                 try {
-                    const { data, error } = await supabase
+                    const baseQuery = supabase
                         .from('gigs')
                         .select('id, user_id, title, description, category, price, created_at, images, packages, is_active')
-                        .or(`user_id.eq.${user.id},user_id.eq.${user.username}`)
+                        .eq('user_id', user.id)
                         .order('created_at', { ascending: false });
 
-                    if (error) {
-                        console.error("Profil gigs çekme hatası:", error);
+                    const { data: primaryData, error: primaryError } = await baseQuery;
+
+                    if (primaryError) {
+                        console.error("Profil gigs çekme hatası:", primaryError);
                         setUserGigs([]);
                         return;
                     }
-                    setUserGigs(data || []);
+
+                    if ((primaryData || []).length > 0) {
+                        setUserGigs(primaryData || []);
+                        return;
+                    }
+
+                    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+                    if (!uuidRegex.test(String(user.id || ""))) {
+                        setUserGigs(primaryData || []);
+                        return;
+                    }
+
+                    const { data: legacyData, error: legacyError } = await supabase
+                        .from('gigs')
+                        .select('id, user_id, title, description, category, price, created_at, images, packages, is_active')
+                        .eq('user_id', user.username)
+                        .order('created_at', { ascending: false });
+
+                    if (legacyError) {
+                        setUserGigs(primaryData || []);
+                        return;
+                    }
+
+                    setUserGigs([...(legacyData || []), ...(primaryData || [])]);
                 } finally {
                     setGigsLoading(false);
                 }
@@ -214,6 +243,29 @@ export default function ProfilePage() {
         setStats(getUserStats(user.username, user.role as "employer" | "freelancer" | "admin"));
         setReviews(getUserReviews(user.username));
     }, [user, router, authLoading]);
+
+    useEffect(() => {
+        if (authLoading) return;
+        if (!user) return;
+        if (user.role !== "freelancer") return;
+
+        const onboarding = searchParams?.get("onboarding") || "";
+        if (onboarding !== "skills") return;
+        if (onboardingHandledRef.current) return;
+        onboardingHandledRef.current = true;
+
+        setEditing(true);
+        setTimeout(() => {
+            try {
+                skillsSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+            } catch {}
+            setTimeout(() => {
+                try {
+                    skillInputRef.current?.focus();
+                } catch {}
+            }, 150);
+        }, 50);
+    }, [authLoading, user, searchParams]);
 
     const refreshMyJobs = async () => {
         if (!user?.id) return;
@@ -289,16 +341,35 @@ export default function ProfilePage() {
         if (!user?.id) return;
         setGigsLoading(true);
         try {
-            const { data, error } = await supabase
+            const { data: primaryData, error: primaryError } = await supabase
                 .from('gigs')
                 .select('id, user_id, title, description, category, price, created_at, images, packages, is_active')
-                .or(`user_id.eq.${user.id},user_id.eq.${user.username}`)
+                .eq('user_id', user.id)
                 .order('created_at', { ascending: false });
-            if (error) {
-                console.error("Profil gigs refresh hatası:", error);
+
+            if (primaryError) {
+                console.error("Profil gigs refresh hatası:", primaryError);
                 return;
             }
-            setUserGigs(data || []);
+
+            if ((primaryData || []).length > 0) {
+                setUserGigs(primaryData || []);
+                return;
+            }
+
+            const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+            if (!uuidRegex.test(String(user.id || ""))) {
+                setUserGigs(primaryData || []);
+                return;
+            }
+
+            const { data: legacyData } = await supabase
+                .from('gigs')
+                .select('id, user_id, title, description, category, price, created_at, images, packages, is_active')
+                .eq('user_id', user.username)
+                .order('created_at', { ascending: false });
+
+            setUserGigs([...(legacyData || []), ...(primaryData || [])]);
         } finally {
             setGigsLoading(false);
         }
@@ -384,6 +455,13 @@ export default function ProfilePage() {
             setEditing(false);
             setSaved(true);
             setTimeout(() => setSaved(false), 3000);
+
+            const onboarding = searchParams?.get("onboarding") || "";
+            if (user.role === "freelancer" && onboarding === "skills" && (profile.skills || []).length > 0) {
+                setTimeout(() => {
+                    router.push("/post-gig");
+                }, 600);
+            }
         } else {
             console.error("Profil güncellenemedi:", error);
             if (error.message.includes("avatar_url")) {
@@ -886,7 +964,7 @@ export default function ProfilePage() {
                                     <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center justify-center sm:justify-start gap-2">
                                         <TrendingUp className="h-4 w-4" /> Uzmanlık Alanları
                                     </h4>
-                                    <div className="flex flex-wrap justify-center sm:justify-start gap-3">
+                                    <div ref={skillsSectionRef} className="flex flex-wrap justify-center sm:justify-start gap-3">
                                         {profile.skills.length > 0 ? profile.skills.map((skill) => (
                                             <div key={skill} className="group relative">
                                                 <div className="bg-gradient-to-br from-slate-100 to-slate-200 text-slate-800 text-[10px] font-black uppercase px-6 py-2.5 rounded-2xl flex items-center gap-2 border border-white shadow-sm transition-all group-hover:shadow-md group-hover:translate-y-[-2px]">
@@ -910,6 +988,7 @@ export default function ProfilePage() {
                                         <div className="flex flex-col sm:flex-row gap-3 pt-4">
                                             <div className="relative flex-1">
                                                 <Input
+                                                    ref={skillInputRef}
                                                     placeholder="Yeni yetenek ekle (örn: Photoshop)"
                                                     value={skillInput}
                                                     onChange={(e) => setSkillInput(e.target.value)}
@@ -1229,6 +1308,14 @@ export default function ProfilePage() {
                 </div>
             </div>
         </div>
+    );
+}
+
+export default function ProfilePage() {
+    return (
+        <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><p>Yükleniyor...</p></div>}>
+            <ProfilePageContent />
+        </Suspense>
     );
 }
 
