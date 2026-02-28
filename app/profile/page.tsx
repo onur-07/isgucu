@@ -169,24 +169,42 @@ function ProfilePageContent() {
         };
 
         const fetchUserJobs = async () => {
-            const { data } = await supabase
-                .from('jobs')
-                .select('*')
-                .or(`user_id.eq.${user.id},user_id.eq.${user.username}`)
-                .order('created_at', { ascending: false });
+            const [byIdRes, byUsernameRes] = await Promise.all([
+                supabase
+                    .from('jobs')
+                    .select('*')
+                    .eq('user_id', user.id)
+                    .order('created_at', { ascending: false }),
+                supabase
+                    .from('jobs')
+                    .select('*')
+                    .eq('user_id', user.username)
+                    .order('created_at', { ascending: false }),
+            ]);
+
+            const dbRows = [...(byIdRes.data || []), ...(byUsernameRes.data || [])];
+            const merged = new Map<string, any>();
+            for (const row of dbRows) {
+                const key = String((row as any)?.id || "");
+                if (!key) continue;
+                if (!merged.has(key)) merged.set(key, row);
+            }
 
             const localJobs = JSON.parse(localStorage.getItem("isgucu_jobs") || "[]");
             const myLocalJobs = localJobs.filter((j: any) =>
                 String(j.user_id) === String(user.id) ||
                 String(j.user_id).toLowerCase() === String(user.username).toLowerCase()
             );
+            for (const lj of myLocalJobs) {
+                const key = String((lj as any)?.id || "");
+                if (!key) continue;
+                if (!merged.has(key)) merged.set(key, lj);
+            }
 
-            const allMyJobs = data ? [...data] : [];
-            // Add local jobs that aren't in DB data
-            myLocalJobs.forEach((lj: any) => {
-                if (!allMyJobs.some(mj => mj.id === lj.id)) {
-                    allMyJobs.push(lj);
-                }
+            const allMyJobs = Array.from(merged.values()).sort((a: any, b: any) => {
+                const ta = new Date(String(a?.created_at || a?.createdAt || 0)).getTime();
+                const tb = new Date(String(b?.created_at || b?.createdAt || 0)).getTime();
+                return tb - ta;
             });
 
             setUserJobs(allMyJobs);
@@ -269,24 +287,45 @@ function ProfilePageContent() {
 
     const refreshMyJobs = async () => {
         if (!user?.id) return;
-        const { data } = await supabase
-            .from('jobs')
-            .select('*')
-            .or(`user_id.eq.${user.id},user_id.eq.${user.username}`)
-            .order('created_at', { ascending: false });
+
+        const [byIdRes, byUsernameRes] = await Promise.all([
+            supabase
+                .from('jobs')
+                .select('*')
+                .eq('user_id', user.id)
+                .order('created_at', { ascending: false }),
+            supabase
+                .from('jobs')
+                .select('*')
+                .eq('user_id', user.username)
+                .order('created_at', { ascending: false }),
+        ]);
+
+        const dbRows = [...(byIdRes.data || []), ...(byUsernameRes.data || [])];
+        const merged = new Map<string, any>();
+        for (const row of dbRows) {
+            const key = String((row as any)?.id || "");
+            if (!key) continue;
+            if (!merged.has(key)) merged.set(key, row);
+        }
 
         const localJobs = JSON.parse(localStorage.getItem("isgucu_jobs") || "[]");
         const myLocalJobs = localJobs.filter((j: any) =>
             String(j.user_id) === String(user.id) ||
             String(j.user_id).toLowerCase() === String(user.username).toLowerCase()
         );
+        for (const lj of myLocalJobs) {
+            const key = String((lj as any)?.id || "");
+            if (!key) continue;
+            if (!merged.has(key)) merged.set(key, lj);
+        }
 
-        const allMyJobs = data ? [...data] : [];
-        myLocalJobs.forEach((lj: any) => {
-            if (!allMyJobs.some(mj => mj.id === lj.id)) {
-                allMyJobs.push(lj);
-            }
+        const allMyJobs = Array.from(merged.values()).sort((a: any, b: any) => {
+            const ta = new Date(String(a?.created_at || a?.createdAt || 0)).getTime();
+            const tb = new Date(String(b?.created_at || b?.createdAt || 0)).getTime();
+            return tb - ta;
         });
+
         setUserJobs(allMyJobs);
     };
 
