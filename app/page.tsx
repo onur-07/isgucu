@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -12,13 +12,14 @@ import { useAuth } from "@/components/auth/auth-context";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { getBlogPosts } from "@/lib/blog-posts";
+import { getSiteConfig } from "@/lib/site-config";
 
 const CATEGORIES = [
-  { title: "Yazılım & Mobil", slug: "yazilim-mobil", icon: "💻", color: "text-blue-600", bg: "bg-blue-50" },
-  { title: "Logo & Grafik", slug: "logo-grafik", icon: "🎨", color: "text-purple-600", bg: "bg-purple-50" },
-  { title: "Web Tasarım", slug: "web-tasarim", icon: "🌐", color: "text-cyan-600", bg: "bg-cyan-50" },
-  { title: "Video & Animasyon", slug: "video-animasyon", icon: "🎬", color: "text-pink-600", bg: "bg-pink-50" },
-  { title: "Çeviri & İçerik", slug: "ceviri-icerik", icon: "✍️", color: "text-orange-600", bg: "bg-orange-50" },
+  { title: "YazÄ±lÄ±m & Mobil", slug: "yazilim-mobil", icon: "ğŸ’»", color: "text-blue-600", bg: "bg-blue-50" },
+  { title: "Logo & Grafik", slug: "logo-grafik", icon: "ğŸ¨", color: "text-purple-600", bg: "bg-purple-50" },
+  { title: "Web TasarÄ±m", slug: "web-tasarim", icon: "ğŸŒ", color: "text-cyan-600", bg: "bg-cyan-50" },
+  { title: "Video & Animasyon", slug: "video-animasyon", icon: "ğŸ¬", color: "text-pink-600", bg: "bg-pink-50" },
+  { title: "Ã‡eviri & Ä°Ã§erik", slug: "ceviri-icerik", icon: "âœï¸", color: "text-orange-600", bg: "bg-orange-50" },
 ];
 
 export default function Home() {
@@ -27,15 +28,19 @@ export default function Home() {
   const [query, setQuery] = useState("");
   const [freelancerJobCount, setFreelancerJobCount] = useState(0);
   const rotatingHeroWords = useMemo(
-    () => ["Freelancerlık", "Proje Yaptırmak", "Doğru Uzmanı Bulmak"],
+    () => ["FreelancerlÄ±k", "Proje YaptÄ±rmak", "DoÄŸru UzmanÄ± Bulmak"],
     []
   );
   const [activeHeroWordIndex, setActiveHeroWordIndex] = useState(0);
+  const [managedHome, setManagedHome] = useState(() => {
+    const config = getSiteConfig();
+    return (config.managedPages || []).find((p) => p.slug === "/" || p.id === "home-system") || null;
+  });
 
   const categories = useMemo(
     () =>
       CATEGORIES.map((cat) =>
-        cat.slug === "web-tasarim" ? { ...cat, title: "Yapay Zeka", icon: "🧠" } : cat
+        cat.slug === "web-tasarim" ? { ...cat, title: "Yapay Zeka", icon: "ğŸ§ " } : cat
       ),
     []
   );
@@ -48,6 +53,15 @@ export default function Home() {
     return () => window.clearInterval(intervalId);
   }, [rotatingHeroWords.length]);
 
+  useEffect(() => {
+    const refreshManagedHome = () => {
+      const config = getSiteConfig();
+      setManagedHome((config.managedPages || []).find((p) => p.slug === "/" || p.id === "home-system") || null);
+    };
+    window.addEventListener("site_config_updated", refreshManagedHome);
+    return () => window.removeEventListener("site_config_updated", refreshManagedHome);
+  }, []);
+
   if (loading) return null;
 
   if (isAuthenticated && user) {
@@ -57,17 +71,17 @@ export default function Home() {
           <div className="bg-gradient-to-r from-cyan-600 to-blue-700 rounded-[2.5rem] p-8 sm:p-10 text-white shadow-2xl relative overflow-hidden">
             <div className="absolute inset-0 opacity-10 bg-[url('/grid.svg')]" />
             <div className="relative z-10 space-y-4 text-center sm:text-left">
-              <span className="inline-flex bg-white/20 px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border border-white/10">👋 Hoş Geldin, Freelancer</span>
+              <span className="inline-flex bg-white/20 px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border border-white/10">ğŸ‘‹ HoÅŸ Geldin, Freelancer</span>
               <h1 className="text-3xl sm:text-4xl md:text-5xl font-black font-heading leading-tight italic">
-                Kazancınızı Artıracak <br /> Yeni İş Fırsatlarını Yakalayın!
+                KazancÄ±nÄ±zÄ± ArtÄ±racak <br /> Yeni Ä°ÅŸ FÄ±rsatlarÄ±nÄ± YakalayÄ±n!
               </h1>
-              <p className="text-blue-100 font-bold text-sm max-w-xl mx-auto sm:mx-0">Yeteneklerinize uygun en son ilanları aşağıda bulabilir ve hemen teklif vererek yeni projelere başlayabilirsiniz.</p>
+              <p className="text-blue-100 font-bold text-sm max-w-xl mx-auto sm:mx-0">Yeteneklerinize uygun en son ilanlarÄ± aÅŸaÄŸÄ±da bulabilir ve hemen teklif vererek yeni projelere baÅŸlayabilirsiniz.</p>
               <div className="pt-4 flex flex-col sm:flex-row gap-3 sm:gap-4 items-center sm:items-start">
                 <Link href="/jobs">
-                  <Button className="bg-white text-blue-700 font-black rounded-xl px-8 h-12 hover:bg-blue-50 w-full sm:w-auto">TÜM İLANLARI GÖR</Button>
+                  <Button className="bg-white text-blue-700 font-black rounded-xl px-8 h-12 hover:bg-blue-50 w-full sm:w-auto">TÃœM Ä°LANLARI GÃ–R</Button>
                 </Link>
                 <Link href="/post-gig">
-                  <Button variant="outline" className="bg-transparent border-white/60 text-white hover:bg-white/10 font-black rounded-xl px-8 h-12 uppercase text-[10px] tracking-widest w-full sm:w-auto">Yeni İlan Oluştur</Button>
+                  <Button variant="outline" className="bg-transparent border-white/60 text-white hover:bg-white/10 font-black rounded-xl px-8 h-12 uppercase text-[10px] tracking-widest w-full sm:w-auto">Yeni Ä°lan OluÅŸtur</Button>
                 </Link>
               </div>
             </div>
@@ -77,10 +91,10 @@ export default function Home() {
           <div className="space-y-6">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-center sm:text-left">
               <h2 className="text-2xl font-black text-gray-900 uppercase tracking-tight flex items-center justify-center sm:justify-start gap-3">
-                <ZapIcon className="h-6 w-6 text-yellow-500" /> Sizin İçin Önerilen İşler
+                <ZapIcon className="h-6 w-6 text-yellow-500" /> Sizin Ä°Ã§in Ã–nerilen Ä°ÅŸler
               </h2>
               <Link href="/jobs" className="text-[10px] font-black uppercase text-blue-600 hover:underline tracking-widest">
-                Tümünü İncele ({freelancerJobCount}) →
+                TÃ¼mÃ¼nÃ¼ Ä°ncele ({freelancerJobCount}) â†’
               </Link>
             </div>
             <JobList limit={4} onTotalChange={setFreelancerJobCount} />
@@ -96,14 +110,14 @@ export default function Home() {
             <div className="absolute inset-0 opacity-10 bg-[url('/grid.svg')]" />
             <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-8">
               <div className="space-y-4 flex-1">
-                <span className="bg-white/20 px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border border-white/10 italic">💼 Hoş Geldin, İş Veren</span>
+                <span className="bg-white/20 px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border border-white/10 italic">ğŸ’¼ HoÅŸ Geldin, Ä°ÅŸ Veren</span>
                 <h1 className="text-4xl md:text-5xl font-black font-heading leading-tight">
-                  Projeniz İçin <br /> En İyi Uzmanı Hemen Bulun!
+                  Projeniz Ä°Ã§in <br /> En Ä°yi UzmanÄ± Hemen Bulun!
                 </h1>
-                <p className="text-yellow-50 font-bold text-sm max-w-xl">Yüzlerce profesyonel freelancer arasından seçim yapın veya ilan vererek teklifleri toplayın.</p>
+                <p className="text-yellow-50 font-bold text-sm max-w-xl">YÃ¼zlerce profesyonel freelancer arasÄ±ndan seÃ§im yapÄ±n veya ilan vererek teklifleri toplayÄ±n.</p>
                 <div className="pt-4 flex gap-4 justify-center md:justify-start">
                   <Link href="/post-job">
-                    <Button className="bg-white text-yellow-700 font-black rounded-xl px-8 h-12 hover:bg-yellow-50">HEMEN İLAN VER 🎯</Button>
+                    <Button className="bg-white text-yellow-700 font-black rounded-xl px-8 h-12 hover:bg-yellow-50">HEMEN Ä°LAN VER ğŸ¯</Button>
                   </Link>
                   <Link href="/freelancers">
                     <Button variant="outline" className="border-white/30 text-white hover:bg-white/10 font-black rounded-xl px-8 h-12 uppercase text-[10px] tracking-widest">Freenlancer Ara</Button>
@@ -120,8 +134,8 @@ export default function Home() {
 
           <div className="space-y-8">
             <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-              <h2 className="text-2xl font-black text-gray-900 uppercase tracking-tight">Kategorileri Keşfet</h2>
-              <Link href="/categories/all" className="text-[10px] font-black uppercase text-amber-600 hover:underline tracking-widest">Kategori Listesi →</Link>
+              <h2 className="text-2xl font-black text-gray-900 uppercase tracking-tight">Kategorileri KeÅŸfet</h2>
+              <Link href="/categories/all" className="text-[10px] font-black uppercase text-amber-600 hover:underline tracking-widest">Kategori Listesi â†’</Link>
             </div>
             <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
               {CATEGORIES.map((cat) => (
@@ -136,7 +150,7 @@ export default function Home() {
           <div className="space-y-6">
             <div className="flex items-center justify-between">
               <h2 className="text-2xl font-black text-gray-900 uppercase tracking-tight">Trend Hizmetler (Gigs)</h2>
-              <Link href="/freelancers" className="text-[10px] font-black uppercase text-amber-600 hover:underline tracking-widest">Tüm Hizmetler →</Link>
+              <Link href="/freelancers" className="text-[10px] font-black uppercase text-amber-600 hover:underline tracking-widest">TÃ¼m Hizmetler â†’</Link>
             </div>
             <GigList limit={4} />
           </div>
@@ -167,30 +181,30 @@ export default function Home() {
             >
               {rotatingHeroWords[activeHeroWordIndex]}
             </span>
-            <span className="text-black"> daha kolay</span>
+            <span className="text-black"> Ã§ok kolay</span>
           </p>
 
           <div className="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 border-transparent bg-blue-50 text-blue-700 hover:bg-blue-100 mb-4">
-            ✨ Geleceğin Çalışma Modeli
+            âœ¨ GeleceÄŸin Ã‡alÄ±ÅŸma Modeli
           </div>
 
           <h1 className="text-5xl md:text-7xl font-bold tracking-tight bg-gradient-to-br from-gray-900 via-gray-800 to-gray-600 bg-clip-text text-transparent font-heading max-w-[900px] leading-tight mb-12 animate-in fade-in slide-in-from-bottom-5 duration-1000">
-            Hayalindeki Projeyi <br /> <span className="text-blue-600 italic">Gerçeğe Dönüştür</span>
+            {managedHome?.title || "Hayalindeki Projeyi"} <br /> <span className="text-blue-600 italic">Gerçeğe Dönüştür</span>
           </h1>
 
           <p className="max-w-[800px] text-gray-600 text-base md:text-lg font-semibold leading-relaxed">
-            Türkiye’nin freelancer pazarı: Hizmet bul, ilan ver, güvenle çalış. İster freelancer ol, ister iş veren olarak en doğru uzmanı seç.
+            {managedHome?.summary || "Turkiye freelancer platformu: Hizmet bul, ilan ver, guvenle calis. Ister freelancer ol, ister is veren olarak en dogru uzmani sec."}
           </p>
 
           <div className="w-full max-w-4xl rounded-3xl border border-blue-100 bg-gradient-to-r from-blue-50 via-white to-cyan-50 px-6 py-5 shadow-sm">
             <h2 className="text-lg md:text-2xl font-black text-gray-900">
-              Freelancer Platformu: Proje Yaptırma, İş Bulma ve Uzman Freelancer Hizmetleri
+              Freelancer Platformu: Proje YaptÄ±rma, Ä°ÅŸ Bulma ve Uzman Freelancer Hizmetleri
             </h2>
             <p className="mt-2 text-sm md:text-base font-semibold text-gray-600">
-              Web tasarım, yapay zeka, logo tasarım, video düzenleme ve içerik üretimi dahil yüzlerce hizmette hızlı eşleşme, güvenli ödeme ve şeffaf süreç sunuyoruz.
+              Web tasarÄ±m, yapay zeka, logo tasarÄ±m, video dÃ¼zenleme ve iÃ§erik Ã¼retimi dahil yÃ¼zlerce hizmette hÄ±zlÄ± eÅŸleÅŸme, gÃ¼venli Ã¶deme ve ÅŸeffaf sÃ¼reÃ§ sunuyoruz.
             </p>
             <div className="mt-3 flex flex-wrap justify-center gap-2">
-              {["freelancer platformu", "proje yaptırma", "uzman freelancer", "hizmet ilanı", "güvenli ödeme"].map((item) => (
+              {["freelancer platformu", "proje yaptÄ±rma", "uzman freelancer", "hizmet ilanÄ±", "gÃ¼venli Ã¶deme"].map((item) => (
                 <span key={item} className="rounded-full border border-blue-200 bg-white px-3 py-1 text-xs font-bold text-blue-700">
                   {item}
                 </span>
@@ -217,7 +231,7 @@ export default function Home() {
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   className="pl-12 h-12 border-0 shadow-none focus-visible:ring-0 text-base"
-                  placeholder="Ne hizmeti arıyorsun? (ör: logo, web sitesi, seo)"
+                  placeholder="Ne hizmeti arÄ±yorsun? (Ã¶r: logo, web sitesi, seo)"
                 />
               </div>
               <Button size="lg" className="rounded-2xl bg-blue-600 hover:bg-blue-700 h-12 px-10 font-black">
@@ -233,7 +247,7 @@ export default function Home() {
               </Link>
               <Link href="/register?role=employer" className="w-full sm:w-auto">
                 <Button size="lg" className="w-full sm:w-auto bg-gray-900 hover:bg-black font-black px-10 h-14 rounded-2xl shadow-lg">
-                  İş İlanı Ver
+                  Ä°ÅŸ Ä°lanÄ± Ver
                 </Button>
               </Link>
             </div>
@@ -241,16 +255,16 @@ export default function Home() {
 
           <div className="pt-2 grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-4xl w-full">
             {[{
-              title: "Güvenli Ödeme",
-              desc: "Ödeme süreçleri kontrol altında.",
+              title: "GÃ¼venli Ã–deme",
+              desc: "Ã–deme sÃ¼reÃ§leri kontrol altÄ±nda.",
               Icon: ShieldCheck,
             }, {
-              title: "Hızlı Eşleşme",
-              desc: "Doğru uzmanı dakikalar içinde bul.",
+              title: "HÄ±zlÄ± EÅŸleÅŸme",
+              desc: "DoÄŸru uzmanÄ± dakikalar iÃ§inde bul.",
               Icon: ZapIcon,
             }, {
-              title: "Şeffaf Süreç",
-              desc: "Teklif, teslim, onay adımları net.",
+              title: "Åeffaf SÃ¼reÃ§",
+              desc: "Teklif, teslim, onay adÄ±mlarÄ± net.",
               Icon: Briefcase,
             }].map(({ title, desc, Icon }) => (
               <div key={title} className="rounded-3xl border border-gray-100 bg-white/70 backdrop-blur px-6 py-5 text-left shadow-sm">
@@ -275,14 +289,14 @@ export default function Home() {
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-10">
             <div>
               <h2 className="text-3xl md:text-4xl font-black font-heading tracking-tight text-gray-900">
-                Kategorileri Keşfet
+                Kategorileri KeÅŸfet
               </h2>
               <p className="text-gray-600 font-semibold mt-2 max-w-2xl">
-                En çok talep gören alanlara göz at, doğru hizmeti bul.
+                En Ã§ok talep gÃ¶ren alanlara gÃ¶z at, doÄŸru hizmeti bul.
               </p>
             </div>
             <Link href="/freelancers" className="text-[10px] font-black uppercase tracking-widest text-blue-600 hover:underline">
-              Tüm Hizmetler →
+              TÃ¼m Hizmetler â†’
             </Link>
           </div>
 
@@ -300,7 +314,7 @@ export default function Home() {
                   {cat.title}
                 </div>
                 <div className="mt-2 text-xs font-bold text-gray-500">
-                  Popüler hizmetleri gör
+                  PopÃ¼ler hizmetleri gÃ¶r
                 </div>
               </Link>
             ))}
@@ -314,14 +328,14 @@ export default function Home() {
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-10">
             <div>
               <h2 className="text-3xl md:text-4xl font-black font-heading tracking-tight text-gray-900">
-                Öne Çıkan Hizmetler
+                Ã–ne Ã‡Ä±kan Hizmetler
               </h2>
               <p className="text-gray-600 font-semibold mt-2 max-w-2xl">
-                Yeni ve trend ilanları keşfet.
+                Yeni ve trend ilanlarÄ± keÅŸfet.
               </p>
             </div>
             <Link href="/freelancers" className="inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-blue-600 hover:underline">
-              Tümünü İncele <ArrowRight className="h-3.5 w-3.5" />
+              TÃ¼mÃ¼nÃ¼ Ä°ncele <ArrowRight className="h-3.5 w-3.5" />
             </Link>
           </div>
 
@@ -335,14 +349,14 @@ export default function Home() {
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-10">
             <div>
               <h2 className="text-3xl md:text-4xl font-black font-heading tracking-tight text-gray-900">
-                Son İş İlanları
+                Son Ä°ÅŸ Ä°lanlarÄ±
               </h2>
               <p className="text-gray-600 font-semibold mt-2 max-w-2xl">
-                Freelancer isen hızlıca teklif ver, iş veren isen ilan aç.
+                Freelancer isen hÄ±zlÄ±ca teklif ver, iÅŸ veren isen ilan aÃ§.
               </p>
             </div>
             <Link href="/jobs" className="inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-blue-600 hover:underline">
-              İş İlanlarını Gör <ArrowRight className="h-3.5 w-3.5" />
+              Ä°ÅŸ Ä°lanlarÄ±nÄ± GÃ¶r <ArrowRight className="h-3.5 w-3.5" />
             </Link>
           </div>
 
@@ -356,14 +370,14 @@ export default function Home() {
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-10">
             <div>
               <h2 className="text-3xl md:text-4xl font-black font-heading tracking-tight text-gray-900">
-                Blog / Son Yazılar
+                Blog / Son YazÄ±lar
               </h2>
               <p className="text-gray-600 font-semibold mt-2 max-w-2xl">
-                Freelancerlığa dair pratik ipuçları, vergi/finans notları ve İşgücü güncellemeleri.
+                FreelancerlÄ±ÄŸa dair pratik ipuÃ§larÄ±, vergi/finans notlarÄ± ve Ä°ÅŸgÃ¼cÃ¼ gÃ¼ncellemeleri.
               </p>
             </div>
             <Link href="/blog" className="inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-blue-600 hover:underline">
-              Tüm Yazılar <ArrowRight className="h-3.5 w-3.5" />
+              TÃ¼m YazÄ±lar <ArrowRight className="h-3.5 w-3.5" />
             </Link>
           </div>
 
@@ -401,7 +415,7 @@ export default function Home() {
                     asChild
                     className="w-full rounded-2xl font-black bg-[#0b1f4d] hover:bg-[#123a8f] text-white border border-[#0b1f4d]"
                   >
-                    <Link href={`/blog/${post.slug}`}>Yazıyı Oku</Link>
+                    <Link href={`/blog/${post.slug}`}>YazÄ±yÄ± Oku</Link>
                   </Button>
                 </CardFooter>
               </Card>
@@ -415,9 +429,9 @@ export default function Home() {
         <div className="container mx-auto px-4 md:px-6">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {[
-              { step: "1", title: "İhtiyacınızı Belirleyin", desc: "Projenizi detaylandırarak ilan verin veya mevcut freelancer hizmetlerini inceleyin.", icon: "🎯" },
-              { step: "2", title: "Doğru Uzmanı Bulun", desc: "Profil, portföy ve değerlendirmeleri karşılaştırarak en uygun freelancer'ı seçin.", icon: "🔍" },
-              { step: "3", title: "Güvenle Çalışın", desc: "Ödemeniz havuz hesapta tutulur. İş teslim edilip onaylanınca freelancer'a aktarılır.", icon: "🤝" },
+              { step: "1", title: "Ä°htiyacÄ±nÄ±zÄ± Belirleyin", desc: "Projenizi detaylandÄ±rarak ilan verin veya mevcut freelancer hizmetlerini inceleyin.", icon: "ğŸ¯" },
+              { step: "2", title: "DoÄŸru UzmanÄ± Bulun", desc: "Profil, portfÃ¶y ve deÄŸerlendirmeleri karÅŸÄ±laÅŸtÄ±rarak en uygun freelancer'Ä± seÃ§in.", icon: "ğŸ”" },
+              { step: "3", title: "GÃ¼venle Ã‡alÄ±ÅŸÄ±n", desc: "Ã–demeniz havuz hesapta tutulur. Ä°ÅŸ teslim edilip onaylanÄ±nca freelancer'a aktarÄ±lÄ±r.", icon: "ğŸ¤" },
             ].map((item) => (
               <div key={item.step} className="text-center p-8 rounded-[2.5rem] bg-gray-50 border border-gray-100 hover:shadow-2xl transition-all hover:-translate-y-2 group">
                 <div className="text-6xl mb-6 group-hover:scale-110 transition-transform">{item.icon}</div>
@@ -433,13 +447,13 @@ export default function Home() {
       <section className="w-full py-24 bg-gradient-to-r from-blue-700 to-indigo-800 text-white relative overflow-hidden">
         <div className="absolute inset-0 bg-[url('/grid.svg')] opacity-10"></div>
         <div className="container mx-auto px-4 text-center space-y-8 relative z-10">
-          <h2 className="text-4xl md:text-6xl font-black font-heading tracking-tighter">İşgücü'ne Katılın</h2>
+          <h2 className="text-4xl md:text-6xl font-black font-heading tracking-tighter">Ä°ÅŸgÃ¼cÃ¼'ne KatÄ±lÄ±n</h2>
           <p className="max-w-[700px] mx-auto text-blue-100 md:text-lg font-bold">
-            Yeteneklerinizi kazanca dönüştürün veya projeniz için en iyi uzmanı hemen bulun.
+            Yeteneklerinizi kazanca dÃ¶nÃ¼ÅŸtÃ¼rÃ¼n veya projeniz iÃ§in en iyi uzmanÄ± hemen bulun.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link href="/register?role=freelancer"><Button size="lg" variant="secondary" className="font-black px-10 h-16 rounded-2xl shadow-2xl">FREELANCER OL</Button></Link>
-            <Link href="/register?role=employer"><Button size="lg" className="bg-blue-600 hover:bg-blue-500 font-black px-10 h-16 rounded-2xl shadow-2xl border border-white/20">İŞ İLANI VER</Button></Link>
+            <Link href="/register?role=employer"><Button size="lg" className="bg-blue-600 hover:bg-blue-500 font-black px-10 h-16 rounded-2xl shadow-2xl border border-white/20">Ä°Å Ä°LANI VER</Button></Link>
           </div>
         </div>
       </section>

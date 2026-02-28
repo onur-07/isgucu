@@ -897,6 +897,22 @@ function AdminPageContent() {
                                         className="h-14 rounded-2xl border-slate-200 font-bold text-lg px-6"
                                     />
                                 </div>
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black uppercase text-slate-400 ml-2">Favicon Yolu (URL)</label>
+                                    <Input
+                                        value={siteConfig.faviconUrl || ""}
+                                        onChange={(e) => setSiteConfig({ ...siteConfig, faviconUrl: e.target.value })}
+                                        className="h-14 rounded-2xl border-slate-200 font-bold text-lg px-6"
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black uppercase text-slate-400 ml-2">Footer Açıklaması</label>
+                                    <Textarea
+                                        value={siteConfig.footerDescription || ""}
+                                        onChange={(e) => setSiteConfig({ ...siteConfig, footerDescription: e.target.value })}
+                                        className="rounded-2xl border-slate-200 font-semibold text-sm px-6 min-h-[100px]"
+                                    />
+                                </div>
                             </div>
                             <div className="space-y-6">
                                 <div className="space-y-2">
@@ -913,6 +929,23 @@ function AdminPageContent() {
                                         value={siteConfig.contactPhone}
                                         onChange={(e) => setSiteConfig({ ...siteConfig, contactPhone: e.target.value })}
                                         className="h-14 rounded-2xl border-slate-200 font-bold text-lg px-6"
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black uppercase text-slate-400 ml-2">İletişim Adresi</label>
+                                    <Textarea
+                                        value={siteConfig.contactAddress || ""}
+                                        onChange={(e) => setSiteConfig({ ...siteConfig, contactAddress: e.target.value })}
+                                        className="rounded-2xl border-slate-200 font-semibold text-sm px-6 min-h-[100px]"
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black uppercase text-slate-400 ml-2">Özel CSS</label>
+                                    <Textarea
+                                        value={siteConfig.customCss || ""}
+                                        onChange={(e) => setSiteConfig({ ...siteConfig, customCss: e.target.value })}
+                                        placeholder=".hero-title { letter-spacing: 0.02em; }"
+                                        className="rounded-2xl border-slate-200 font-mono text-xs px-6 min-h-[120px]"
                                     />
                                 </div>
                             </div>
@@ -1018,6 +1051,204 @@ function AdminPageContent() {
                                     }}
                                 >
                                     <Plus className="w-4 h-4 mr-2" /> Yeni Menü Öğesi Ekle
+                                </Button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                        <div className="bg-white border rounded-[2.5rem] p-10 shadow-sm border-slate-100">
+                            <h3 className="text-xl font-black text-slate-900 uppercase mb-6 flex items-center gap-3">
+                                <Globe className="w-6 h-6 text-cyan-600" /> Sosyal Linkler
+                            </h3>
+                            <div className="space-y-4">
+                                {(siteConfig.socialLinks || []).map((link, i) => (
+                                    <div key={i} className="flex gap-4 items-center bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                                        <Input
+                                            value={link.label}
+                                            onChange={(e) => {
+                                                const next = [...(siteConfig.socialLinks || [])];
+                                                next[i].label = e.target.value;
+                                                setSiteConfig({ ...siteConfig, socialLinks: next });
+                                            }}
+                                            placeholder="Platform"
+                                            className="flex-1 bg-white border-slate-200 font-bold"
+                                        />
+                                        <Input
+                                            value={link.href}
+                                            onChange={(e) => {
+                                                const next = [...(siteConfig.socialLinks || [])];
+                                                next[i].href = e.target.value;
+                                                setSiteConfig({ ...siteConfig, socialLinks: next });
+                                            }}
+                                            placeholder="https://..."
+                                            className="flex-1 bg-white border-slate-200 font-mono text-xs"
+                                        />
+                                        <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            onClick={() => {
+                                                const next = (siteConfig.socialLinks || []).filter((_, idx) => idx !== i);
+                                                setSiteConfig({ ...siteConfig, socialLinks: next });
+                                            }}
+                                            className="text-red-400 hover:text-red-600"
+                                        >
+                                            <Trash2 className="w-5 h-5" />
+                                        </Button>
+                                    </div>
+                                ))}
+                                <Button
+                                    variant="outline"
+                                    className="w-full h-14 border-dashed border-2 rounded-2xl font-bold uppercase text-[10px] tracking-widest text-slate-400 hover:border-cyan-500 hover:text-cyan-500"
+                                    onClick={() => {
+                                        setSiteConfig({ ...siteConfig, socialLinks: [...(siteConfig.socialLinks || []), { label: "Yeni Sosyal", href: "https://" }] });
+                                    }}
+                                >
+                                    <Plus className="w-4 h-4 mr-2" /> Sosyal Link Ekle
+                                </Button>
+                            </div>
+                        </div>
+
+                        <div className="bg-white border rounded-[2.5rem] p-10 shadow-sm border-slate-100">
+                            <h3 className="text-xl font-black text-slate-900 uppercase mb-6 flex items-center gap-3">
+                                <Layout className="w-6 h-6 text-emerald-600" /> Sayfa Yönetimi
+                            </h3>
+                            <div className="space-y-4">
+                                {(siteConfig.managedPages || []).map((page, i) => (
+                                    <div key={page.id || i} className="bg-slate-50 p-4 rounded-2xl border border-slate-100 space-y-3">
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                            <Input
+                                                value={page.title}
+                                                onChange={(e) => {
+                                                    const next = [...(siteConfig.managedPages || [])];
+                                                    next[i] = { ...next[i], title: e.target.value };
+                                                    setSiteConfig({ ...siteConfig, managedPages: next });
+                                                }}
+                                                placeholder="Sayfa Başlığı"
+                                                className="bg-white border-slate-200 font-bold"
+                                            />
+                                            <Input
+                                                value={page.menuLabel}
+                                                onChange={(e) => {
+                                                    const next = [...(siteConfig.managedPages || [])];
+                                                    next[i] = { ...next[i], menuLabel: e.target.value };
+                                                    setSiteConfig({ ...siteConfig, managedPages: next });
+                                                }}
+                                                placeholder="Menü Etiketi"
+                                                className="bg-white border-slate-200 font-bold"
+                                            />
+                                        </div>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                            <Input
+                                                value={page.slug}
+                                                onChange={(e) => {
+                                                    const next = [...(siteConfig.managedPages || [])];
+                                                    next[i] = { ...next[i], slug: e.target.value.startsWith("/") ? e.target.value : `/${e.target.value}` };
+                                                    setSiteConfig({ ...siteConfig, managedPages: next });
+                                                }}
+                                                placeholder="/pages/ornek"
+                                                className="bg-white border-slate-200 font-mono text-xs"
+                                                disabled={page.system}
+                                            />
+                                            <Input
+                                                value={page.summary}
+                                                onChange={(e) => {
+                                                    const next = [...(siteConfig.managedPages || [])];
+                                                    next[i] = { ...next[i], summary: e.target.value };
+                                                    setSiteConfig({ ...siteConfig, managedPages: next });
+                                                }}
+                                                placeholder="Kısa açıklama"
+                                                className="bg-white border-slate-200"
+                                            />
+                                        </div>
+                                        <Textarea
+                                            value={page.content}
+                                            onChange={(e) => {
+                                                const next = [...(siteConfig.managedPages || [])];
+                                                next[i] = { ...next[i], content: e.target.value };
+                                                setSiteConfig({ ...siteConfig, managedPages: next });
+                                            }}
+                                            placeholder="Sayfa içeriği..."
+                                            className="bg-white border-slate-200 min-h-[120px]"
+                                        />
+                                        <div className="flex flex-wrap items-center gap-4 text-xs font-black uppercase tracking-wider text-slate-500">
+                                            <label className="flex items-center gap-2">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={!!page.enabled}
+                                                    onChange={(e) => {
+                                                        const next = [...(siteConfig.managedPages || [])];
+                                                        next[i] = { ...next[i], enabled: e.target.checked };
+                                                        setSiteConfig({ ...siteConfig, managedPages: next });
+                                                    }}
+                                                />
+                                                Aktif
+                                            </label>
+                                            <label className="flex items-center gap-2">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={!!page.showInHeader}
+                                                    onChange={(e) => {
+                                                        const next = [...(siteConfig.managedPages || [])];
+                                                        next[i] = { ...next[i], showInHeader: e.target.checked };
+                                                        setSiteConfig({ ...siteConfig, managedPages: next });
+                                                    }}
+                                                />
+                                                Header menüde göster
+                                            </label>
+                                            <label className="flex items-center gap-2">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={!!page.showInFooter}
+                                                    onChange={(e) => {
+                                                        const next = [...(siteConfig.managedPages || [])];
+                                                        next[i] = { ...next[i], showInFooter: e.target.checked };
+                                                        setSiteConfig({ ...siteConfig, managedPages: next });
+                                                    }}
+                                                />
+                                                Footer menüde göster
+                                            </label>
+                                            {!page.system && (
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    className="text-red-500 hover:text-red-600 ml-auto"
+                                                    onClick={() => {
+                                                        const next = (siteConfig.managedPages || []).filter((_, idx) => idx !== i);
+                                                        setSiteConfig({ ...siteConfig, managedPages: next });
+                                                    }}
+                                                >
+                                                    Sil
+                                                </Button>
+                                            )}
+                                        </div>
+                                    </div>
+                                ))}
+                                <Button
+                                    variant="outline"
+                                    className="w-full h-14 border-dashed border-2 rounded-2xl font-bold uppercase text-[10px] tracking-widest text-slate-400 hover:border-emerald-500 hover:text-emerald-500"
+                                    onClick={() => {
+                                        const id = `page-${Date.now()}`;
+                                        setSiteConfig({
+                                            ...siteConfig,
+                                            managedPages: [
+                                                ...(siteConfig.managedPages || []),
+                                                {
+                                                    id,
+                                                    title: "Yeni Sayfa",
+                                                    menuLabel: "Yeni Sayfa",
+                                                    slug: `/pages/${id}`,
+                                                    summary: "Kısa açıklama",
+                                                    content: "Bu sayfayı buradan düzenleyebilirsiniz.",
+                                                    enabled: true,
+                                                    showInHeader: true,
+                                                    showInFooter: false,
+                                                } as any,
+                                            ],
+                                        });
+                                    }}
+                                >
+                                    <Plus className="w-4 h-4 mr-2" /> Yeni Sayfa Ekle
                                 </Button>
                             </div>
                         </div>

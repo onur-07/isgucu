@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 import { useState, useEffect } from "react";
@@ -13,6 +13,7 @@ export function Header() {
     const [mobileOpen, setMobileOpen] = useState(false);
     const [profileOpen, setProfileOpen] = useState(false);
     const [notifCount, setNotifCount] = useState(0);
+    const [siteConfig, setSiteConfig] = useState(getSiteConfig());
 
     const handleLogout = async () => {
         setProfileOpen(false);
@@ -38,43 +39,24 @@ export function Header() {
         }
 
         if (!raw) {
-            // First time: Seed default notifications
             const defaultNotifs = [
                 {
                     id: "welcome-" + Date.now(),
                     type: "system",
-                    title: "👋 Hoş Geldiniz!",
+                    title: "Hoş Geldiniz!",
                     description: "İşgücü platformuna hoş geldiniz. Sizi aramızda görmekten mutluyuz!",
                     time: new Date().toLocaleString("tr-TR"),
                     read: false,
                 },
-                {
-                    id: "profile-" + Date.now(),
-                    type: "order",
-                    title: "👤 Profilinizi Tamamlayın",
-                    description: "Güvenilirliğinizi artırmak için profil bilgilerinizi, yeteneklerinizi ve biyografinizi doldurun.",
-                    time: new Date().toLocaleString("tr-TR"),
-                    read: false,
-                },
-                {
-                    id: "rules-" + Date.now(),
-                    type: "system",
-                    title: "⚖️ Topluluk Kuralları",
-                    description: "Güvenli bir ortam için lütfen kurallara uyun: IBAN, Telefon ve Küfür paylaşımı yasaktır.",
-                    time: new Date().toLocaleString("tr-TR"),
-                    read: false,
-                }
             ];
             localStorage.setItem(key, JSON.stringify(defaultNotifs));
             setNotifCount(defaultNotifs.length);
-        } else {
-            const notifications = JSON.parse(raw);
-            const unread = notifications.filter((n: any) => !n.read).length;
-            setNotifCount(unread);
+            return;
         }
+        const notifications = JSON.parse(raw);
+        const unread = notifications.filter((n: any) => !n.read).length;
+        setNotifCount(unread);
     };
-
-    const [siteConfig, setSiteConfig] = useState(getSiteConfig());
 
     useEffect(() => {
         updateCounts();
@@ -89,29 +71,69 @@ export function Header() {
         };
     }, [user]);
 
-    const navLinks = siteConfig.headerLinks;
+    useEffect(() => {
+        const faviconHref = siteConfig.faviconUrl || siteConfig.logoUrl || "/logo.png";
+        let favicon = document.querySelector<HTMLLinkElement>("link[rel=\"icon\"]");
+        if (!favicon) {
+            favicon = document.createElement("link");
+            favicon.rel = "icon";
+            document.head.appendChild(favicon);
+        }
+        favicon.href = faviconHref;
+
+        const styleId = "isgucu-custom-css";
+        let styleTag = document.getElementById(styleId);
+        if (!styleTag) {
+            styleTag = document.createElement("style");
+            styleTag.id = styleId;
+            document.head.appendChild(styleTag);
+        }
+        styleTag.textContent = siteConfig.customCss || "";
+    }, [siteConfig]);
+
+    const navLinks = [
+        ...siteConfig.headerLinks,
+        ...(siteConfig.managedPages || [])
+            .filter((p) => p.enabled && p.showInHeader && p.slug !== "/" && p.slug !== "/about")
+            .map((p) => ({ href: p.slug, label: p.menuLabel || p.title })),
+    ];
 
     const roleLinks = user?.role === "employer"
-        ? [{ href: "/post-job", label: "İş İlanı Ver", color: "text-blue-600 font-semibold" }]
+        ? [{ href: "/post-job", label: "Ä°ÅŸ Ä°lanÄ± Ver", color: "text-blue-600 font-semibold" }]
         : user?.role === "freelancer"
-            ? [{ href: "/post-gig", label: "Hizmet İlanı Ver", color: "text-green-600 font-semibold" }]
+            ? [{ href: "/post-gig", label: "Hizmet Ä°lanÄ± Ver", color: "text-green-600 font-semibold" }]
             : user?.role === "admin"
-                ? [{ href: "/admin", label: "Yönetim Paneli", color: "text-red-600 font-semibold" }]
+                ? [{ href: "/admin", label: "YÃ¶netim Paneli", color: "text-red-600 font-semibold" }]
                 : [];
 
     return (
         <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+            {siteConfig.announcement?.enabled && (
+                <div
+                    className={`w-full text-white text-center text-xs font-black uppercase tracking-wider py-2 ${
+                        siteConfig.announcement.theme === "red"
+                            ? "bg-red-600"
+                            : siteConfig.announcement.theme === "orange"
+                            ? "bg-orange-600"
+                            : siteConfig.announcement.theme === "slate"
+                            ? "bg-slate-700"
+                            : "bg-blue-600"
+                    }`}
+                >
+                    {siteConfig.announcement.text}
+                </div>
+            )}
             <div className="container flex h-20 md:h-24 items-center justify-between">
                 {/* Logo */}
                 <div className="flex items-center gap-8">
                     <Link href="/" className="flex items-center space-x-2">
                         <img
-                            src="/logo.png"
-                            alt="İşgücü Logo"
+                            src={siteConfig.logoUrl || "/logo.png"}
+                            alt="Ä°ÅŸgÃ¼cÃ¼ Logo"
                             className="h-12 md:h-20 w-auto object-contain transition-all"
                         />
                         <span className="font-heading text-2xl md:text-3xl font-bold bg-gradient-to-r from-blue-700 to-indigo-700 bg-clip-text text-transparent hidden sm:block">
-                            İŞGÜCÜ
+                            {siteConfig.siteName || "İŞGÜCÜ"}
                         </span>
                     </Link>
 
@@ -179,23 +201,23 @@ export function Header() {
                                     <div className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-xl border border-gray-100 py-2 z-50 animate-in fade-in slide-in-from-top-2 duration-200">
                                         <div className="px-4 py-2 border-b border-gray-100">
                                             <p className="text-sm font-semibold text-gray-900">{maskFullName(user.fullName) || user.username}</p>
-                                            <p className="text-xs text-gray-500 capitalize">{user.role === "employer" ? "İş Veren" : user.role === "freelancer" ? "Freelancer" : "Yönetici"}</p>
+                                            <p className="text-xs text-gray-500 capitalize">{user.role === "employer" ? "Ä°ÅŸ Veren" : user.role === "freelancer" ? "Freelancer" : "YÃ¶netici"}</p>
                                         </div>
                                         <Link href="/profile" className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors" onClick={() => setProfileOpen(false)}>
                                             <User className="h-4 w-4" /> Profilim
                                         </Link>
                                         <Link href="/orders" className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors" onClick={() => setProfileOpen(false)}>
-                                            📋 Siparişlerim
+                                            ğŸ“‹ SipariÅŸlerim
                                         </Link>
                                         <Link href="/wallet" className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors" onClick={() => setProfileOpen(false)}>
-                                            💰 Cüzdanım
+                                            ğŸ’° CÃ¼zdanÄ±m
                                         </Link>
                                         <Link href="/support" className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors" onClick={() => setProfileOpen(false)}>
-                                            🎧 Destek
+                                            ğŸ§ Destek
                                         </Link>
                                         {user.role === "admin" && (
                                             <Link href="/admin" className="flex items-center gap-3 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors" onClick={() => setProfileOpen(false)}>
-                                                ⚙️ Yönetim Paneli
+                                                âš™ï¸ YÃ¶netim Paneli
                                             </Link>
                                         )}
                                         <div className="border-t border-gray-100 mt-1 pt-1">
@@ -203,7 +225,7 @@ export function Header() {
                                                 onClick={handleLogout}
                                                 className="flex items-center gap-3 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 w-full text-left transition-colors"
                                             >
-                                                🚪 Çıkış Yap
+                                                ğŸšª Ã‡Ä±kÄ±ÅŸ Yap
                                             </button>
                                         </div>
                                     </div>
@@ -213,10 +235,10 @@ export function Header() {
                     ) : (
                         <>
                             <Link href="/login">
-                                <Button variant="ghost" size="sm">Giriş Yap</Button>
+                                <Button variant="ghost" size="sm">GiriÅŸ Yap</Button>
                             </Link>
                             <Link href="/register">
-                                <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white">Üye Ol</Button>
+                                <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white">Ãœye Ol</Button>
                             </Link>
                         </>
                     )}
@@ -250,26 +272,26 @@ export function Header() {
                             <>
                                 <div className="border-t my-2" />
                                 <Link href="/profile" className="px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-lg" onClick={() => setMobileOpen(false)}>
-                                    👤 Profilim
+                                    ğŸ‘¤ Profilim
                                 </Link>
                                 <Link href="/orders" className="px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-lg" onClick={() => setMobileOpen(false)}>
-                                    📋 Siparişlerim
+                                    ğŸ“‹ SipariÅŸlerim
                                 </Link>
                                 <Link href="/wallet" className="px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-lg" onClick={() => setMobileOpen(false)}>
-                                    💰 Cüzdanım
+                                    ğŸ’° CÃ¼zdanÄ±m
                                 </Link>
                                 <Link href="/messages" className="px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-lg" onClick={() => setMobileOpen(false)}>
-                                    💬 Mesajlar
+                                    ğŸ’¬ Mesajlar
                                 </Link>
                                 <Link href="/notifications" className="px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-lg" onClick={() => setMobileOpen(false)}>
-                                    🔔 Bildirimler
+                                    ğŸ”” Bildirimler
                                 </Link>
                                 <Link href="/support" className="px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-lg" onClick={() => setMobileOpen(false)}>
-                                    🎧 Destek
+                                    ğŸ§ Destek
                                 </Link>
                                 <div className="border-t my-2" />
                                 <button onClick={handleLogout} className="px-4 py-3 text-sm font-medium text-red-600 hover:bg-red-50 rounded-lg text-left">
-                                    🚪 Çıkış Yap
+                                    ğŸšª Ã‡Ä±kÄ±ÅŸ Yap
                                 </button>
                             </>
                         ) : (
@@ -277,10 +299,10 @@ export function Header() {
                                 <div className="border-t my-2" />
                                 <div className="flex gap-3 px-4 py-2">
                                     <Link href="/login" className="flex-1" onClick={() => setMobileOpen(false)}>
-                                        <Button variant="outline" className="w-full">Giriş Yap</Button>
+                                        <Button variant="outline" className="w-full">GiriÅŸ Yap</Button>
                                     </Link>
                                     <Link href="/register" className="flex-1" onClick={() => setMobileOpen(false)}>
-                                        <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white">Üye Ol</Button>
+                                        <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white">Ãœye Ol</Button>
                                     </Link>
                                 </div>
                             </>
@@ -291,3 +313,4 @@ export function Header() {
         </header>
     );
 }
+

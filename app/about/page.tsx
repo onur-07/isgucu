@@ -1,41 +1,56 @@
-import { Globe, Star, ShieldCheck, Target, Rocket } from "lucide-react";
+﻿"use client";
+
+import { Globe, ShieldCheck, Target, Rocket } from "lucide-react";
 import Image from "next/image";
+import { useEffect, useMemo, useState } from "react";
+import { getSiteConfig } from "@/lib/site-config";
 
 export default function AboutPage() {
+    const [config, setConfig] = useState(getSiteConfig());
+
+    useEffect(() => {
+        const onUpdate = () => setConfig(getSiteConfig());
+        window.addEventListener("site_config_updated", onUpdate);
+        return () => window.removeEventListener("site_config_updated", onUpdate);
+    }, []);
+
+    const managedAbout = useMemo(
+        () => (config.managedPages || []).find((p) => p.slug === "/about" || p.id === "about-system"),
+        [config]
+    );
+
     const values = [
         {
             icon: <ShieldCheck className="w-10 h-10 text-blue-600" />,
             title: "Önce Güven",
-            desc: "Tüm süreçlerimizde şeffaflığı ve güvenliği en üst basamakta tutuyoruz. Ödemeleriniz ve emeğiniz bizimle güvende."
+            desc: "Tüm süreçlerimizde şeffaflığı ve güvenliği en üst basamakta tutuyoruz.",
         },
         {
             icon: <Target className="w-10 h-10 text-purple-600" />,
             title: "Doğru Eşleşme",
-            desc: "Yapay zeka destekli altyapımızla, projenize en uygun yeteneği veya yeteneğinize en uygun projeyi saniyeler içinde buluyoruz."
+            desc: "Doğru projeyi doğru uzmanla hızlıca buluşturuyoruz.",
         },
         {
             icon: <Rocket className="w-10 h-10 text-orange-600" />,
             title: "Hız ve Verimlilik",
-            desc: "Geleneksel iş modellerindeki bürokrasiyi ortadan kaldırıyor, fikirlerin hayata geçme süresini minimize ediyoruz."
-        }
+            desc: "Fikirlerin hayata geçme süresini minimuma indiriyoruz.",
+        },
     ];
 
     return (
         <div className="min-h-screen bg-white">
-            {/* Hero Section */}
             <div className="relative py-24 bg-slate-900 overflow-hidden">
                 <div className="absolute top-0 right-0 w-1/2 h-full bg-blue-600/10 skew-x-12 transform origin-right"></div>
                 <div className="container mx-auto px-4 relative z-10 text-center">
                     <h1 className="text-4xl md:text-7xl font-black font-heading text-white mb-6 uppercase tracking-tight">
-                        İş Gücünün <span className="text-blue-500 italic">Geleceği</span>
+                        {managedAbout?.title || "İş Gücünün"} <span className="text-blue-500 italic">Geleceği</span>
                     </h1>
                     <p className="text-slate-400 text-lg md:text-2xl max-w-3xl mx-auto leading-relaxed font-medium">
-                        İşgücü, sadece bir pazaryeri değil; yeteneğin özgürleştiği ve sınırların ortadan kalktığı global bir ekosistemdir.
+                        {managedAbout?.summary || "İşgücü, yeteneğin özgürleştiği ve sınırların kalktığı modern bir çalışma ekosistemidir."}
                     </p>
                 </div>
             </div>
 
-            {/* Story Section */}
             <div className="container mx-auto px-4 py-24">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-16 items-center">
                     <div className="space-y-8">
@@ -47,30 +62,18 @@ export default function AboutPage() {
                             Bir Garajdan <br /> <span className="text-blue-600">Global Vizyona</span>
                         </h2>
                         <div className="space-y-6 text-slate-600 text-lg leading-relaxed font-medium">
-                            <p>
-                                2024 yılında, dijital yeteneklerin hak ettiği değeri görmediği ve iş verenlerin doğru uzmana ulaşmakta zorlandığı bir dünyada yola çıktık. Amacımız basitti: "İşi ehline, en hızlı ve güvenli şekilde ulaştırmak."
-                            </p>
-                            <p>
-                                Bugün İşgücü, binlerce yazılımcıdan tasarımcıya, seslendirme sanatçısından veri analizine kadar geniş bir spektrumda profesyoneli tek bir çatı altında topluyor. Biz, bağımsız çalışmanın gücüne ve topluluk olmanın önemine inanıyoruz.
-                            </p>
+                            <p>{managedAbout?.content || "Bu sayfanın içeriği artık yönetim panelinden düzenlenebilir."}</p>
                         </div>
                     </div>
                     <div className="relative">
                         <div className="aspect-square bg-blue-50 rounded-[4rem] rotate-3 absolute inset-0 -z-10"></div>
                         <div className="aspect-square bg-slate-900 rounded-[4rem] overflow-hidden shadow-2xl transform transition-transform hover:-translate-y-4 duration-500 flex items-center justify-center p-12">
-                            <Image
-                                src="/logo.png"
-                                alt="İşgücü Logo"
-                                width={400}
-                                height={400}
-                                className="w-full h-auto object-contain opacity-80"
-                            />
+                            <Image src={config.logoUrl || "/logo.png"} alt="İşgücü Logo" width={400} height={400} className="w-full h-auto object-contain opacity-80" />
                         </div>
                     </div>
                 </div>
             </div>
 
-            {/* Values */}
             <div className="bg-slate-50 py-24">
                 <div className="container mx-auto px-4">
                     <div className="text-center mb-16">
@@ -89,7 +92,6 @@ export default function AboutPage() {
                 </div>
             </div>
 
-            {/* Footer CTA */}
             <div className="container mx-auto px-4 py-24">
                 <div className="bg-blue-600 rounded-[3rem] p-12 md:p-20 text-center text-white relative overflow-hidden group">
                     <div className="relative z-10">
