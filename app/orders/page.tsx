@@ -45,6 +45,7 @@ export default function OrdersPage() {
     const [reviewOrder, setReviewOrder] = useState<Order | null>(null);
     const [reviewRating, setReviewRating] = useState<string>("5");
     const [reviewComment, setReviewComment] = useState<string>("");
+    const norm = (v: string | null | undefined) => String(v || "").trim().toLowerCase();
 
     const loadCancellationRequests = async (orderRows: Order[]) => {
         const ids = orderRows.map((o) => Number(o.id)).filter((n) => Number.isFinite(n) && n > 0);
@@ -529,8 +530,12 @@ export default function OrdersPage() {
                     {orders.map((order) => {
                         const config = statusConfig[order.status];
                         const StatusIcon = config.icon;
-                        const isMineFreelancer = user.role === "freelancer" && user.username === order.freelancer;
-                        const isMineEmployer = user.role === "employer" && user.username === order.client;
+                        const isMineFreelancer =
+                            user.role === "freelancer" &&
+                            (String(order.sellerId || "") === String(user.id || "") || norm(user.username) === norm(order.freelancer));
+                        const isMineEmployer =
+                            user.role === "employer" &&
+                            (String(order.buyerId || "") === String(user.id || "") || norm(user.username) === norm(order.client));
                         const latestCancelReq = cancelRequests.find((r) => Number(r.order_id) === Number(order.id));
                         const cancelPending = !!latestCancelReq && String(latestCancelReq.status) === "pending";
                         const canRespondCancel =
