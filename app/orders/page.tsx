@@ -69,7 +69,7 @@ export default function OrdersPage() {
     useEffect(() => {
         if (!user) { router.push("/login"); return; }
         (async () => {
-            const rows = await getUserOrders(user.username, user.role as "employer" | "freelancer" | "admin");
+            const rows = await getUserOrders(user.username, user.role as "employer" | "freelancer" | "admin", user.id);
             setOrders(rows);
             await loadCancellationRequests(rows);
         })();
@@ -77,7 +77,7 @@ export default function OrdersPage() {
 
     const refresh = async () => {
         if (!user) return;
-        const rows = await getUserOrders(user.username, user.role as "employer" | "freelancer" | "admin");
+        const rows = await getUserOrders(user.username, user.role as "employer" | "freelancer" | "admin", user.id);
         setOrders(rows);
         await loadCancellationRequests(rows);
     };

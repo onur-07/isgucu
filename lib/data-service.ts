@@ -435,7 +435,11 @@ export async function getUserReviews(username: string): Promise<Review[]> {
     });
 }
 
-export async function getUserOrders(username: string, _role: "employer" | "freelancer" | "guest" | "admin"): Promise<Order[]> {
+export async function getUserOrders(
+    username: string,
+    _role: "employer" | "freelancer" | "guest" | "admin",
+    userId?: string
+): Promise<Order[]> {
     void _role;
     if (!username) return [];
 
@@ -443,7 +447,7 @@ export async function getUserOrders(username: string, _role: "employer" | "freel
     const folded = usernameFold(rawUsername);
     const keyed = usernameKey(rawUsername);
 
-    let profileId = "";
+    let profileId = String(userId || "").trim();
     try {
         const { data: me } = await supabase
             .from("profiles")
