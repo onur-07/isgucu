@@ -253,10 +253,16 @@ export default function JobDetailPage() {
             const toStoragePathFromUrl = (url: string) => {
                 try {
                     const u = new URL(url);
-                    const marker = "/storage/v1/object/public/job-attachments/";
-                    const idx = u.pathname.indexOf(marker);
-                    if (idx === -1) return "";
-                    return decodeURIComponent(u.pathname.slice(idx + marker.length));
+                    const markers = [
+                        "/storage/v1/object/public/job-attachments/",
+                        "/storage/v1/object/sign/job-attachments/",
+                        "/storage/v1/object/authenticated/job-attachments/",
+                    ];
+                    for (const marker of markers) {
+                        const idx = u.pathname.indexOf(marker);
+                        if (idx !== -1) return decodeURIComponent(u.pathname.slice(idx + marker.length));
+                    }
+                    return "";
                 } catch {
                     return "";
                 }
@@ -306,7 +312,10 @@ export default function JobDetailPage() {
                     }
 
                     if (rawFile.startsWith("http")) {
-                        const isJobAttachmentUrl = rawFile.includes("/storage/v1/object/public/job-attachments/");
+                        const isJobAttachmentUrl =
+                            rawFile.includes("/storage/v1/object/public/job-attachments/")
+                            || rawFile.includes("/storage/v1/object/sign/job-attachments/")
+                            || rawFile.includes("/storage/v1/object/authenticated/job-attachments/");
                         const pathFromUrl = toStoragePathFromUrl(rawFile);
                         if (pathFromUrl) {
                             const signedFromUrl = await resolveFromPath(pathFromUrl);
