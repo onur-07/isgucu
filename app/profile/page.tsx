@@ -248,8 +248,28 @@ function ProfilePageContent() {
                 }
             })();
         }
-        setStats(getUserStats(user.username, user.role as "employer" | "freelancer" | "admin"));
-        setReviews(getUserReviews(user.username));
+        (async () => {
+            try {
+                const [nextStats, nextReviews] = await Promise.all([
+                    getUserStats(user.username, user.role as "employer" | "freelancer" | "admin"),
+                    getUserReviews(user.username),
+                ]);
+                setStats(nextStats);
+                setReviews(nextReviews);
+            } catch (e) {
+                console.error("Profil istatistik/yorum yükleme hatası:", e);
+                setStats({
+                    completedJobs: 0,
+                    activeJobs: 0,
+                    totalEarnings: 0,
+                    totalSpent: 0,
+                    averageRating: 0,
+                    reviewCount: 0,
+                    onTimeDelivery: 0,
+                });
+                setReviews([]);
+            }
+        })();
     }, [user, router, authLoading]);
 
     useEffect(() => {

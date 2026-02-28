@@ -72,6 +72,55 @@ export default function OrdersPage() {
         }
     };
 
+    const handleReview = async (order: Order) => {
+        if (!user) return;
+        if (busyId) return;
+        if (order.status !== "completed") return;
+
+        const otherId = user.role === "employer" ? order.sellerId : order.buyerId;
+        if (!otherId) {
+            window.alert("Karşı taraf bilgisi bulunamadı.");
+            return;
+        }
+
+        const ratingRaw = window.prompt("Puan (1-5):", "5");
+        if (ratingRaw === null) return;
+        const rating = Math.round(Number(String(ratingRaw).trim()));
+        if (!Number.isFinite(rating) || rating < 1 || rating > 5) {
+            window.alert("Puan 1 ile 5 arasında olmalıdır.");
+            return;
+        }
+
+        const comment = (window.prompt("Yorum (opsiyonel):", "") ?? "").trim();
+
+        setBusyId(order.id);
+        try {
+            const { error } = await supabase.from("reviews").insert([
+                {
+                    order_id: Number(order.id),
+                    from_user_id: user.id,
+                    to_user_id: otherId,
+                    rating,
+                    comment: comment || null,
+                },
+            ]);
+            if (error) {
+                const msg = String(error.message || "");
+                if (msg.toLowerCase().includes("duplicate") || msg.toLowerCase().includes("unique")) {
+                    window.alert("Bu sipariş için zaten değerlendirme yapmışsın.");
+                } else {
+                    window.alert("Değerlendirme kaydedilemedi: " + msg);
+                }
+                return;
+            }
+            window.alert("Değerlendirmen kaydedildi.");
+        } catch (e: any) {
+            window.alert("Değerlendirme kaydedilemedi: " + String(e?.message || e));
+        } finally {
+            setBusyId("");
+        }
+    };
+
     const handleRequestRevision = async (order: Order) => {
         if (!user) return;
         if (busyId) return;
@@ -285,7 +334,7 @@ export default function OrdersPage() {
                                                 </>
                                             )}
                                             {order.status === "completed" && (
-                                                <Button variant="outline" size="sm">
+                                                <Button variant="outline" size="sm" disabled={busy} onClick={() => handleReview(order)}>
                                                     <Star className="h-4 w-4 mr-1" /> Değerlendir
                                                 </Button>
                                             )}

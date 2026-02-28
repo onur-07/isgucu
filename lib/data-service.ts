@@ -283,23 +283,155 @@ export async function getUserBalance(username: string) {
 }
 
 // ===== STATS & REVIEWS =====
-export function getUserStats(_username: string, _role: "employer" | "freelancer" | "admin"): UserStats {
-    void _username;
-    void _role;
+export async function getUserStats(username: string, role: "employer" | "freelancer" | "admin"): Promise<UserStats> {
+    if (!username) {
+        return {
+            completedJobs: 0,
+            activeJobs: 0,
+            totalEarnings: 0,
+            totalSpent: 0,
+            averageRating: 0,
+            reviewCount: 0,
+            onTimeDelivery: 0,
+        };
+    }
+
+    const { data: me, error: meErr } = await supabase
+        .from("profiles")
+        .select("id")
+        .eq("username", username)
+        .maybeSingle();
+
+    if (meErr || !me?.id) {
+        if (meErr) console.error("Error fetching profile id:", meErr);
+        return {
+            completedJobs: 0,
+            activeJobs: 0,
+            totalEarnings: 0,
+            totalSpent: 0,
+            averageRating: 0,
+            reviewCount: 0,
+            onTimeDelivery: 0,
+        };
+    }
+
+    const isFreelancer = role === "freelancer";
+
+    const [ordersRes, reviewsRes] = await Promise.all([
+        supabase
+            .from("orders")
+            .select("status, total_price, created_at")
+            .eq(isFreelancer ? "seller_id" : "buyer_id", me.id),
+        supabase
+            .from("reviews")
+            .select("rating")
+            .eq("to_user_id", me.id),
+    ]);
+
+    if (ordersRes.error) console.error("Error fetching orders stats:", ordersRes.error);
+    if (reviewsRes.error) console.error("Error fetching reviews stats:", reviewsRes.error);
+
+    const orders = Array.isArray(ordersRes.data) ? (ordersRes.data as any[]) : [];
+    const completed = orders.filter((o) => String(o?.status || "").toLowerCase() === "completed");
+    const active = orders.filter((o) => {
+        const s = String(o?.status || "").toLowerCase();
+        return s === "active" || s === "pending" || s === "delivered";
+    });
+
+    const totalEarnings = completed.reduce((sum, o) => sum + Number(o?.total_price ?? 0), 0);
+    const totalSpent = totalEarnings;
+
+    const ratings = Array.isArray(reviewsRes.data) ? (reviewsRes.data as any[]) : [];
+    const reviewCount = ratings.length;
+    const avg = reviewCount > 0
+        ? (ratings.reduce((s, r) => s + Number(r?.rating ?? 0), 0) / reviewCount)
+        : 0;
+
     return {
-        completedJobs: 0,
-        activeJobs: 0,
-        totalEarnings: 0,
-        totalSpent: 0,
-        averageRating: 0,
-        reviewCount: 0,
-        onTimeDelivery: 0
+        completedJobs: completed.length,
+        activeJobs: active.length,
+        totalEarnings: isFreelancer ? (Number.isFinite(totalEarnings) ? totalEarnings : 0) : 0,
+        totalSpent: !isFreelancer ? (Number.isFinite(totalSpent) ? totalSpent : 0) : 0,
+        averageRating: Number.isFinite(avg) ? Math.round(avg * 10) / 10 : 0,
+        reviewCount,
+        onTimeDelivery: 0,
     };
 }
 
-export function getUserReviews(_username: string): Review[] {
-    void _username;
-    return [];
+export async function getUserReviews(username: string): Promise<Review[]> {
+    if (!username) return [];
+
+    const { data: me, error: meErr } = await supabase
+        .from("profiles")
+        .select("id")
+        .eq("username", username)
+        .maybeSingle();
+
+    if (meErr || !me?.id) {
+        if (meErr) console.error("Error fetching profile id:", meErr);
+        return [];
+    }
+
+    const { data, error } = await supabase
+        .from("reviews")
+        .select("id, order_id, from_user_id, to_user_id, rating, comment, created_at")
+        .eq("to_user_id", me.id)
+        .order("created_at", { ascending: false })
+        .limit(50);
+
+    if (error) {
+        console.error("Error fetching reviews:", error);
+        return [];
+    }
+
+    const rows = (data || []) as any[];
+    const fromIds = Array.from(new Set(rows.map((r) => String(r?.from_user_id || "")).filter(Boolean)));
+    const orderIds = Array.from(new Set(rows.map((r) => String(r?.order_id || "")).filter(Boolean)));
+
+    const [fromProfilesRes, ordersRes] = await Promise.all([
+        fromIds.length > 0
+            ? supabase.from("profiles").select("id, username").in("id", fromIds)
+            : Promise.resolve({ data: [], error: null } as any),
+        orderIds.length > 0
+            ? supabase.from("orders").select("id, gig_id, gigs(title)").in("id", orderIds)
+            : Promise.resolve({ data: [], error: null } as any),
+    ]);
+
+    if (fromProfilesRes?.error) console.error("Error fetching review authors:", fromProfilesRes.error);
+    if (ordersRes?.error) console.error("Error fetching review orders:", ordersRes.error);
+
+    const fromMap: Record<string, string> = {};
+    for (const p of (fromProfilesRes.data || []) as any[]) {
+        const id = String(p?.id || "");
+        if (!id) continue;
+        fromMap[id] = String(p?.username || id);
+    }
+
+    const titleMap: Record<string, string> = {};
+    for (const o of (ordersRes.data || []) as any[]) {
+        const id = String(o?.id || "");
+        if (!id) continue;
+        const t = o?.gigs?.title != null ? String(o.gigs.title) : "Sipariş";
+        titleMap[id] = t;
+    }
+
+    return rows.map((r) => {
+        const id = String(r?.id ?? "");
+        const fromId = String(r?.from_user_id ?? "");
+        const toId = String(r?.to_user_id ?? "");
+        const orderId = r?.order_id != null ? String(r.order_id) : "";
+        const ratingNum = Number(r?.rating ?? 0);
+        const created = r?.created_at ? new Date(String(r.created_at)) : null;
+        return {
+            id,
+            fromUser: fromMap[fromId] || fromId,
+            toUser: toId,
+            rating: Number.isFinite(ratingNum) ? ratingNum : 0,
+            comment: String(r?.comment || ""),
+            date: created ? created.toLocaleDateString("tr-TR") : "",
+            projectTitle: titleMap[orderId] || "Sipariş",
+        } as Review;
+    });
 }
 
 export async function getUserOrders(username: string, _role: "employer" | "freelancer" | "guest" | "admin"): Promise<Order[]> {

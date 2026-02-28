@@ -124,6 +124,20 @@ CREATE TABLE IF NOT EXISTS payout_requests (
   approved_by UUID REFERENCES auth.users ON DELETE SET NULL
 );
 
+-- REVIEWS / RATINGS
+CREATE TABLE IF NOT EXISTS reviews (
+  id BIGSERIAL PRIMARY KEY,
+  order_id BIGINT REFERENCES orders(id) ON DELETE SET NULL,
+  from_user_id UUID REFERENCES auth.users ON DELETE CASCADE NOT NULL,
+  to_user_id UUID REFERENCES auth.users ON DELETE CASCADE NOT NULL,
+  rating INTEGER NOT NULL CHECK (rating >= 1 AND rating <= 5),
+  comment TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
+);
+
+-- One review per order per reviewer
+CREATE UNIQUE INDEX IF NOT EXISTS reviews_unique_order_from ON reviews(order_id, from_user_id);
+
 -- SUPPORT TICKETS
 CREATE TABLE IF NOT EXISTS support_tickets (
   id BIGSERIAL PRIMARY KEY,
@@ -161,6 +175,7 @@ ALTER TABLE account_deletion_requests ENABLE ROW LEVEL SECURITY;
 ALTER TABLE order_deliveries ENABLE ROW LEVEL SECURITY;
 ALTER TABLE wallet_ledger ENABLE ROW LEVEL SECURITY;
 ALTER TABLE payout_requests ENABLE ROW LEVEL SECURITY;
+ALTER TABLE reviews ENABLE ROW LEVEL SECURITY;
 
 -- Policies
 DROP POLICY IF EXISTS "Public profiles are viewable by everyone" ON profiles;
@@ -272,6 +287,26 @@ DROP POLICY IF EXISTS "Admins can update payout requests" ON payout_requests;
 CREATE POLICY "Admins can update payout requests" ON payout_requests
   FOR UPDATE
   USING (EXISTS (SELECT 1 FROM profiles p WHERE p.id = auth.uid() AND p.role = 'admin'));
+
+DROP POLICY IF EXISTS "Users can view reviews" ON reviews;
+CREATE POLICY "Users can view reviews" ON reviews
+  FOR SELECT
+  USING (true);
+
+DROP POLICY IF EXISTS "Users can create review for completed order" ON reviews;
+CREATE POLICY "Users can create review for completed order" ON reviews
+  FOR INSERT
+  WITH CHECK (
+    auth.uid() = from_user_id
+    AND EXISTS (
+      SELECT 1 FROM orders o
+      WHERE o.id = reviews.order_id
+        AND o.status = 'completed'
+        AND (auth.uid() = o.buyer_id OR auth.uid() = o.seller_id)
+        AND (reviews.to_user_id = o.buyer_id OR reviews.to_user_id = o.seller_id)
+        AND reviews.to_user_id <> auth.uid()
+    )
+  );
 
 DROP POLICY IF EXISTS "Public tickets" ON support_tickets;
 CREATE POLICY "Public tickets" ON support_tickets FOR ALL USING (true);
