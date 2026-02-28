@@ -282,6 +282,18 @@ export default function JobDetailPage() {
                 return signedUrl;
             };
 
+            const getFallbackPrefixes = async () => {
+                try {
+                    const { data } = await supabase.storage.from("job-attachments").list("", { limit: 200 });
+                    const rows = (data || []) as StorageListItem[];
+                    return rows
+                        .map((x) => String(x?.name || "").trim())
+                        .filter(Boolean);
+                } catch {
+                    return [] as string[];
+                }
+            };
+
             const tryResolveByNameVariants = async (nameOrPath: string) => {
                 const clean = String(nameOrPath || "").trim();
                 if (!clean) return "";
@@ -312,12 +324,15 @@ export default function JobDetailPage() {
                 return "";
             };
 
-            const tryFindInFolder = async (searchName: string) => {
+            const tryFindInFolder = async (searchName: string, prefixesOverride?: string[]) => {
                 const cleanName = String(searchName || "").trim();
                 if (!cleanName) return "";
                 const target = cleanName.toLowerCase();
                 const targetNorm = normalizeForMatch(cleanName);
-                const prefixes = ownerPrefixCandidates.length > 0 ? ownerPrefixCandidates : [""];
+                const prefixes =
+                    prefixesOverride && prefixesOverride.length > 0
+                        ? prefixesOverride
+                        : (ownerPrefixCandidates.length > 0 ? ownerPrefixCandidates : [""]);
 
                 for (const prefix of prefixes) {
                     try {
@@ -367,6 +382,13 @@ export default function JobDetailPage() {
                                 const resolvedFromFound = await resolveFromPath(maybePath);
                                 if (resolvedFromFound) return resolvedFromFound;
                             }
+
+                            const fallbackPrefixes = await getFallbackPrefixes();
+                            const maybePath2 = await tryFindInFolder(searchName, fallbackPrefixes);
+                            if (maybePath2) {
+                                const resolvedFromFound2 = await resolveFromPath(maybePath2);
+                                if (resolvedFromFound2) return resolvedFromFound2;
+                            }
                         }
                         return isJobAttachmentUrl ? "" : rawFile;
                     }
@@ -380,6 +402,13 @@ export default function JobDetailPage() {
                         if (maybePath) {
                             const resolvedFromFound = await resolveFromPath(maybePath);
                             if (resolvedFromFound) return resolvedFromFound;
+                        }
+
+                        const fallbackPrefixes = await getFallbackPrefixes();
+                        const maybePath2 = await tryFindInFolder(searchName, fallbackPrefixes);
+                        if (maybePath2) {
+                            const resolvedFromFound2 = await resolveFromPath(maybePath2);
+                            if (resolvedFromFound2) return resolvedFromFound2;
                         }
                     }
 
