@@ -328,3 +328,45 @@ CREATE POLICY "Admins can view deletion requests" ON account_deletion_requests F
 
 -- Policy for updating/deleting (Users can manage their own files)
 -- CREATE POLICY "Users can update their own avatars" ON storage.objects FOR UPDATE USING ( bucket_id = 'avatars' AND auth.uid() = owner );
+
+-- ORDER CANCELLATION REQUESTS
+CREATE TABLE IF NOT EXISTS order_cancellation_requests (
+  id BIGSERIAL PRIMARY KEY,
+  order_id BIGINT REFERENCES orders(id) ON DELETE CASCADE NOT NULL,
+  requester_id UUID REFERENCES auth.users ON DELETE CASCADE NOT NULL,
+  requester_username TEXT NOT NULL,
+  requester_role TEXT CHECK (requester_role IN ('employer', 'freelancer')) NOT NULL,
+  responder_id UUID REFERENCES auth.users ON DELETE CASCADE NOT NULL,
+  responder_username TEXT NOT NULL,
+  responder_role TEXT CHECK (responder_role IN ('employer', 'freelancer')) NOT NULL,
+  compensation_rate NUMERIC(5,4) NOT NULL DEFAULT 0.5,
+  reason TEXT,
+  status TEXT CHECK (status IN ('pending', 'accepted', 'rejected', 'admin_approved', 'admin_rejected')) DEFAULT 'pending',
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL,
+  responded_at TIMESTAMP WITH TIME ZONE,
+  resolved_by_admin_id UUID REFERENCES auth.users ON DELETE SET NULL
+);
+
+ALTER TABLE order_cancellation_requests ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Users can view their cancellation requests" ON order_cancellation_requests;
+CREATE POLICY "Users can view their cancellation requests" ON order_cancellation_requests
+  FOR SELECT
+  USING (
+    auth.uid() = requester_id
+    OR auth.uid() = responder_id
+    OR EXISTS (SELECT 1 FROM profiles p WHERE p.id = auth.uid() AND p.role = 'admin')
+  );
+
+DROP POLICY IF EXISTS "Users can create cancellation requests" ON order_cancellation_requests;
+CREATE POLICY "Users can create cancellation requests" ON order_cancellation_requests
+  FOR INSERT
+  WITH CHECK (auth.uid() = requester_id);
+
+DROP POLICY IF EXISTS "Responder can update cancellation requests" ON order_cancellation_requests;
+CREATE POLICY "Responder can update cancellation requests" ON order_cancellation_requests
+  FOR UPDATE
+  USING (
+    auth.uid() = responder_id
+    OR EXISTS (SELECT 1 FROM profiles p WHERE p.id = auth.uid() AND p.role = 'admin')
+  );

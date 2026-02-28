@@ -297,7 +297,7 @@ export default function AdminPayoutsPage() {
                                     <div className="min-w-0">
                                         <div className="text-xs font-mono text-gray-400">Talep #{String(r.id)} - Siparis #{String(r.order_id)}</div>
                                         <div className="font-black text-gray-900 truncate">
-                                            {r.requester_username} -> {r.responder_username}
+                                            {r.requester_username} {"->"} {r.responder_username}
                                         </div>
                                         <div className="text-xs text-gray-500 font-bold mt-1">
                                             Pay orani: %{Math.round(Number(r.compensation_rate || 0) * 100)}
