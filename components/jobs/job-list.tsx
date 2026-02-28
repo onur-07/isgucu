@@ -20,6 +20,19 @@ interface Job {
     status?: string;
 }
 
+type DbJobRow = {
+    id?: string | number;
+    title?: unknown;
+    description?: unknown;
+    category?: unknown;
+    budget?: unknown;
+    created_at?: unknown;
+    user_id?: unknown;
+    status?: unknown;
+};
+
+type LocalJobRow = Record<string, unknown>;
+
 export function JobList({ limit, onTotalChange }: { limit?: number; onTotalChange?: (count: number) => void }) {
     const [jobs, setJobs] = useState<Job[]>([]);
     const [loading, setLoading] = useState(true);
@@ -28,18 +41,15 @@ export function JobList({ limit, onTotalChange }: { limit?: number; onTotalChang
         const fetchJobs = async () => {
             try {
                 // 1. Fetch from Supabase
-                const { data: dbData, error: dbError } = await supabase
+                const { data: dbData } = await supabase
                     .from('jobs')
                     .select('*')
                     .order('created_at', { ascending: false });
 
                 // 2. Fetch from LocalStorage (Mock/Fallback)
-                const localJobs = JSON.parse(localStorage.getItem("isgucu_jobs") || "[]");
+                const localJobs = JSON.parse(localStorage.getItem("isgucu_jobs") || "[]") as LocalJobRow[];
 
-                let combinedRows = dbData ? [...dbData] : [];
-
-                // Fetch profiles for database jobs
-                let profileMap: Record<string, any> = {};
+                const profileMap: Record<string, { id?: string; username?: string; avatar_url?: string; full_name?: string }> = {};
                 if (dbData && dbData.length > 0) {
                     const userIds = Array.from(new Set(dbData.map(j => j.user_id).filter(Boolean)));
                     if (userIds.length > 0) {
@@ -56,7 +66,7 @@ export function JobList({ limit, onTotalChange }: { limit?: number; onTotalChang
                         }
 
                         // For any unmatched user_ids, try matching by username
-                        const unmatchedIds = userIds.filter(uid => !profileMap[uid]);
+                        const unmatchedIds = userIds.filter(uid => !profileMap[String(uid)]);
                         if (unmatchedIds.length > 0) {
                             const { data: profilesByUsername } = await supabase
                                 .from('profiles')
@@ -67,7 +77,6 @@ export function JobList({ limit, onTotalChange }: { limit?: number; onTotalChang
                                 profilesByUsername.forEach(p => {
                                     // Map by the username so we can find it by user_id later
                                     profileMap[p.username] = p;
-                                    // Also map case-insensitive
                                     profileMap[p.username.toLowerCase()] = p;
                                 });
                             }
@@ -75,37 +84,46 @@ export function JobList({ limit, onTotalChange }: { limit?: number; onTotalChang
                     }
                 }
 
-                const normalizedDbJobs: Job[] = (dbData || []).map((j: any) => ({
-                    id: j.id,
-                    title: j.title,
-                    description: j.description,
-                    category: j.category,
-                    budget: j.budget,
-                    createdAt: j.created_at,
-                    user_id: j.user_id,
-                    status: j.status || "open",
-                    owner: (profileMap[j.user_id] || profileMap[String(j.user_id).toLowerCase()]) ? {
-                        username: (profileMap[j.user_id] || profileMap[String(j.user_id).toLowerCase()]).username,
-                        avatar_url: (profileMap[j.user_id] || profileMap[String(j.user_id).toLowerCase()]).avatar_url,
-                        full_name: (profileMap[j.user_id] || profileMap[String(j.user_id).toLowerCase()]).full_name
-                    } : null
-                }));
+                const dbRows = (dbData || []) as unknown as DbJobRow[];
+                const normalizedDbJobs: Job[] = dbRows.map((row) => {
+                    const key = String(row.user_id ?? "");
+                    const prof = profileMap[key] || profileMap[key.toLowerCase()];
+                    return {
+                        id: row.id ?? "",
+                        title: String(row.title ?? ""),
+                        description: String(row.description ?? ""),
+                        category: String(row.category ?? ""),
+                        budget: String(row.budget ?? ""),
+                        createdAt: String(row.created_at ?? ""),
+                        user_id: key,
+                        status: String(row.status ?? "open"),
+                        owner: prof ? {
+                            username: String(prof.username || ""),
+                            avatar_url: String(prof.avatar_url || ""),
+                            full_name: String(prof.full_name || ""),
+                        } : null,
+                    };
+                });
 
-                const normalizedLocalJobs: Job[] = localJobs.map((j: any) => ({
-                    id: j.id,
-                    title: j.title,
-                    description: j.description,
-                    category: j.category,
-                    budget: j.budget,
-                    createdAt: j.createdAt || j.created_at || new Date().toISOString(),
-                    user_id: j.user_id,
-                    status: j.status || "open",
-                    owner: (profileMap[j.user_id] || profileMap[String(j.user_id).toLowerCase()]) ? {
-                        username: (profileMap[j.user_id] || profileMap[String(j.user_id).toLowerCase()]).username,
-                        avatar_url: (profileMap[j.user_id] || profileMap[String(j.user_id).toLowerCase()]).avatar_url,
-                        full_name: (profileMap[j.user_id] || profileMap[String(j.user_id).toLowerCase()]).full_name
-                    } : null
-                }));
+                const normalizedLocalJobs: Job[] = localJobs.map((j) => {
+                    const userId = String(j.user_id || "");
+                    const prof = profileMap[userId] || profileMap[userId.toLowerCase()];
+                    return {
+                        id: String(j.id || ""),
+                        title: String(j.title || ""),
+                        description: String(j.description || ""),
+                        category: String(j.category || ""),
+                        budget: String(j.budget || ""),
+                        createdAt: String(j.createdAt || j.created_at || new Date().toISOString()),
+                        user_id: userId,
+                        status: String(j.status || "open"),
+                        owner: prof ? {
+                            username: String(prof.username || ""),
+                            avatar_url: String(prof.avatar_url || ""),
+                            full_name: String(prof.full_name || ""),
+                        } : null,
+                    };
+                });
 
                 // Merge and dedupe by job id (DB row wins over local copy)
                 const byId: Record<string, Job> = {};

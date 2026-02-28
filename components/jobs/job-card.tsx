@@ -3,10 +3,8 @@
 import Link from "next/link";
 import { formatDistance } from "date-fns";
 import { tr } from "date-fns/locale";
-import { Briefcase, Clock, DollarSign, ArrowUpRight, ShieldCheck, User } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
+import { Briefcase, Clock, ArrowUpRight, ShieldCheck, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
 import Image from "next/image";
 
 interface Job {

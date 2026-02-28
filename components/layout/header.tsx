@@ -1,12 +1,13 @@
 ﻿"use client";
 
 import Link from "next/link";
-import { useState, useEffect } from "react";
+import Image from "next/image";
+import { useState, useEffect, useCallback } from "react";
 import { maskFullName, usernameKey } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/components/auth/auth-context";
 import { Menu, X, Bell, MessageCircle, User, ChevronDown } from "lucide-react";
-import { getSiteConfig } from "@/lib/site-config";
+import { getSiteConfig, hydrateSiteConfigFromRemote } from "@/lib/site-config";
 
 export function Header() {
     const { user, logout, loading } = useAuth();
@@ -21,7 +22,7 @@ export function Header() {
         await logout();
     };
 
-    const updateCounts = () => {
+    const updateCounts = useCallback(() => {
         if (!user) return;
         const key = `isgucu_notifications_${usernameKey(user.username)}`;
         const legacyKey = `isgucu_notifications_${user.username}`;
@@ -56,21 +57,30 @@ export function Header() {
         const notifications = JSON.parse(raw) as Array<{ read?: boolean }>;
         const unread = notifications.filter((n) => !n.read).length;
         setNotifCount(unread);
-    };
+    }, [user]);
+
+    const handleConfigUpdate = useCallback(() => {
+        setSiteConfig(getSiteConfig());
+    }, []);
 
     useEffect(() => {
-        // eslint-disable-next-line react-hooks/set-state-in-effect
-        updateCounts();
-        const handleConfigUpdate = () => setSiteConfig(getSiteConfig());
+        const initialId = window.setTimeout(() => {
+            updateCounts();
+        }, 0);
+        hydrateSiteConfigFromRemote().then((remoteConfig) => {
+            if (!remoteConfig) return;
+            setSiteConfig(remoteConfig);
+        });
         window.addEventListener("storage", updateCounts);
         window.addEventListener("storage_updated", updateCounts);
         window.addEventListener("site_config_updated", handleConfigUpdate);
         return () => {
+            window.clearTimeout(initialId);
             window.removeEventListener("storage", updateCounts);
             window.removeEventListener("storage_updated", updateCounts);
             window.removeEventListener("site_config_updated", handleConfigUpdate);
         };
-    }, [user]);
+    }, [updateCounts, handleConfigUpdate]);
 
     useEffect(() => {
         const faviconHref = siteConfig.faviconUrl || siteConfig.logoUrl || "/logo.png";
@@ -95,8 +105,10 @@ export function Header() {
     const navLinks = [
         ...siteConfig.headerLinks,
         ...(siteConfig.managedPages || [])
-            .filter((p) => p.enabled && p.showInHeader && p.slug !== "/" && p.slug !== "/about")
-            .map((p) => ({ href: p.slug, label: p.menuLabel || p.title })),
+            .filter((p: { enabled?: boolean; showInHeader?: boolean; slug?: string; menuLabel?: string; title?: string }) =>
+                Boolean(p.enabled) && Boolean(p.showInHeader) && p.slug !== "/" && p.slug !== "/about"
+            )
+            .map((p: { slug?: string; menuLabel?: string; title?: string }) => ({ href: String(p.slug || ""), label: String(p.menuLabel || p.title || "") })),
     ];
 
     const roleLinks = user?.role === "employer"
@@ -128,10 +140,13 @@ export function Header() {
                 {/* Logo */}
                 <div className="flex items-center gap-8">
                     <Link href="/" className="flex items-center space-x-2">
-                        <img
+                        <Image
                             src={siteConfig.logoUrl || "/logo.png"}
                             alt="İşgücü Logo"
+                            width={160}
+                            height={80}
                             className="h-12 md:h-20 w-auto object-contain transition-all"
+                            unoptimized
                         />
                         <span className="font-heading text-2xl md:text-3xl font-bold bg-gradient-to-r from-blue-700 to-indigo-700 bg-clip-text text-transparent hidden sm:block">
                             {siteConfig.siteName || "İŞGÜCÜ"}
@@ -185,10 +200,13 @@ export function Header() {
                                 >
                                     <div className="h-8 w-8 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 overflow-hidden flex items-center justify-center text-white text-sm font-bold">
                                         {user.avatarUrl ? (
-                                            <img
+                                            <Image
                                                 src={user.avatarUrl}
                                                 alt="Profil"
+                                                width={32}
+                                                height={32}
                                                 className="h-full w-full object-cover"
+                                                unoptimized
                                             />
                                         ) : (
                                             (maskFullName(user.fullName) || user.username).charAt(0).toUpperCase()

@@ -1,4 +1,6 @@
-﻿"use client";
+"use client";
+
+import { supabase } from "@/lib/supabase";
 
 export interface NavLink {
     label: string;
@@ -74,7 +76,7 @@ const DEFAULT_CONFIG: SiteConfig = {
             title: "Anasayfa",
             slug: "/",
             menuLabel: "Anasayfa",
-            summary: "Anasayfa metin ayarları",
+            summary: "",
             content: "Anasayfa hero içeriğini buradan yönetebilirsin.",
             enabled: true,
             showInHeader: false,
@@ -202,46 +204,92 @@ const DEFAULT_CONFIG: SiteConfig = {
     announcement: {
         enabled: false,
         text: "Yeni platformumuzu keşfedin! Çok yakında mobil uygulamamız yayında.",
-        theme: "blue"
-    }
+        theme: "blue",
+    },
 };
+
+const SITE_CONFIG_STORAGE_KEY = "isgucu_site_config";
+const SITE_CONFIG_REMOTE_ENDPOINT = "/api/site-config";
+
+function mergeSiteConfig(parsed: Partial<SiteConfig>): SiteConfig {
+    return {
+        ...DEFAULT_CONFIG,
+        ...parsed,
+        headerLinks: Array.isArray(parsed?.headerLinks) ? parsed.headerLinks : DEFAULT_CONFIG.headerLinks,
+        footerLinks: Array.isArray(parsed?.footerLinks) ? parsed.footerLinks : DEFAULT_CONFIG.footerLinks,
+        socialLinks: Array.isArray(parsed?.socialLinks) ? parsed.socialLinks : DEFAULT_CONFIG.socialLinks,
+        managedPages: (Array.isArray(parsed?.managedPages) ? parsed.managedPages : DEFAULT_CONFIG.managedPages).map((p: Partial<ManagedPage>) => {
+            const page = { ...p };
+            if (page?.id === "home-system") {
+                const summaryText = String(page.summary || "");
+                if (summaryText.includes("Landing hero ve SEO metin ayarları") || summaryText.includes("Anasayfa metin ayarları")) {
+                    page.summary = "";
+                }
+            }
+            if (page?.id === "about-system") {
+                if (String(page.title || "").trim() === "Hakkımızda") page.title = "Biz Kimiz";
+                if (String(page.menuLabel || "").trim() === "Hakkımızda") page.menuLabel = "Biz Kimiz";
+            }
+            return page as ManagedPage;
+        }),
+        announcement: {
+            ...DEFAULT_CONFIG.announcement,
+            ...(parsed?.announcement || {}),
+        },
+    };
+}
 
 export function getSiteConfig(): SiteConfig {
     if (typeof window === "undefined") return DEFAULT_CONFIG;
-    const raw = localStorage.getItem("isgucu_site_config");
+    const raw = localStorage.getItem(SITE_CONFIG_STORAGE_KEY);
     if (!raw) return DEFAULT_CONFIG;
     try {
-        const parsed = JSON.parse(raw);
-        return {
-            ...DEFAULT_CONFIG,
-            ...parsed,
-            headerLinks: Array.isArray(parsed?.headerLinks) ? parsed.headerLinks : DEFAULT_CONFIG.headerLinks,
-            footerLinks: Array.isArray(parsed?.footerLinks) ? parsed.footerLinks : DEFAULT_CONFIG.footerLinks,
-            socialLinks: Array.isArray(parsed?.socialLinks) ? parsed.socialLinks : DEFAULT_CONFIG.socialLinks,
-            managedPages: (Array.isArray(parsed?.managedPages) ? parsed.managedPages : DEFAULT_CONFIG.managedPages).map((p: Partial<ManagedPage>) => {
-                const page = { ...p };
-                // Backward-compat text cleanup for old values stored in localStorage.
-                if (page?.id === "home-system" && String(page.summary || "").includes("Landing hero ve SEO metin ayarları")) {
-                    page.summary = "Anasayfa metin ayarları";
-                }
-                if (page?.id === "about-system") {
-                    if (String(page.title || "").trim() === "Hakkımızda") page.title = "Biz Kimiz";
-                    if (String(page.menuLabel || "").trim() === "Hakkımızda") page.menuLabel = "Biz Kimiz";
-                }
-                return page;
-            }),
-            announcement: {
-                ...DEFAULT_CONFIG.announcement,
-                ...(parsed?.announcement || {}),
-            },
-        };
+        const parsed = JSON.parse(raw) as Partial<SiteConfig>;
+        return mergeSiteConfig(parsed);
     } catch {
         return DEFAULT_CONFIG;
     }
 }
 
-export function saveSiteConfig(config: SiteConfig) {
+export async function hydrateSiteConfigFromRemote() {
+    if (typeof window === "undefined") return null;
+    try {
+        const resp = await fetch(`${SITE_CONFIG_REMOTE_ENDPOINT}?t=${Date.now()}`, {
+            method: "GET",
+            cache: "no-store",
+        });
+        if (!resp.ok) return null;
+
+        const json = (await resp.json().catch(() => null)) as { config?: Partial<SiteConfig> } | null;
+        if (!json?.config) return null;
+
+        const merged = mergeSiteConfig(json.config);
+        localStorage.setItem(SITE_CONFIG_STORAGE_KEY, JSON.stringify(merged));
+        window.dispatchEvent(new Event("site_config_updated"));
+        return merged;
+    } catch {
+        return null;
+    }
+}
+
+export async function saveSiteConfig(config: SiteConfig) {
     if (typeof window === "undefined") return;
-    localStorage.setItem("isgucu_site_config", JSON.stringify(config));
+    localStorage.setItem(SITE_CONFIG_STORAGE_KEY, JSON.stringify(config));
     window.dispatchEvent(new Event("site_config_updated"));
+
+    try {
+        const { data: sessionData, error: sessionErr } = await supabase.auth.getSession();
+        if (sessionErr || !sessionData?.session?.access_token) return;
+
+        await fetch(SITE_CONFIG_REMOTE_ENDPOINT, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${sessionData.session.access_token}`,
+            },
+            body: JSON.stringify({ config }),
+        });
+    } catch {
+        // Local save is fallback; remote sync is best effort.
+    }
 }

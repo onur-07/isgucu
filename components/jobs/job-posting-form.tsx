@@ -68,6 +68,19 @@ export function JobPostingForm() {
         return safeExt ? `${safeBase}.${safeExt}` : safeBase;
     };
 
+    const getUserIdentifier = () => {
+        const id = (user as unknown as { id?: unknown })?.id;
+        const username = (user as unknown as { username?: unknown })?.username;
+        return String(id || username || "");
+    };
+
+    const getErrorMessage = (err: unknown) => {
+        if (err instanceof Error) return err.message;
+        if (typeof err === "string") return err;
+        if (err && typeof err === "object" && "message" in err) return String((err as { message?: unknown }).message || "");
+        return "";
+    };
+
     const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const files = Array.from(e.target.files || []);
         if (files.length === 0) return;
@@ -159,7 +172,7 @@ export function JobPostingForm() {
             for (const file of attachments) {
                 const safeName = toSafeFileName(file.name);
                 const filePath = `${user.id}/${Date.now()}-${safeName}`;
-                const { data: uploadData, error: uploadError } = await supabase.storage
+                const { error: uploadError } = await supabase.storage
                     .from('job-attachments')
                     .upload(filePath, file);
 
@@ -173,10 +186,10 @@ export function JobPostingForm() {
             }
 
             // 2. Insert job into DB
-            const { data, error: submitError } = await supabase
+            const { error: submitError } = await supabase
                 .from('jobs')
                 .insert({
-                    user_id: user.id || (user as any).username,
+                    user_id: getUserIdentifier(),
                     title: titleMod.cleanedText || formData.title,
                     description: descMod.cleanedText || formData.description,
                     category: formData.category,
@@ -193,7 +206,7 @@ export function JobPostingForm() {
                 ...formData,
                 id: Date.now(),
                 created_at: new Date().toISOString(),
-                user_id: user.id || (user as any).username,
+                user_id: getUserIdentifier(),
                 status: "open",
             };
             localStorage.setItem("isgucu_jobs", JSON.stringify([newJob, ...existingJobs]));
@@ -202,8 +215,9 @@ export function JobPostingForm() {
             setTimeout(() => {
                 router.push("/jobs");
             }, 2000);
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error("Job Post Error:", err);
+            const errMsg = getErrorMessage(err);
 
             // Fallback for local testing
             const existingJobs = JSON.parse(localStorage.getItem("isgucu_jobs") || "[]");
@@ -212,7 +226,7 @@ export function JobPostingForm() {
                 ...formData,
                 id: Date.now(),
                 created_at: new Date().toISOString(),
-                user_id: user.id || (user as any).username,
+                user_id: getUserIdentifier(),
                 attachments: localAttachmentUrls
             };
             localStorage.setItem("isgucu_jobs", JSON.stringify([newJob, ...existingJobs]));
@@ -221,6 +235,10 @@ export function JobPostingForm() {
             setTimeout(() => {
                 router.push("/jobs");
             }, 2000);
+
+            if (errMsg) {
+                setError("İlan verilemedi: " + errMsg);
+            }
         } finally {
             setLoading(false);
         }

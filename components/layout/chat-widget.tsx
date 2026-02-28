@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
+import Image from "next/image";
+import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import { Handshake, MessageCircle, Paperclip, X } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/components/auth/auth-context";
@@ -161,7 +162,7 @@ export function ChatWidget() {
         }
     };
 
-    const fetchInbox = async () => {
+    const fetchInbox = useCallback(async () => {
         if (!meKey) return;
         if (inboxInFlight.current) return;
         inboxInFlight.current = true;
@@ -222,9 +223,9 @@ export function ChatWidget() {
         } finally {
             inboxInFlight.current = false;
         }
-    };
+    }, [meKey, meFold]);
 
-    const fetchThread = async (other: string) => {
+    const fetchThread = useCallback(async (other: string) => {
         if (!meKey || !other) return;
         if (threadInFlight.current) return;
         threadInFlight.current = true;
@@ -295,7 +296,7 @@ export function ChatWidget() {
         } finally {
             threadInFlight.current = false;
         }
-    };
+    }, [fetchInbox, meFold, meKey]);
 
     useEffect(() => {
         if (loading) return;
@@ -317,7 +318,7 @@ export function ChatWidget() {
         return () => {
             window.clearInterval(intervalId);
         };
-    }, [loading, meKey, meFold]);
+    }, [loading, meKey, fetchInbox]);
 
     useEffect(() => {
         if (!meKey) return;
@@ -374,12 +375,12 @@ export function ChatWidget() {
             if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
             supabase.removeChannel(channel);
         };
-    }, [meKey, activeOther]);
+    }, [meKey, activeOther, fetchInbox]);
 
     useEffect(() => {
         if (!activeOther) return;
         fetchThread(activeOther);
-    }, [activeOther]);
+    }, [activeOther, fetchThread]);
 
     useEffect(() => {
         if (!items.length) return;
@@ -422,7 +423,7 @@ export function ChatWidget() {
         return () => {
             cancelled = true;
         };
-    }, [items]);
+    }, [items, avatarMap]);
 
     useEffect(() => {
         if (!open) return;
@@ -719,11 +720,7 @@ export function ChatWidget() {
                                                     <div className="flex items-center gap-2 min-w-0">
                                                         <div className="h-8 w-8 rounded-full bg-gray-100 border flex items-center justify-center overflow-hidden shrink-0">
                                                             {avatarMap[c.otherKey] ? (
-                                                                <img
-                                                                    src={avatarMap[c.otherKey]}
-                                                                    alt=""
-                                                                    className="h-full w-full object-cover"
-                                                                />
+                                                                <Image src={avatarMap[c.otherKey]} alt="" width={32} height={32} className="h-full w-full object-cover" unoptimized />
                                                             ) : (
                                                                 <div className="text-[10px] font-black text-gray-600">
                                                                     {displayUsername(c.otherRaw).charAt(0).toUpperCase()}

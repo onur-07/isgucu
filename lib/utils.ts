@@ -55,7 +55,10 @@ export function displayUsername(value: string | null | undefined): string {
 export const PROFANITY_WORDS = ["küfür1", "küfür2", "hakaret1"]; // Can be expanded
 
 export function friendlySupabaseError(err: unknown, fallback: string): string {
-  const raw = (err && typeof err === "object" && "message" in err) ? String((err as any).message || "") : String(err || "");
+  const raw =
+    err && typeof err === "object" && "message" in err
+      ? String((err as { message?: unknown }).message || "")
+      : String(err || "");
 
   const msg = raw || fallback;
   const lowered = msg.toLowerCase();

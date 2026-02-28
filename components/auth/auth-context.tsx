@@ -16,6 +16,29 @@ interface User {
     avatarUrl?: string;
 }
 
+type ProfileRow = {
+    id: string;
+    username: string;
+    full_name?: string | null;
+    role?: string | null;
+    email?: string | null;
+    is_banned?: boolean | null;
+    avatar_url?: string | null;
+};
+
+const getMetaString = (meta: unknown, key: string) => {
+    if (!meta || typeof meta !== "object") return "";
+    const rec = meta as Record<string, unknown>;
+    const v = rec[key];
+    return typeof v === "string" ? v : "";
+};
+
+const normalizeRole = (value: unknown): UserRole => {
+    const v = String(value || "").toLowerCase();
+    if (v === "admin" || v === "employer" || v === "freelancer" || v === "guest") return v;
+    return "employer";
+};
+
 interface AuthContextType {
     user: User | null;
     setUser: (user: User | null) => void;
@@ -62,7 +85,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
                     if (error) console.error("AuthContext: Profil çekme hatası:", error);
 
-                    let resolvedProfile: any = profile;
+                    let resolvedProfile: ProfileRow | null = (profile as ProfileRow | null);
 
                     if (!resolvedProfile && authEmail) {
                         const byEmail = await withTimeout(
@@ -76,7 +99,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                     if (!resolvedProfile && session.user?.id && authEmail) {
                         // Profile row might not exist (e.g. broken register flow). Try to create a minimal one.
                         // ÖNCE user_metadata'dan gerçek username'i al
-                        const metaUsername = (session.user.user_metadata as any)?.username;
+                        const metaUsername = getMetaString(session.user.user_metadata, "username");
                         let candidateUsername: string;
 
                         if (metaUsername && typeof metaUsername === 'string' && metaUsername.trim().length > 0) {
@@ -91,10 +114,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                             candidateUsername = `${safePrefix}_${String(session.user.id).slice(0, 6)}`;
                         }
 
-                        const metaRoleRaw = (session.user.user_metadata as any)?.role;
-                        const metaRole = metaRoleRaw === "freelancer" || metaRoleRaw === "employer" || metaRoleRaw === "admin"
-                            ? metaRoleRaw
-                            : "employer";
+                        const metaRole = normalizeRole(getMetaString(session.user.user_metadata, "role"));
 
                         const insertRes = await supabase
                             .from("profiles")
@@ -110,7 +130,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                             .maybeSingle();
 
                         if (insertRes?.data) {
-                            resolvedProfile = insertRes.data;
+                            resolvedProfile = insertRes.data as unknown as ProfileRow;
                         } else if (insertRes?.error) {
                             console.error("AuthContext: Profil otomatik oluşturma hatası:", insertRes.error);
                         }
@@ -131,7 +151,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                         // OTOMATİK USERNAME DÜZELTME
                         // Eğer veritabanındaki username "email_uuid" formatında (bozuk) ise
                         // ve user_metadata'da gerçek username varsa, otomatik düzelt
-                        const metaUsername = (session.user.user_metadata as any)?.username;
+                        const metaUsername = getMetaString(session.user.user_metadata, "username");
                         const currentUsername = String(resolvedProfile.username || "");
                         const looksGenerated = /^[a-z0-9._-]+_[a-f0-9]{6}$/i.test(currentUsername);
 
@@ -155,11 +175,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                         setUser({
                             id: resolvedProfile.id,
                             username: resolvedProfile.username,
-                            fullName: resolvedProfile.full_name,
-                            role: resolvedProfile.role as UserRole,
-                            email: authEmail || resolvedProfile.email,
-                            isBanned: resolvedProfile.is_banned,
-                            avatarUrl: resolvedProfile.avatar_url
+                            fullName: resolvedProfile.full_name ?? undefined,
+                            role: normalizeRole(resolvedProfile.role),
+                            email: String(authEmail || resolvedProfile.email || ""),
+                            isBanned: resolvedProfile.is_banned ?? undefined,
+                            avatarUrl: resolvedProfile.avatar_url ?? undefined
                         });
                     } else {
                         console.warn("AuthContext: Oturum var ama profil bulunamadı. (id/email ile de yok)");
@@ -185,10 +205,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                     "Profil (SIGNED_IN)"
                 );
 
-                let resolvedProfile: any = profile;
+                let resolvedProfile: ProfileRow | null = (profile as ProfileRow | null);
                 if (!resolvedProfile && authEmail) {
                     // ÖNCE user_metadata'dan gerçek username'i al
-                    const metaUsername = (session.user.user_metadata as any)?.username;
+                    const metaUsername = getMetaString(session.user.user_metadata, "username");
                     let candidateUsername: string;
 
                     if (metaUsername && typeof metaUsername === 'string' && metaUsername.trim().length > 0) {
@@ -202,10 +222,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                         candidateUsername = `${safePrefix}_${String(session.user.id).slice(0, 6)}`;
                     }
 
-                    const metaRoleRaw = (session.user.user_metadata as any)?.role;
-                    const metaRole = metaRoleRaw === "freelancer" || metaRoleRaw === "employer" || metaRoleRaw === "admin"
-                        ? metaRoleRaw
-                        : "employer";
+                    const metaRole = normalizeRole(getMetaString(session.user.user_metadata, "role"));
                     const insertRes = await supabase
                         .from("profiles")
                         .insert([
@@ -218,7 +235,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                         ])
                         .select("*")
                         .maybeSingle();
-                    if (insertRes?.data) resolvedProfile = insertRes.data;
+                    if (insertRes?.data) resolvedProfile = insertRes.data as unknown as ProfileRow;
                     if (insertRes?.error) console.error("AuthContext: Profil otomatik oluşturma hatası (SIGNED_IN):", insertRes.error);
                 }
 
@@ -235,7 +252,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                     }
 
                     // OTOMATİK USERNAME DÜZELTME (SIGNED_IN)
-                    const metaUsernameSignIn = (session.user.user_metadata as any)?.username;
+                    const metaUsernameSignIn = getMetaString(session.user.user_metadata, "username");
                     const currentUsernameSignIn = String(resolvedProfile.username || "");
                     const looksGeneratedSignIn = /^[a-z0-9._-]+_[a-f0-9]{6}$/i.test(currentUsernameSignIn);
 
@@ -258,11 +275,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                     setUser({
                         id: resolvedProfile.id,
                         username: resolvedProfile.username,
-                        fullName: resolvedProfile.full_name,
-                        role: resolvedProfile.role as UserRole,
-                        email: authEmail || resolvedProfile.email,
-                        isBanned: resolvedProfile.is_banned,
-                        avatarUrl: resolvedProfile.avatar_url
+                        fullName: resolvedProfile.full_name ?? undefined,
+                        role: normalizeRole(resolvedProfile.role),
+                        email: String(authEmail || resolvedProfile.email || ""),
+                        isBanned: resolvedProfile.is_banned ?? undefined,
+                        avatarUrl: resolvedProfile.avatar_url ?? undefined
                     });
                 }
             } else if (event === 'SIGNED_OUT') {
@@ -297,10 +314,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 id: profile.id,
                 username: profile.username,
                 fullName: profile.full_name,
-                role: profile.role as UserRole,
-                email: authEmail || profile.email,
-                isBanned: profile.is_banned,
-                avatarUrl: profile.avatar_url
+                role: normalizeRole(profile.role),
+                email: String(authEmail || profile.email || ""),
+                isBanned: profile.is_banned ?? undefined,
+                avatarUrl: profile.avatar_url ?? undefined
             });
         }
     };

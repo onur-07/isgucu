@@ -1,6 +1,7 @@
 ﻿"use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -12,7 +13,7 @@ import { useAuth } from "@/components/auth/auth-context";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { getBlogPosts } from "@/lib/blog-posts";
-import { getSiteConfig } from "@/lib/site-config";
+import { getSiteConfig, hydrateSiteConfigFromRemote } from "@/lib/site-config";
 
 const CATEGORIES = [
   { title: "Yazılım & Mobil", slug: "yazilim-mobil", icon: "💻", color: "text-blue-600", bg: "bg-blue-50" },
@@ -45,6 +46,9 @@ export default function Home() {
     []
   );
   const latestPosts = useMemo(() => getBlogPosts().slice(0, 3), []);
+  const homeSummaryText = managedHome
+    ? String(managedHome.summary || "").trim()
+    : "Turkiye freelancer platformu: Hizmet bul, ilan ver, guvenle calis. Ister freelancer ol, ister is veren olarak en dogru uzmani sec.";
 
   useEffect(() => {
     const intervalId = window.setInterval(() => {
@@ -58,6 +62,9 @@ export default function Home() {
       const config = getSiteConfig();
       setManagedHome((config.managedPages || []).find((p) => p.slug === "/" || p.id === "home-system") || null);
     };
+    hydrateSiteConfigFromRemote().then(() => {
+      refreshManagedHome();
+    });
     window.addEventListener("site_config_updated", refreshManagedHome);
     return () => window.removeEventListener("site_config_updated", refreshManagedHome);
   }, []);
@@ -192,9 +199,11 @@ export default function Home() {
             {managedHome?.title || "Hayalindeki Projeyi"} <br /> <span className="text-blue-600 italic">Gerçeğe Dönüştür</span>
           </h1>
 
-          <p className="max-w-[800px] text-gray-600 text-base md:text-lg font-semibold leading-relaxed">
-            {managedHome?.summary || "Turkiye freelancer platformu: Hizmet bul, ilan ver, guvenle calis. Ister freelancer ol, ister is veren olarak en dogru uzmani sec."}
-          </p>
+          {homeSummaryText.length > 0 && (
+            <p className="max-w-[800px] text-gray-600 text-base md:text-lg font-semibold leading-relaxed">
+              {homeSummaryText}
+            </p>
+          )}
 
           <div className="w-full max-w-4xl rounded-3xl border border-blue-100 bg-gradient-to-r from-blue-50 via-white to-cyan-50 px-6 py-5 shadow-sm">
             <h2 className="text-lg md:text-2xl font-black text-gray-900">
@@ -385,9 +394,11 @@ export default function Home() {
             {latestPosts.map((post) => (
               <Card key={post.slug} className="h-full rounded-[2rem] overflow-hidden border-gray-100 hover:shadow-2xl transition-shadow flex flex-col">
                 <div className="relative">
-                  <img
+                  <Image
                     src={post.coverImage}
                     alt={post.title}
+                    width={800}
+                    height={400}
                     className="h-48 w-full object-cover"
                     loading="lazy"
                   />

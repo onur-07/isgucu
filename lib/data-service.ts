@@ -92,7 +92,7 @@ export async function getAllUsers(): Promise<PlatformUser[]> {
         id: u.id,
         username: u.username,
         email: u.email,
-        role: u.role as any,
+        role: (u.role === "employer" || u.role === "freelancer" || u.role === "admin") ? u.role : "freelancer",
         createdAt: u.created_at,
         isBanned: u.is_banned
     }));
@@ -134,7 +134,7 @@ export async function deleteUserAccount(userId: string) {
     if (error) console.error("Error deleting user profile:", error);
 }
 
-export async function updateUserInfo(userId: string, updates: any) {
+export async function updateUserInfo(userId: string, updates: Record<string, unknown>) {
     const { error } = await supabase
         .from('profiles')
         .update(updates)
@@ -142,10 +142,10 @@ export async function updateUserInfo(userId: string, updates: any) {
 
     if (error) {
         console.error("Error updating user:", {
-            message: (error as any)?.message,
-            details: (error as any)?.details,
-            hint: (error as any)?.hint,
-            code: (error as any)?.code,
+            message: (error && typeof error === "object" && "message" in error) ? String((error as { message?: unknown }).message || "") : String(error),
+            details: (error && typeof error === "object" && "details" in error) ? String((error as { details?: unknown }).details || "") : "",
+            hint: (error && typeof error === "object" && "hint" in error) ? String((error as { hint?: unknown }).hint || "") : "",
+            code: (error && typeof error === "object" && "code" in error) ? String((error as { code?: unknown }).code || "") : "",
         });
         return { ok: false, error };
     }
@@ -154,16 +154,20 @@ export async function updateUserInfo(userId: string, updates: any) {
 }
 
 // ===== TRANSACTIONS & BALANCE =====
-export function getUserTransactions(username: string): Transaction[] {
+export function getUserTransactions(_username: string): Transaction[] {
+    void _username;
     return [];
 }
 
-export function getUserBalance(username: string) {
+export function getUserBalance(_username: string) {
+    void _username;
     return { balance: 0, totalEarned: 0, pending: 0 };
 }
 
 // ===== STATS & REVIEWS =====
-export function getUserStats(username: string, role: "employer" | "freelancer" | "admin"): UserStats {
+export function getUserStats(_username: string, _role: "employer" | "freelancer" | "admin"): UserStats {
+    void _username;
+    void _role;
     return {
         completedJobs: 0,
         activeJobs: 0,
@@ -175,11 +179,13 @@ export function getUserStats(username: string, role: "employer" | "freelancer" |
     };
 }
 
-export function getUserReviews(username: string): Review[] {
+export function getUserReviews(_username: string): Review[] {
+    void _username;
     return [];
 }
 
-export async function getUserOrders(username: string, role: "employer" | "freelancer" | "guest" | "admin"): Promise<Order[]> {
+export async function getUserOrders(username: string, _role: "employer" | "freelancer" | "guest" | "admin"): Promise<Order[]> {
+    void _role;
     if (!username) return [];
     const { data, error } = await supabase
         .from("orders")
@@ -192,19 +198,40 @@ export async function getUserOrders(username: string, role: "employer" | "freela
         return [];
     }
 
-    return (data || []).map((o: any) => {
-        const title = o?.gigs?.title ? String(o.gigs.title) : "Sipariş";
-        const createdAt = o?.created_at ? new Date(o.created_at).toLocaleDateString("tr-TR") : "";
-        const dueDate = o?.total_days ? `${o.total_days} gün` : "";
-        const priceNum = Number(o?.total_price || 0);
+    type OrderRow = {
+        id?: unknown;
+        buyer_username?: unknown;
+        seller_username?: unknown;
+        total_price?: unknown;
+        total_days?: unknown;
+        status?: unknown;
+        created_at?: unknown;
+        gigs?: { title?: unknown } | null;
+    };
+
+    const rows = (data || []) as unknown as OrderRow[];
+    return rows.map((o) => {
+        const title = o?.gigs && o.gigs.title != null ? String(o.gigs.title) : "Sipariş";
+        const createdAt = o?.created_at ? new Date(String(o.created_at)).toLocaleDateString("tr-TR") : "";
+        const dueDate = o?.total_days ? `${String(o.total_days)} gün` : "";
+        const priceNum = Number(o?.total_price ?? 0);
+
+        const statusRaw = String(o?.status || "pending").toLowerCase();
+        const normalizedStatus: Order["status"] =
+            statusRaw === "active" ||
+            statusRaw === "delivered" ||
+            statusRaw === "completed" ||
+            statusRaw === "cancelled"
+                ? (statusRaw as Order["status"])
+                : "pending";
 
         return {
-            id: String(o.id),
+            id: String(o.id ?? ""),
             title,
             client: String(o.buyer_username || ""),
             freelancer: String(o.seller_username || ""),
             price: Number.isFinite(priceNum) ? priceNum : 0,
-            status: (o.status || "pending") as any,
+            status: normalizedStatus,
             createdAt,
             dueDate,
         } as Order;

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { MessageCircle } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/components/auth/auth-context";
@@ -12,6 +12,13 @@ type IncomingToast = {
     sender: string;
     text: string;
     at: number;
+};
+
+const getRecordString = (value: unknown, key: string) => {
+    if (!value || typeof value !== "object") return "";
+    const rec = value as Record<string, unknown>;
+    const v = rec[key];
+    return typeof v === "string" ? v : v == null ? "" : String(v);
 };
 
 export function MessageBubble() {
@@ -30,7 +37,7 @@ export function MessageBubble() {
         toastTimerRef.current = setTimeout(() => setToast(null), 3000);
     };
 
-    const fetchUnread = async () => {
+    const fetchUnread = useCallback(async () => {
         if (!me) return;
         const { count, error } = await supabase
             .from("messages")
@@ -55,22 +62,22 @@ export function MessageBubble() {
                 .limit(1)
                 .maybeSingle();
 
-            const sender = String((latest as any)?.data?.sender_username || "");
-            const text = String((latest as any)?.data?.text || "");
+            const sender = getRecordString((latest as unknown as { data?: unknown })?.data, "sender_username");
+            const text = getRecordString((latest as unknown as { data?: unknown })?.data, "text");
             if (sender) showToast(sender, text);
         }
-    };
+    }, [me]);
 
     useEffect(() => {
         if (loading) return;
         if (!me) {
-            setUnread(0);
-            setToast(null);
             prevUnreadRef.current = 0;
             return;
         }
 
-        fetchUnread();
+        const initialId = window.setTimeout(() => {
+            fetchUnread();
+        }, 0);
 
         const intervalId = window.setInterval(() => {
             fetchUnread();
@@ -82,10 +89,11 @@ export function MessageBubble() {
 
         window.addEventListener("focus", onFocus);
         return () => {
+            window.clearTimeout(initialId);
             window.clearInterval(intervalId);
             window.removeEventListener("focus", onFocus);
         };
-    }, [loading, me]);
+    }, [loading, me, fetchUnread]);
 
     useEffect(() => {
         if (!me) return;
@@ -96,12 +104,12 @@ export function MessageBubble() {
                 "postgres_changes",
                 { event: "INSERT", schema: "public", table: "messages" },
                 (payload) => {
-                    const row = payload.new as any;
-                    const receiver = usernameKey(row?.receiver_username || "");
+                    const row = (payload as unknown as { new?: unknown })?.new;
+                    const receiver = usernameKey(getRecordString(row, "receiver_username"));
                     if (receiver !== me) return;
 
-                    const sender = String(row?.sender_username || "");
-                    const text = String(row?.text || "");
+                    const sender = getRecordString(row, "sender_username");
+                    const text = getRecordString(row, "text");
 
                     setUnread((u) => {
                         const next = u + 1;
@@ -116,8 +124,8 @@ export function MessageBubble() {
                 "postgres_changes",
                 { event: "UPDATE", schema: "public", table: "messages" },
                 (payload) => {
-                    const row = payload.new as any;
-                    const receiver = usernameKey(row?.receiver_username || "");
+                    const row = (payload as unknown as { new?: unknown })?.new;
+                    const receiver = usernameKey(getRecordString(row, "receiver_username"));
                     if (receiver !== me) return;
                     fetchUnread();
                 }
@@ -128,7 +136,7 @@ export function MessageBubble() {
             if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
             supabase.removeChannel(channel);
         };
-    }, [me]);
+    }, [me, fetchUnread]);
 
     const show = useMemo(() => {
         if (loading) return false;

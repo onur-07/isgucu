@@ -1,9 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
     Select,
@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/select";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/components/auth/auth-context";
-import { ImagePlus, Package, X } from "lucide-react";
+import { ImagePlus, X } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { sanitizeListingText } from "@/lib/utils";
 import {
@@ -100,7 +100,7 @@ const CATEGORY_ADDONS: Record<string, ExtraItem[]> = {
     ],
 };
 
-const CATEGORY_EXTRAS: Record<string, { label: string, key: string, type: "select" | "toggle" | "input", options?: any[] }[]> = {
+const CATEGORY_EXTRAS: Record<string, { label: string, key: string, type: "select" | "toggle" | "input", options?: unknown[] }[]> = {
     // Software Sub-categories
     "Web Yazılım": [
         { label: "Sayfa Sayısı", key: "pageCount", type: "select", options: [1, 2, 3, 5, 10, 15, 20, 30] },
@@ -205,7 +205,7 @@ interface PackageData {
     revisions: string;
     features: string[];
     // Dynamic fields
-    [key: string]: any;
+    [key: string]: unknown;
 }
 
 interface ExtraItem {
@@ -217,14 +217,17 @@ interface ExtraItem {
     isCustom?: boolean;
 }
 
-const emptyPackage = (name: string): PackageData => ({
+const emptyPackage = (name: string): PackageData => {
+    void name;
+    return {
     name: "",
     description: "",
     price: "",
     deliveryDays: "",
     revisions: "1",
     features: [],
-});
+    };
+};
 
 const numberToTurkishWords = (num: number): string => {
     if (num === 0) return "Sıfır";
@@ -273,8 +276,6 @@ export function GigPostingForm() {
     const { user } = useAuth();
     const [loading, setLoading] = useState(false);
     const [step, setStep] = useState(1);
-    const [activeVoicePackage, setActiveVoiceVoicePackage] = useState<"basic" | "standard" | "premium">("basic");
-    const [featureInputs, setFeatureInputs] = useState<Record<string, string>>({ basic: "", standard: "", premium: "" });
 
     useEffect(() => {
         window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -337,6 +338,13 @@ export function GigPostingForm() {
     const sanitizeGigTitle = (value: string) => value.replace(/^ben,\s*/i, "").trimStart();
 
     const wordCount = (value: string) => String(value || "").trim().split(/\s+/).filter(Boolean).length;
+
+    const getErrorMessage = (err: unknown) => {
+        if (err instanceof Error) return err.message;
+        if (typeof err === "string") return err;
+        if (err && typeof err === "object" && "message" in err) return String((err as { message?: unknown }).message || "");
+        return "";
+    };
 
     const activePackageKeys = (["basic", "standard", "premium"] as const).filter((key) => activePackages[key]);
 
@@ -429,24 +437,6 @@ export function GigPostingForm() {
     };
 
 
-    const addFeature = (pkg: string) => {
-        const input = featureInputs[pkg];
-        if (input?.trim()) {
-            setPackages(prev => ({
-                ...prev,
-                [pkg]: { ...prev[pkg], features: [...prev[pkg].features, input.trim()] }
-            }));
-            setFeatureInputs(prev => ({ ...prev, [pkg]: "" }));
-        }
-    };
-
-    const removeFeature = (pkg: string, idx: number) => {
-        setPackages(prev => ({
-            ...prev,
-            [pkg]: { ...prev[pkg], features: prev[pkg].features.filter((_, i) => i !== idx) }
-        }));
-    };
-
     const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
         const files = e.target.files;
         if (!files) return;
@@ -520,7 +510,7 @@ export function GigPostingForm() {
                 additionalDays: ex.additionalDays,
             }));
 
-        const packagesPayload: any = {
+        const packagesPayload: Record<string, unknown> = {
             ...activePks,
             _extras: selectedExtras,
         };
@@ -534,7 +524,7 @@ export function GigPostingForm() {
                 let timeoutId: ReturnType<typeof setTimeout> | undefined;
                 try {
                     return await Promise.race([
-                        Promise.resolve(p as any as T),
+                        Promise.resolve(p),
                         new Promise<T>((_, reject) => {
                             timeoutId = setTimeout(() => reject(new Error(`timeout:${label}`)), ms);
                         }),
@@ -560,18 +550,20 @@ export function GigPostingForm() {
                     }),
                 TIMEOUT_MS,
                 "gig_insert"
-            )) as any;
+            )) as unknown;
 
-            const error = insertRes?.error;
+            const error = (insertRes && typeof insertRes === "object" && "error" in insertRes)
+                ? (insertRes as { error?: unknown }).error
+                : null;
 
             if (error) {
                 throw error;
             }
 
             router.push("/freelancers");
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error("Gig oluşturma hatası:", err);
-            const msg = err?.message ? String(err.message) : "Bilinmeyen hata";
+            const msg = getErrorMessage(err) || "Bilinmeyen hata";
             if (msg.startsWith("timeout:")) {
                 alert("İlan kaydı zaman aşımına uğradı. İnternet bağlantınızı kontrol edin ve tekrar deneyin.");
             } else {
@@ -1016,7 +1008,7 @@ export function GigPostingForm() {
                                                 <Input
                                                     type="number"
                                                     placeholder="0"
-                                                    value={packages.basic.wordCount || ""}
+                                                    value={String(packages.basic.wordCount ?? "")}
                                                     onChange={(e) => setPackages(p => ({ ...p, basic: { ...p.basic, wordCount: e.target.value } }))}
                                                     className="h-16 w-full md:w-36 rounded-2xl border-4 border-gray-50 font-black text-center text-xl bg-gray-50/30 focus:border-blue-200 transition-all"
                                                 />
@@ -1036,7 +1028,7 @@ export function GigPostingForm() {
                                             <Input
                                                 type="number"
                                                 placeholder="50"
-                                                value={packages.basic.extraWordCount || ""}
+                                                value={String(packages.basic.extraWordCount ?? "")}
                                                 onChange={(e) => setPackages(p => ({ ...p, basic: { ...p.basic, extraWordCount: e.target.value } }))}
                                                 className="w-20 h-10 rounded-lg border-2 border-blue-200 font-black text-center bg-white text-blue-600"
                                             />
@@ -1046,7 +1038,7 @@ export function GigPostingForm() {
                                                 <Input
                                                     type="number"
                                                     placeholder="100"
-                                                    value={packages.basic.extraWordPrice || ""}
+                                                    value={String(packages.basic.extraWordPrice ?? "")}
                                                     onChange={(e) => setPackages(p => ({ ...p, basic: { ...p.basic, extraWordPrice: e.target.value } }))}
                                                     className="w-24 h-10 rounded-lg border-2 border-blue-200 font-black text-center bg-white text-green-600 pl-5"
                                                 />
@@ -1237,31 +1229,42 @@ export function GigPostingForm() {
                                                             {row.type === "toggle" ? (
                                                                 <button
                                                                     type="button"
-                                                                    onClick={() => setPackages(prev => ({ ...prev, [key]: { ...prev[key], [row.key]: !prev[key][row.key] } }))}
-                                                                    className={`h-8 w-8 rounded-xl border-2 flex items-center justify-center mx-auto transition-all ${packages[key][row.key] ? "bg-blue-600 border-blue-600 text-white shadow-lg shadow-blue-100 scale-110" : "bg-white border-gray-400 hover:border-blue-500"}`}
+                                                                    onClick={() =>
+                                                                        setPackages((prev) => ({
+                                                                            ...prev,
+                                                                            [key]: {
+                                                                                ...prev[key],
+                                                                                [row.key]: !Boolean(prev[key][row.key]),
+                                                                            },
+                                                                        }))
+                                                                    }
+                                                                    className={`h-8 w-8 rounded-xl border-2 flex items-center justify-center mx-auto transition-all ${Boolean(packages[key][row.key]) ? "bg-blue-600 border-blue-600 text-white shadow-lg shadow-blue-100 scale-110" : "bg-white border-gray-400 hover:border-blue-500"}`}
                                                                 >
-                                                                    {packages[key][row.key] && <span className="text-[14px]">✓</span>}
+                                                                    {Boolean(packages[key][row.key]) && <span className="text-[14px]">✓</span>}
                                                                 </button>
                                                             ) : row.type === "select" ? (
                                                                 <Select
-                                                                    value={packages[key][row.key]?.toString()}
+                                                                    value={String(packages[key][row.key] ?? "")}
                                                                     onValueChange={(val) => setPackages(prev => ({ ...prev, [key]: { ...prev[key], [row.key]: val } }))}
                                                                 >
                                                                     <SelectTrigger className="border-none shadow-none focus:ring-2 focus:ring-blue-50 text-center text-xs font-black bg-gray-100/50 text-black h-12 rounded-xl">
                                                                         <SelectValue placeholder="..." />
                                                                     </SelectTrigger>
                                                                     <SelectContent>
-                                                                        {row.options?.map(opt => (
-                                                                            <SelectItem key={opt} value={opt.toString()}>
-                                                                                {opt} {
+                                                                        {row.options?.map((opt) => {
+                                                                            const optValue = typeof opt === "string" || typeof opt === "number" ? String(opt) : String(opt ?? "");
+                                                                            return (
+                                                                                <SelectItem key={optValue} value={optValue}>
+                                                                                    {optValue}{" "}{
                                                                                     row.label.includes("Dakika") ? "DK" :
                                                                                         row.label.includes("Saniye") ? "SN" :
                                                                                             row.label.includes("Kelime") ? "KELİME" :
                                                                                                 row.label.includes("Hafta") ? "HAFTA" :
                                                                                                     row.label.includes("Saati") ? "SAAT" : ""
-                                                                                }
-                                                                            </SelectItem>
-                                                                        ))}
+                                                                                    }
+                                                                                </SelectItem>
+                                                                            );
+                                                                        })}
                                                                     </SelectContent>
                                                                 </Select>
                                                             ) : row.type === "input" ? (
@@ -1269,7 +1272,7 @@ export function GigPostingForm() {
                                                                     <Input
                                                                         type="number"
                                                                         placeholder="0"
-                                                                        value={packages[key][row.key] || ""}
+                                                                        value={String(packages[key][row.key] ?? "")}
                                                                         onChange={(e) => setPackages(prev => ({ ...prev, [key]: { ...prev[key], [row.key]: e.target.value } }))}
                                                                         className="w-20 h-10 text-center font-black bg-gray-100/50 border-none shadow-none focus-visible:ring-2 focus-visible:ring-blue-100 rounded-xl"
                                                                     />
@@ -1449,7 +1452,7 @@ export function GigPostingForm() {
                         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
                             {formData.images.map((img, i) => (
                                 <div key={i} className="relative group aspect-video rounded-2xl overflow-hidden border-2 shadow-sm bg-gray-50">
-                                    <img src={img} alt={`Vitrin ${i + 1}`} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                                    <Image src={img} alt={`Vitrin ${i + 1}`} fill className="object-cover group-hover:scale-105 transition-transform duration-500" unoptimized />
                                     <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                                         <button
                                             type="button"

@@ -9,7 +9,7 @@ import { Users, Briefcase, TrendingUp, Shield, Trash2, Headphones, MessageCircle
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/lib/supabase";
-import { getSiteConfig, saveSiteConfig, type SiteConfig, type NavLink } from "@/lib/site-config";
+import { getSiteConfig, hydrateSiteConfigFromRemote, saveSiteConfig, type SiteConfig, type NavLink } from "@/lib/site-config";
 import { Input } from "@/components/ui/input";
 import Link from "next/link";
 
@@ -272,14 +272,12 @@ function AdminPageContent() {
         if (!next) return;
         if (activeTab === next) return;
         setActiveTab(next);
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [searchParams]);
 
     useEffect(() => {
         const current = parseTabFromUrl(searchParams.get("tab"));
         if (current === activeTab) return;
         router.replace(`/admin?tab=${activeTab}`);
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [activeTab]);
 
     useEffect(() => {
@@ -288,6 +286,17 @@ function AdminPageContent() {
         if (users.length > 0) return;
         loadData({ fetchUsers: true });
     }, [activeTab]);
+
+    useEffect(() => {
+        let isMounted = true;
+        hydrateSiteConfigFromRemote().then((remoteConfig) => {
+            if (!isMounted || !remoteConfig) return;
+            setSiteConfig(remoteConfig);
+        });
+        return () => {
+            isMounted = false;
+        };
+    }, []);
 
     const handleBan = async (u: PlatformUser) => {
         if (!u.id) return;
@@ -869,9 +878,9 @@ function AdminPageContent() {
                                 <p className="text-[10px] text-slate-400 font-bold uppercase mt-1">Sitenin ismini, logosunu ve temel bilgilerini buradan yönetin.</p>
                             </div>
                             <Button
-                                onClick={() => {
-                                    saveSiteConfig(siteConfig);
-                                    alert("Site ayarları başarıyla kaydedildi ve tüm kullanıcılara yansıtıldı!");
+                                onClick={async () => {
+                                    await saveSiteConfig(siteConfig);
+                                    alert("Site ayarları kaydedildi.");
                                 }}
                                 className="bg-blue-600 hover:bg-blue-700 text-white font-black rounded-xl px-10 h-14"
                             >
@@ -1322,4 +1331,5 @@ export default function AdminPage() {
         </Suspense>
     );
 }
+
 

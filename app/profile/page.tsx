@@ -181,7 +181,7 @@ function ProfilePageContent() {
                 String(j.user_id).toLowerCase() === String(user.username).toLowerCase()
             );
 
-            let allMyJobs = data ? [...data] : [];
+            const allMyJobs = data ? [...data] : [];
             // Add local jobs that aren't in DB data
             myLocalJobs.forEach((lj: any) => {
                 if (!allMyJobs.some(mj => mj.id === lj.id)) {
@@ -281,7 +281,7 @@ function ProfilePageContent() {
             String(j.user_id).toLowerCase() === String(user.username).toLowerCase()
         );
 
-        let allMyJobs = data ? [...data] : [];
+        const allMyJobs = data ? [...data] : [];
         myLocalJobs.forEach((lj: any) => {
             if (!allMyJobs.some(mj => mj.id === lj.id)) {
                 allMyJobs.push(lj);

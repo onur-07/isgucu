@@ -1,15 +1,20 @@
 ﻿"use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { Instagram, Linkedin, Twitter, Github, Youtube, Mail, Phone, MapPin, Globe } from "lucide-react";
 import { useState, useEffect } from "react";
 import type { ReactNode } from "react";
-import { getSiteConfig } from "@/lib/site-config";
+import { getSiteConfig, hydrateSiteConfigFromRemote } from "@/lib/site-config";
 
 export function Footer() {
     const [siteConfig, setSiteConfig] = useState(getSiteConfig());
 
     useEffect(() => {
+        hydrateSiteConfigFromRemote().then((remoteConfig) => {
+            if (!remoteConfig) return;
+            setSiteConfig(remoteConfig);
+        });
         const handleUpdate = () => setSiteConfig(getSiteConfig());
         window.addEventListener("site_config_updated", handleUpdate);
         return () => window.removeEventListener("site_config_updated", handleUpdate);
@@ -37,7 +42,14 @@ export function Footer() {
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-12 lg:gap-8">
                     <div className="lg:col-span-2 space-y-6">
                         <Link href="/" className="flex items-center space-x-3 font-bold font-heading text-2xl text-white">
-                            <img src={siteConfig.logoUrl || "/logo.png"} alt="Logo" className="h-10 w-10 object-contain rounded-lg bg-blue-900/30 p-1" />
+                            <Image
+                                src={siteConfig.logoUrl || "/logo.png"}
+                                alt="Logo"
+                                width={40}
+                                height={40}
+                                className="h-10 w-10 object-contain rounded-lg bg-blue-900/30 p-1"
+                                unoptimized
+                            />
                             <span>{siteConfig.siteName || "İŞGÜCÜ"}</span>
                         </Link>
                         <p className="text-blue-100/60 max-w-sm leading-relaxed font-medium">{siteConfig.footerDescription}</p>

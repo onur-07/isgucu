@@ -15,8 +15,11 @@ export default function WalletPage() {
 
     useEffect(() => {
         if (!user) { router.push("/login"); return; }
-        setTransactions(getUserTransactions(user.username));
-        setBalance(getUserBalance(user.username));
+        const id = window.setTimeout(() => {
+            setTransactions(getUserTransactions(user.username));
+            setBalance(getUserBalance(user.username));
+        }, 0);
+        return () => window.clearTimeout(id);
     }, [user, router]);
 
     if (!user) return null;

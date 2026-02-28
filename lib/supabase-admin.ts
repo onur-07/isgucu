@@ -1,6 +1,6 @@
-import { createClient } from "@supabase/supabase-js";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
-let cached: any | null = null;
+let cached: SupabaseClient | null = null;
 
 export function getSupabaseAdmin() {
   if (cached) return cached;
@@ -10,7 +10,7 @@ export function getSupabaseAdmin() {
 
   if (!url || !service) return null;
 
-  cached = createClient<any>(url, service, {
+  cached = createClient(url, service, {
     auth: {
       persistSession: false,
       autoRefreshToken: false,
