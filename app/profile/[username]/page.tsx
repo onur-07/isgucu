@@ -124,7 +124,7 @@ export default function PublicProfilePage() {
             <div className="min-h-screen bg-slate-50 flex items-center justify-center">
                 <div className="flex flex-col items-center gap-4">
                     <Loader2 className="h-10 w-10 text-blue-600 animate-spin" />
-                    <p className="font-black text-[10px] uppercase tracking-widest text-slate-400">Profil YÃ¼kleniyor...</p>
+                    <p className="font-black text-[10px] uppercase tracking-widest text-slate-400">Profil Yükleniyor...</p>
                 </div>
             </div>
         );
@@ -137,10 +137,10 @@ export default function PublicProfilePage() {
                     <div className="h-20 w-20 bg-slate-100 text-slate-400 rounded-3xl flex items-center justify-center mx-auto">
                         <MapPin className="h-10 w-10" />
                     </div>
-                    <h1 className="text-3xl font-black text-slate-900 uppercase tracking-tighter italic">Profil BulunamadÄ±</h1>
-                    <p className="text-slate-500 font-medium">BÃ¶yle bir kullanÄ±cÄ± bulunamadÄ± veya hesabÄ± pasif durumda.</p>
+                    <h1 className="text-3xl font-black text-slate-900 uppercase tracking-tighter italic">Profil Bulunamadı</h1>
+                    <p className="text-slate-500 font-medium">Böyle bir kullanıcı bulunamadı veya hesabı pasif durumda.</p>
                     <Button onClick={() => router.back()} variant="outline" className="rounded-2xl h-14 px-8 font-black uppercase text-xs tracking-widest">
-                        GERÄ° DÃ–N
+                        GERİ DÖN
                     </Button>
                 </div>
             </div>
@@ -159,13 +159,13 @@ export default function PublicProfilePage() {
                         <div className="h-10 w-10 rounded-xl border border-slate-100 flex items-center justify-center group-hover:bg-slate-50">
                             <ChevronLeft className="h-5 w-5" />
                         </div>
-                        <span className="font-black text-[10px] uppercase tracking-widest">Geri DÃ¶n</span>
+                        <span className="font-black text-[10px] uppercase tracking-widest">Geri Dön</span>
                     </button>
                     <Button
                         onClick={() => router.push(`/messages/${encodeURIComponent(profile.username)}`)}
                         className="bg-blue-600 hover:bg-blue-700 text-white rounded-2xl h-12 px-6 font-black uppercase text-[10px] tracking-widest gap-3 shadow-lg shadow-blue-100"
                     >
-                        <MessageCircle className="h-4 w-4" /> MESAJ GÃ–NDER
+                        <MessageCircle className="h-4 w-4" /> MESAJ GÖNDER
                     </Button>
                 </div>
             </div>
@@ -219,24 +219,29 @@ export default function PublicProfilePage() {
                                                 "px-4 py-1 rounded-full text-[10px] font-black uppercase tracking-[0.2em] shadow-sm",
                                                 isFreelancer ? "bg-blue-50 text-blue-600 border-blue-100" : "bg-orange-50 text-orange-600 border-orange-100"
                                             )}>
-                                                {isFreelancer ? "Freelancer" : "Ä°ÅŸ Veren"}
+                                                {isFreelancer ? "Freelancer" : "İş Veren"}
                                             </Badge>
                                             <span className="text-slate-300 font-light hidden md:block">|</span>
                                             <div className="flex items-center gap-1.5 text-slate-400 text-[10px] font-black uppercase tracking-widest">
-                                                <MapPin className="h-4 w-4" /> {profile.location || "DÃ¼nya Geneli"}
+                                                <MapPin className="h-4 w-4" /> {profile.location || "Dünya Geneli"}
                                             </div>
                                         </div>
                                         <h1 className="text-4xl md:text-6xl font-black text-slate-900 tracking-tighter italic">
                                             {profile.full_name || profile.username}
                                         </h1>
                                         <div className="text-slate-400 font-bold text-sm tracking-tight">
-                                            @{profile.username} â€¢ {profile.created_at ? formatDistance(new Date(profile.created_at), new Date(), { addSuffix: true, locale: tr }) : "Yeni Ãœye"} katÄ±ldÄ±
-                                        </div>`r`n                                        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-amber-50 border border-amber-100 text-amber-700 text-xs font-black uppercase tracking-widest">`r`n                                            <Star className="h-4 w-4 fill-amber-400 text-amber-400" />`r`n                                            {ratingCount > 0 ? `${ratingAvg.toFixed(1)} / 5.0` : "0.0 / 5.0"}`r`n                                            <span className="text-[10px] text-amber-500 normal-case font-bold">({ratingCount} değerlendirme)</span>`r`n                                        </div>
+                                            @{profile.username} • {profile.created_at ? formatDistance(new Date(profile.created_at), new Date(), { addSuffix: true, locale: tr }) : "Yeni Üye"} katıldı
+                                        </div>
+                                        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-amber-50 border border-amber-100 text-amber-700 text-xs font-black uppercase tracking-widest">
+                                            <Star className="h-4 w-4 fill-amber-400 text-amber-400" />
+                                            {ratingCount > 0 ? `${ratingAvg.toFixed(1)} / 5.0` : "0.0 / 5.0"}
+                                            <span className="text-[10px] text-amber-500 normal-case font-bold">({ratingCount} değerlendirme)</span>
+                                        </div>
                                     </div>
 
                                     <div className="max-w-2xl bg-slate-50/50 p-6 md:p-8 rounded-[2rem] border border-slate-100 italic">
                                         <p className="text-slate-600 font-medium leading-[1.8] text-lg">
-                                            {profile.bio || "Bu kullanÄ±cÄ± henÃ¼z kendini tanÄ±tacak bir biyografi eklememiÅŸ."}
+                                            {profile.bio || "Bu kullanıcı henüz kendini tanıtacak bir biyografi eklememiş."}
                                         </p>
                                     </div>
 
@@ -263,7 +268,7 @@ export default function PublicProfilePage() {
                                         Hizmetlerim
                                     </h3>
                                     <div className="text-xs font-bold text-slate-400 uppercase tracking-widest">
-                                        {gigs.length} Toplam Ä°lan
+                                        {gigs.length} Toplam İlan
                                     </div>
                                 </div>
                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
@@ -272,7 +277,7 @@ export default function PublicProfilePage() {
                                     ))}
                                     {gigs.length === 0 && (
                                         <div className="col-span-full py-20 text-center bg-white rounded-3xl border border-slate-50 border-dashed">
-                                            <p className="text-slate-400 font-bold uppercase text-[10px] tracking-widest">HenÃ¼z bir hizmet ilanÄ± eklememiÅŸ.</p>
+                                            <p className="text-slate-400 font-bold uppercase text-[10px] tracking-widest">Henüz bir hizmet ilanı eklememiş.</p>
                                         </div>
                                     )}
                                 </div>
@@ -285,10 +290,10 @@ export default function PublicProfilePage() {
                                 <div className="flex items-center justify-between">
                                     <h3 className="text-2xl font-black text-slate-900 uppercase tracking-tighter italic flex items-center gap-3">
                                         <div className="h-1.5 w-8 bg-orange-500 rounded-full" />
-                                        AÃ§tÄ±ÄŸÄ±m Ä°ÅŸ Ä°lanlarÄ±
+                                        Açtığım İş İlanları
                                     </h3>
                                     <div className="text-xs font-bold text-slate-400 uppercase tracking-widest">
-                                        {jobs.length} Aktif Ä°lan
+                                        {jobs.length} Aktif İlan
                                     </div>
                                 </div>
                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
@@ -297,7 +302,7 @@ export default function PublicProfilePage() {
                                     ))}
                                     {jobs.length === 0 && (
                                         <div className="col-span-full py-20 text-center bg-white rounded-3xl border border-slate-50 border-dashed">
-                                            <p className="text-slate-400 font-bold uppercase text-[10px] tracking-widest">HenÃ¼z bir iÅŸ ilanÄ± aÃ§mamÄ±ÅŸ.</p>
+                                            <p className="text-slate-400 font-bold uppercase text-[10px] tracking-widest">Henüz bir iş ilanı açmamış.</p>
                                         </div>
                                     )}
                                 </div>

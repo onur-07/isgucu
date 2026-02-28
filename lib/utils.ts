@@ -17,18 +17,18 @@ export function usernameFold(value: string | null | undefined): string {
 export function usernameKey(value: string | null | undefined): string {
   const raw = usernameFold(value);
   return raw
-    .replace(/Ã§/g, "c")
-    .replace(/ÄŸ/g, "g")
-    .replace(/Ä±/g, "i")
-    .replace(/iÌ‡/g, "i")
-    .replace(/Ã¶/g, "o")
-    .replace(/ÅŸ/g, "s")
-    .replace(/Ã¼/g, "u");
+    .replace(/ç/g, "c")
+    .replace(/ğ/g, "g")
+    .replace(/ı/g, "i")
+    .replace(/i̇/g, "i")
+    .replace(/ö/g, "o")
+    .replace(/ş/g, "s")
+    .replace(/ü/g, "u");
 }
 
 /**
  * Masks the last name of a person. 
- * Example: "Onur Åubat" -> "Onur Å."
+ * Example: "Onur Şubat" -> "Onur Ş."
  */
 export function maskFullName(name: string | null | undefined): string {
   if (!name) return "";
@@ -52,7 +52,7 @@ export function displayUsername(value: string | null | undefined): string {
 /**
  * Sanitizes message content: blocks IBAN, Phone numbers, Emails and Profanity.
  */
-export const PROFANITY_WORDS = ["kÃ¼fÃ¼r1", "kÃ¼fÃ¼r2", "hakaret1"]; // Can be expanded
+export const PROFANITY_WORDS = ["küfür1", "küfür2", "hakaret1"]; // Can be expanded
 
 export function friendlySupabaseError(err: unknown, fallback: string): string {
   const raw =
@@ -64,18 +64,18 @@ export function friendlySupabaseError(err: unknown, fallback: string): string {
   const lowered = msg.toLowerCase();
 
   if (lowered.includes("pii_blocked")) {
-    if (lowered.includes("phone")) return "GÃ¼venlik nedeniyle telefon numarasÄ± paylaÅŸÄ±mÄ± yasaktÄ±r.";
-    if (lowered.includes("iban")) return "GÃ¼venlik nedeniyle IBAN paylaÅŸÄ±mÄ± yasaktÄ±r.";
-    if (lowered.includes("email")) return "GÃ¼venlik nedeniyle e-posta/iletiÅŸim bilgisi paylaÅŸÄ±mÄ± yasaktÄ±r.";
-    return "GÃ¼venlik nedeniyle iletiÅŸim bilgisi paylaÅŸÄ±mÄ± yasaktÄ±r.";
+    if (lowered.includes("phone")) return "Güvenlik nedeniyle telefon numarası paylaşımı yasaktır.";
+    if (lowered.includes("iban")) return "Güvenlik nedeniyle IBAN paylaşımı yasaktır.";
+    if (lowered.includes("email")) return "Güvenlik nedeniyle e-posta/iletişim bilgisi paylaşımı yasaktır.";
+    return "Güvenlik nedeniyle iletişim bilgisi paylaşımı yasaktır.";
   }
 
   // Some clients surface postgres exceptions as JSON string
   if (lowered.includes("\"code\":\"p0001\"") && lowered.includes("pii_blocked")) {
-    if (lowered.includes("phone")) return "GÃ¼venlik nedeniyle telefon numarasÄ± paylaÅŸÄ±mÄ± yasaktÄ±r.";
-    if (lowered.includes("iban")) return "GÃ¼venlik nedeniyle IBAN paylaÅŸÄ±mÄ± yasaktÄ±r.";
-    if (lowered.includes("email")) return "GÃ¼venlik nedeniyle e-posta/iletiÅŸim bilgisi paylaÅŸÄ±mÄ± yasaktÄ±r.";
-    return "GÃ¼venlik nedeniyle iletiÅŸim bilgisi paylaÅŸÄ±mÄ± yasaktÄ±r.";
+    if (lowered.includes("phone")) return "Güvenlik nedeniyle telefon numarası paylaşımı yasaktır.";
+    if (lowered.includes("iban")) return "Güvenlik nedeniyle IBAN paylaşımı yasaktır.";
+    if (lowered.includes("email")) return "Güvenlik nedeniyle e-posta/iletişim bilgisi paylaşımı yasaktır.";
+    return "Güvenlik nedeniyle iletişim bilgisi paylaşımı yasaktır.";
   }
 
   return msg;
@@ -103,19 +103,19 @@ export function sanitizeMessage(text: string): { allowed: boolean; reason?: stri
     /^00905\d{9}$/.test(digitsOnly);
 
   if (looksLikeTrMobile) {
-    return { allowed: false, reason: "GÃ¼venlik nedeniyle telefon numarasÄ± paylaÅŸÄ±mÄ± yasaktÄ±r." };
+    return { allowed: false, reason: "Güvenlik nedeniyle telefon numarası paylaşımı yasaktır." };
   }
 
   // 2. Check for IBAN
   // Accept formats like "TR12 0006 1005 ..." (spaces) by removing non-alnum.
   if (/TR\d{24}/i.test(alnumOnly)) {
-    return { allowed: false, reason: "GÃ¼venlik nedeniyle IBAN paylaÅŸÄ±mÄ± yasaktÄ±r." };
+    return { allowed: false, reason: "Güvenlik nedeniyle IBAN paylaşımı yasaktır." };
   }
 
   // 3. Check for Emails
   const normalizedForEmail = text.replace(/\s+/g, "");
   if (/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/.test(text) || /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/.test(normalizedForEmail)) {
-    return { allowed: false, reason: "GÃ¼venlik nedeniyle iletiÅŸim bilgisi paylaÅŸÄ±mÄ± yasaktÄ±r." };
+    return { allowed: false, reason: "Güvenlik nedeniyle iletişim bilgisi paylaşımı yasaktır." };
   }
 
   // 4. Name/surname check:
@@ -132,7 +132,7 @@ export function sanitizeMessage(text: string): { allowed: boolean; reason?: stri
     const hasIdentityHint = identityHints.test(cleaned);
     const looksLikeRealName = firstNameLike.has(first);
     if (hasIdentityHint || looksLikeRealName) {
-      return { allowed: false, reason: "Guvenlik nedeniyle ad/soyad veya kisisel bilgi yazilamaz." };
+      return { allowed: false, reason: "Güvenlik nedeniyle ad/soyad veya kişisel bilgi yazılamaz." };
     }
   }
 
@@ -148,7 +148,7 @@ export function sanitizeMessage(text: string): { allowed: boolean; reason?: stri
     "dm",
     "direct",
     "iban",
-    "Ä±ban",
+    "ıban",
     "telefon",
     "tel",
     "gsm",
@@ -162,7 +162,7 @@ export function sanitizeMessage(text: string): { allowed: boolean; reason?: stri
     "wa.me",
   ];
   if (contactHints.some((h) => lower.includes(h))) {
-    return { allowed: false, reason: "GÃ¼venlik nedeniyle iletiÅŸim bilgisi paylaÅŸÄ±mÄ± yasaktÄ±r." };
+    return { allowed: false, reason: "Güvenlik nedeniyle iletişim bilgisi paylaşımı yasaktır." };
   }
 
   // 4. Check for Profanity
@@ -173,13 +173,13 @@ export function sanitizeMessage(text: string): { allowed: boolean; reason?: stri
     "aq",
     "siktir",
     "orospu",
-    "piÃ§",
-    "yavÅŸak",
+    "piç",
+    "yavşak",
     "ibne",
   ];
   for (const word of expanded) {
     if (normalizedForProfanity.includes(word)) {
-      return { allowed: false, reason: "KullandÄ±ÄŸÄ±nÄ±z mesajda kurallara aykÄ±rÄ± ifadeler bulunmaktadÄ±r." };
+      return { allowed: false, reason: "Kullandığınız mesajda kurallara aykırı ifadeler bulunmaktadır." };
     }
   }
 
@@ -189,7 +189,7 @@ export function sanitizeMessage(text: string): { allowed: boolean; reason?: stri
 export function sanitizeListingText(text: string): { allowed: boolean; reason?: string; cleanedText?: string } {
   const raw = String(text || "");
   const cleaned = raw.replace(/[\r\n\t]+/g, " ").replace(/\s+/g, " ").trim();
-  if (!cleaned) return { allowed: false, reason: "Bu alan boÅŸ bÄ±rakÄ±lamaz." };
+  if (!cleaned) return { allowed: false, reason: "Bu alan boş bırakılamaz." };
 
   const lower = cleaned.toLowerCase();
   const digitsOnly = cleaned.replace(/\D/g, "");
@@ -201,16 +201,16 @@ export function sanitizeListingText(text: string): { allowed: boolean; reason?: 
     /^905\d{9}$/.test(digitsOnly) ||
     /^00905\d{9}$/.test(digitsOnly);
   if (looksLikeTrMobile) {
-    return { allowed: false, reason: "GÃ¼venlik nedeniyle telefon numarasÄ±/iletiÅŸim bilgisi yazÄ±lamaz." };
+    return { allowed: false, reason: "Güvenlik nedeniyle telefon numarası/iletişim bilgisi yazılamaz." };
   }
 
   if (/TR\d{24}/i.test(alnumOnly)) {
-    return { allowed: false, reason: "GÃ¼venlik nedeniyle IBAN yazÄ±lamaz." };
+    return { allowed: false, reason: "Güvenlik nedeniyle IBAN yazılamaz." };
   }
 
   const normalizedForEmail = cleaned.replace(/\s+/g, "");
   if (/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/.test(cleaned) || /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/.test(normalizedForEmail)) {
-    return { allowed: false, reason: "GÃ¼venlik nedeniyle e-posta/iletiÅŸim bilgisi yazÄ±lamaz." };
+    return { allowed: false, reason: "Güvenlik nedeniyle e-posta/iletişim bilgisi yazılamaz." };
   }
 
   const contactHints = [
@@ -224,7 +224,7 @@ export function sanitizeListingText(text: string): { allowed: boolean; reason?: 
     "dm",
     "direct",
     "iban",
-    "Ä±ban",
+    "ıban",
     "telefon",
     "tel",
     "gsm",
@@ -237,7 +237,7 @@ export function sanitizeListingText(text: string): { allowed: boolean; reason?: 
     "wa.me",
   ];
   if (contactHints.some((h) => lower.includes(h)) || lower.includes("@")) {
-    return { allowed: false, reason: "GÃ¼venlik nedeniyle iletiÅŸim bilgisi paylaÅŸÄ±lamaz." };
+    return { allowed: false, reason: "Güvenlik nedeniyle iletişim bilgisi paylaşılamaz." };
   }
 
   const expanded = [
@@ -246,13 +246,13 @@ export function sanitizeListingText(text: string): { allowed: boolean; reason?: 
     "aq",
     "siktir",
     "orospu",
-    "piÃ§",
-    "yavÅŸak",
+    "piç",
+    "yavşak",
     "ibne",
   ];
   for (const word of expanded) {
     if (lower.includes(word)) {
-      return { allowed: false, reason: "KullandÄ±ÄŸÄ±nÄ±z iÃ§erikte kurallara aykÄ±rÄ± ifadeler bulunmaktadÄ±r." };
+      return { allowed: false, reason: "Kullandığınız içerikte kurallara aykırı ifadeler bulunmaktadır." };
     }
   }
 
@@ -270,7 +270,7 @@ export function sanitizeListingText(text: string): { allowed: boolean; reason?: 
     const hasIdentityHint = identityHints.test(cleaned);
     const looksLikeRealName = firstNameLike.has(first);
     if (hasIdentityHint || looksLikeRealName) {
-      return { allowed: false, reason: "Guvenlik nedeniyle ad/soyad veya kisisel bilgi yazilamaz." };
+      return { allowed: false, reason: "Güvenlik nedeniyle ad/soyad veya kişisel bilgi yazılamaz." };
     }
   }
   return { allowed: true, cleanedText: cleaned };

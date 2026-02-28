@@ -104,7 +104,11 @@ export default function Home() {
                 Tümünü İncele ({freelancerJobCount}) →
               </Link>
             </div>
-            <JobList limit={4} onTotalChange={setFreelancerJobCount} />
+            <JobList
+              limit={4}
+              onTotalChange={setFreelancerJobCount}
+              recommendedForFreelancer={{ id: user.id, username: user.username }}
+            />
           </div>
         </div>
       );
@@ -227,10 +231,10 @@ export default function Home() {
               e.preventDefault();
               const q = query.trim();
               if (!q) {
-                router.push("/freelancers");
+                router.push("/jobs");
                 return;
               }
-              router.push(`/freelancers?q=${encodeURIComponent(q)}`);
+              router.push(`/jobs?q=${encodeURIComponent(q)}`);
             }}
           >
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 bg-white p-3 rounded-3xl shadow-2xl border border-gray-100">

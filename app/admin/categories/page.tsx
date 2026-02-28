@@ -31,7 +31,9 @@ export default function AdminCategoriesPage() {
     const slugify = (s: string) => {
         return (s || "")
             .trim()
-            .toLowerCase()
+            .toLocaleLowerCase("tr-TR")
+            .normalize("NFC")
+            .replace(/\u0307/g, "")
             .replace(/\s+/g, "-")
             .replace(/[^a-z0-9\-ığüşöçİĞÜŞÖÇ]/gi, "")
             .replace(/-+/g, "-")

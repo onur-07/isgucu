@@ -14,6 +14,7 @@ export const CATEGORIES_DETAILED: Category[] = [
     { id: "yazilim", title: "Yazılım & Teknoloji", icon: "💻", color: "bg-gray-100" },
     { id: "ai", title: "Yapay Zeka (AI)", icon: "🤖", color: "bg-indigo-50" },
     { id: "is", title: "İş & Yönetim", icon: "📊", color: "bg-purple-50" },
+    { id: "freelancerlik", title: "Freelancerlık", icon: "🧑‍💼", color: "bg-emerald-50" },
 ];
 
 export const SUB_CATEGORIES_DATA: Record<string, string[]> = {
@@ -49,6 +50,10 @@ export const SUB_CATEGORIES_DATA: Record<string, string[]> = {
     is: [
         "Sanal Asistan", "Pazar Araştırması", "İş Planı Hazırlama", "Finansal Analiz",
         "Hukuki Danışmanlık", "Sunum Hazırlama", "İş Geliştirme", "E-ticaret Yönetimi"
+    ],
+    freelancerlik: [
+        "Profil & Portföy", "Teklif & Fiyatlandırma", "Müşteri İletişimi", "Proje Yönetimi",
+        "CV & LinkedIn", "Sözleşme & Fatura", "Zaman Yönetimi", "Kariyer Danışmanlığı"
     ]
 };
 
@@ -72,6 +77,16 @@ export const SERVICE_TYPES_DATA: Record<string, string[]> = {
 
     // Ses
     "Seslendirme": ["Reklam Seslendirmesi", "Kitap Seslendirmesi", "Santral Seslendirme", "Dublaj", "Oyun Karakteri"],
+
+    // Freelancerlık
+    "Profil & Portföy": ["Profil Düzenleme", "Portföy Hazırlama", "Bio Yazımı", "Profil Tasarımı"],
+    "Teklif & Fiyatlandırma": ["Teklif Metni", "Paket & Fiyatlandırma", "Satış Stratejisi", "Gig Optimizasyonu"],
+    "Müşteri İletişimi": ["Mesaj Şablonları", "Brief Hazırlama", "Müşteri Yönetimi", "İtiraz Yönetimi"],
+    "Proje Yönetimi": ["Task Planı", "Sprint Planlama", "Teslimat Süreci", "Revizyon Yönetimi"],
+    "CV & LinkedIn": ["CV Düzenleme", "LinkedIn Profil", "Ön Yazı", "ATS Uyum"],
+    "Sözleşme & Fatura": ["Sözleşme Şablonu", "Fatura Süreci", "Ödeme Planı", "Teklif Şartları"],
+    "Zaman Yönetimi": ["Takvim Planlama", "Odak & Verimlilik", "Çalışma Rutini", "İş Takibi"],
+    "Kariyer Danışmanlığı": ["Hedef Belirleme", "Uzmanlık Seçimi", "Pazar Analizi", "Büyüme Planı"],
 
     "default": ["Freelance Dan\u0131\u015fmanl\u0131k", "\u00d6zel Freelancer Projesi", "Teknik Uygulama Deste\u011fi", "Analiz ve Raporlama"]
 };

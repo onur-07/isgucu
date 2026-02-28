@@ -36,6 +36,8 @@ CREATE TABLE IF NOT EXISTS gigs (
   description TEXT NOT NULL,
   price DECIMAL NOT NULL,
   category TEXT NOT NULL,
+  sub_category TEXT,
+  service_type TEXT,
   images TEXT[] DEFAULT '{}',
   packages JSONB,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL

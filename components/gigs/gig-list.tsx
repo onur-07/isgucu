@@ -18,6 +18,8 @@ interface Gig {
     title: string;
     description: string;
     category: string;
+    subCategory?: string;
+    serviceType?: string;
     price: string;
     createdAt: string;
     isActive?: boolean;
@@ -32,6 +34,12 @@ export function GigList({ category, categoryId, limit }: { category?: string; ca
     const [gigs, setGigs] = useState<Gig[]>([]);
     const [loading, setLoading] = useState(true);
     const [loadError, setLoadError] = useState<string>("");
+
+    const lowerTr = (value: unknown) =>
+        String(value || "")
+            .toLocaleLowerCase("tr-TR")
+            .normalize("NFC")
+            .replace(/\u0307/g, "");
 
     useEffect(() => {
         const fetchGigs = async () => {
@@ -57,7 +65,7 @@ export function GigList({ category, categoryId, limit }: { category?: string; ca
                 const gigsRes = (await withTimeout(
                     supabase
                         .from('gigs')
-                        .select('id, user_id, title, description, category, price, created_at, images, packages')
+                        .select('id, user_id, title, description, category, sub_category, service_type, price, created_at, images, packages')
                         .order('created_at', { ascending: false }),
                     TIMEOUT_MS,
                     "Gigs sorgusu"
@@ -118,6 +126,8 @@ export function GigList({ category, categoryId, limit }: { category?: string; ca
                         title: g.title,
                         description: g.description,
                         category: g.category,
+                        subCategory: g.sub_category || "",
+                        serviceType: g.service_type || "",
                         price: g.price,
                         createdAt: g.created_at,
                         images: g.images || [],
@@ -163,7 +173,8 @@ export function GigList({ category, categoryId, limit }: { category?: string; ca
     if (categoryId) {
         filteredGigs = gigs.filter(g => String(g.category) === String(categoryId));
     } else if (category) {
-        filteredGigs = gigs.filter(g => g.category.toLowerCase().includes(category.toLowerCase()) ||
+        const catLower = lowerTr(category);
+        filteredGigs = gigs.filter(g => lowerTr(g.category).includes(catLower) ||
             (category === 'yazilim-mobil' && g.category === 'Yazılım & Mobil') ||
             (category === 'logo-grafik' && g.category === 'Logo & Grafik') ||
             (category === 'web-tasarim' && g.category === 'Web Tasarım') ||

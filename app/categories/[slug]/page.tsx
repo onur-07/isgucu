@@ -18,7 +18,7 @@ export default function CategoryPage({ params }: { params: { slug: string } }) {
                     {title} Hizmetleri
                 </h1>
                 <p className="text-muted-foreground">
-                    En iyi {title.toLowerCase()} uzmanlarını inceleyin.
+                    En iyi {title.toLocaleLowerCase("tr-TR")} uzmanlarını inceleyin.
                 </p>
             </div>
 

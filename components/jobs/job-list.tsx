@@ -31,19 +31,100 @@ type DbJobRow = {
     status?: unknown;
 };
 
-export function JobList({ limit, onTotalChange }: { limit?: number; onTotalChange?: (count: number) => void }) {
+type GigRow = {
+    title?: unknown;
+    description?: unknown;
+    category?: unknown;
+    sub_category?: unknown;
+    service_type?: unknown;
+    tags?: unknown;
+    is_active?: unknown;
+};
+
+const STOPWORDS = new Set([
+    "ve", "ile", "icin", "için", "veya", "ya", "da", "de", "bir", "bu", "o", "su", "şu", "en", "çok", "cok",
+    "hizmet", "ilan", "is", "iş", "proje", "freelancer", "uzman", "teklif", "yeni", "gibi", "olan", "olur",
+]);
+
+const CATEGORY_SEO_MAP: Record<string, string[]> = {
+    "web tasarım": ["web", "tasarım", "ui", "ux", "wordpress", "shopify", "seo", "landing page"],
+    "logo & grafik": ["logo", "grafik", "kurumsal kimlik", "brand", "social media tasarım"],
+    "yazılım & mobil": ["yazılım", "mobil", "react", "nextjs", "ios", "android", "api"],
+    "video & animasyon": ["video", "edit", "kurgu", "animasyon", "reels", "youtube"],
+    "çeviri & içerik": ["çeviri", "içerik", "metin", "seo içerik", "blog yazısı"],
+};
+
+const fold = (value: string) =>
+    String(value || "")
+        .toLocaleLowerCase("tr-TR")
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .trim();
+
+const tokenize = (value: string) =>
+    fold(value)
+        .split(/[^a-z0-9]+/g)
+        .map((t) => t.trim())
+        .filter((t) => t.length >= 3 && !STOPWORDS.has(t));
+
+const extractTags = (value: string) => {
+    const tags = new Set<string>();
+    const text = String(value || "");
+    const hashMatches = text.match(/#([^\s#.,;!?]+)/g) || [];
+    for (const match of hashMatches) {
+        tags.add(match.replace(/^#/, ""));
+    }
+    return Array.from(tags);
+};
+
+const getSeoKeywordsForCategory = (category: string) => {
+    const f = fold(category);
+    for (const [key, list] of Object.entries(CATEGORY_SEO_MAP)) {
+        if (f.includes(fold(key))) return list;
+    }
+    return [];
+};
+
+const buildSearchText = (job: Job) => {
+    const seoWords = getSeoKeywordsForCategory(job.category);
+    const tags = extractTags(job.description);
+    return [
+        job.title,
+        job.description,
+        job.category,
+        ...seoWords,
+        ...tags,
+    ]
+        .map((v) => fold(String(v || "")))
+        .join(" ");
+};
+
+const matchesQuery = (job: Job, query: string) => {
+    const qTokens = tokenize(query);
+    if (qTokens.length === 0) return true;
+    const searchable = buildSearchText(job);
+    return qTokens.every((t) => searchable.includes(t));
+};
+
+export function JobList({
+    limit,
+    onTotalChange,
+    searchQuery,
+    recommendedForFreelancer,
+}: {
+    limit?: number;
+    onTotalChange?: (count: number) => void;
+    searchQuery?: string;
+    recommendedForFreelancer?: { id?: string; username?: string } | null;
+}) {
     const [jobs, setJobs] = useState<Job[]>([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         const fetchJobs = async () => {
             try {
-                // 1) Fetch jobs + active offer-order links (best effort)
                 const [{ data: dbData }, { data: activeOfferOrders }] = await Promise.all([
-                    supabase
-                        .from('jobs')
-                        .select('*')
-                        .order('created_at', { ascending: false }),
+                    supabase.from("jobs").select("*").order("created_at", { ascending: false }),
                     supabase
                         .from("orders")
                         .select("package_key, status")
@@ -53,33 +134,28 @@ export function JobList({ limit, onTotalChange }: { limit?: number; onTotalChang
 
                 const profileMap: Record<string, { id?: string; username?: string; avatar_url?: string; full_name?: string }> = {};
                 if (dbData && dbData.length > 0) {
-                    const userIds = Array.from(new Set(dbData.map(j => j.user_id).filter(Boolean)));
+                    const userIds = Array.from(new Set(dbData.map((j) => j.user_id).filter(Boolean)));
                     if (userIds.length > 0) {
-                        // Try matching by id (UUID)
                         const { data: profilesById } = await supabase
-                            .from('profiles')
-                            .select('id, username, avatar_url, full_name')
-                            .in('id', userIds);
-
+                            .from("profiles")
+                            .select("id, username, avatar_url, full_name")
+                            .in("id", userIds);
                         if (profilesById) {
-                            profilesById.forEach(p => {
-                                profileMap[p.id] = p;
+                            profilesById.forEach((p) => {
+                                profileMap[String(p.id)] = p;
                             });
                         }
 
-                        // For any unmatched user_ids, try matching by username
-                        const unmatchedIds = userIds.filter(uid => !profileMap[String(uid)]);
+                        const unmatchedIds = userIds.filter((uid) => !profileMap[String(uid)]);
                         if (unmatchedIds.length > 0) {
                             const { data: profilesByUsername } = await supabase
-                                .from('profiles')
-                                .select('id, username, avatar_url, full_name')
-                                .in('username', unmatchedIds);
-
+                                .from("profiles")
+                                .select("id, username, avatar_url, full_name")
+                                .in("username", unmatchedIds);
                             if (profilesByUsername) {
-                                profilesByUsername.forEach(p => {
-                                    // Map by the username so we can find it by user_id later
-                                    profileMap[p.username] = p;
-                                    profileMap[p.username.toLowerCase()] = p;
+                                profilesByUsername.forEach((p) => {
+                                    profileMap[String(p.username)] = p;
+                                    profileMap[String(p.username).toLowerCase()] = p;
                                 });
                             }
                         }
@@ -99,28 +175,29 @@ export function JobList({ limit, onTotalChange }: { limit?: number; onTotalChang
                         createdAt: String(row.created_at ?? ""),
                         user_id: key,
                         status: String(row.status ?? "open"),
-                        owner: prof ? {
-                            username: String(prof.username || ""),
-                            avatar_url: String(prof.avatar_url || ""),
-                            full_name: String(prof.full_name || ""),
-                        } : null,
+                        owner: prof
+                            ? {
+                                  username: String(prof.username || ""),
+                                  avatar_url: String(prof.avatar_url || ""),
+                                  full_name: String(prof.full_name || ""),
+                              }
+                            : null,
                     };
                 });
 
-                // 2) Derive "occupied" job ids from accepted offers that became active orders
                 const occupiedJobIds = new Set<string>();
-                const offerOrderIds = Array.from(new Set((activeOfferOrders || [])
-                    .map((r: any) => String(r?.package_key || ""))
-                    .filter((k: string) => k.startsWith("offer:"))
-                    .map((k: string) => Number(k.slice("offer:".length)))
-                    .filter((n: number) => Number.isFinite(n) && n > 0)));
+                const offerOrderIds = Array.from(
+                    new Set(
+                        (activeOfferOrders || [])
+                            .map((r: any) => String(r?.package_key || ""))
+                            .filter((k: string) => k.startsWith("offer:"))
+                            .map((k: string) => Number(k.slice("offer:".length)))
+                            .filter((n: number) => Number.isFinite(n) && n > 0)
+                    )
+                );
 
                 if (offerOrderIds.length > 0) {
-                    const { data: linkedOffers } = await supabase
-                        .from("offers")
-                        .select("id, extras")
-                        .in("id", offerOrderIds);
-
+                    const { data: linkedOffers } = await supabase.from("offers").select("id, extras").in("id", offerOrderIds);
                     for (const offer of (linkedOffers || []) as any[]) {
                         const extras = offer?.extras as { source?: string; job_id?: string | number } | null | undefined;
                         if (!extras || String(extras.source || "") !== "job") continue;
@@ -129,7 +206,7 @@ export function JobList({ limit, onTotalChange }: { limit?: number; onTotalChang
                     }
                 }
 
-                const mergedJobs = normalizedDbJobs
+                let mergedJobs = normalizedDbJobs
                     .filter((j) => {
                         const status = String(j.status || "open").toLowerCase();
                         if (status !== "open") return false;
@@ -138,34 +215,88 @@ export function JobList({ limit, onTotalChange }: { limit?: number; onTotalChang
                     })
                     .sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
 
+                const q = String(searchQuery || "").trim();
+                if (q) {
+                    mergedJobs = mergedJobs.filter((job) => matchesQuery(job, q));
+                }
+
+                if (recommendedForFreelancer?.id || recommendedForFreelancer?.username) {
+                    const uid = String(recommendedForFreelancer.id || "").trim();
+                    const uname = String(recommendedForFreelancer.username || "").trim();
+
+                    const [gigsById, gigsByUsername, profileById, profileByUsername] = await Promise.all([
+                        uid ? supabase.from("gigs").select("title, description, category, sub_category, service_type, tags, is_active").eq("user_id", uid) : Promise.resolve({ data: [] } as any),
+                        uname ? supabase.from("gigs").select("title, description, category, sub_category, service_type, tags, is_active").eq("user_id", uname) : Promise.resolve({ data: [] } as any),
+                        uid ? supabase.from("profiles").select("skills").eq("id", uid).maybeSingle() : Promise.resolve({ data: null } as any),
+                        uname ? supabase.from("profiles").select("skills").eq("username", uname).maybeSingle() : Promise.resolve({ data: null } as any),
+                    ]);
+
+                    const allGigs = [...(gigsById?.data || []), ...(gigsByUsername?.data || [])] as GigRow[];
+                    const activeGigs = allGigs.filter((g) => g?.is_active !== false);
+
+                    const serviceTokens = new Set<string>();
+                    for (const gig of activeGigs) {
+                        const textParts = [
+                            String(gig.title || ""),
+                            String(gig.description || ""),
+                            String(gig.category || ""),
+                            String(gig.sub_category || ""),
+                            String(gig.service_type || ""),
+                            Array.isArray(gig.tags) ? gig.tags.join(" ") : String(gig.tags || ""),
+                        ];
+                        tokenize(textParts.join(" ")).forEach((t) => serviceTokens.add(t));
+                    }
+
+                    const skillsRaw = (profileById?.data as any)?.skills || (profileByUsername?.data as any)?.skills || [];
+                    const skillsText = Array.isArray(skillsRaw) ? skillsRaw.join(" ") : String(skillsRaw || "");
+                    const skillsTokens = new Set(tokenize(skillsText));
+
+                    let effectiveTokens = new Set<string>(serviceTokens);
+                    if (skillsTokens.size > 0) {
+                        const intersect = new Set<string>();
+                        for (const t of serviceTokens) {
+                            if (skillsTokens.has(t)) intersect.add(t);
+                        }
+                        if (intersect.size >= 3) effectiveTokens = intersect;
+                    }
+
+                    if (effectiveTokens.size > 0) {
+                        mergedJobs = mergedJobs.filter((job) => {
+                            const searchable = buildSearchText(job);
+                            for (const t of effectiveTokens) {
+                                if (searchable.includes(t)) return true;
+                            }
+                            return false;
+                        });
+                    } else {
+                        mergedJobs = [];
+                    }
+                }
+
                 setJobs(mergedJobs);
                 if (onTotalChange) onTotalChange(mergedJobs.length);
-
             } catch (err) {
                 console.error("Job list fetch error:", err);
+                setJobs([]);
+                if (onTotalChange) onTotalChange(0);
             } finally {
                 setLoading(false);
             }
         };
 
         fetchJobs();
-    }, [limit, onTotalChange]);
+    }, [limit, onTotalChange, searchQuery, recommendedForFreelancer?.id, recommendedForFreelancer?.username]);
 
     if (loading) {
-        return (
-            <div className="py-10 text-center text-sm font-bold text-gray-500">
-                Yükleniyor...
-            </div>
-        );
+        return <div className="py-10 text-center text-sm font-bold text-gray-500">Yükleniyor...</div>;
     }
 
     const displayJobs = limit ? jobs.slice(0, limit) : jobs;
-
     if (displayJobs.length === 0) {
         return (
             <div className="bg-white border rounded-2xl p-10 text-center">
-                <div className="text-sm font-bold text-gray-700">Henüz ilan bulunmamaktadır.</div>
-                <div className="text-xs text-gray-400 mt-2">Yeni ilanlar eklendiğinde burada görünecek.</div>
+                <div className="text-sm font-bold text-gray-700">Uygun ilan bulunamadı.</div>
+                <div className="text-xs text-gray-400 mt-2">Arama/öneri kriterine uygun yeni ilanlar eklendiğinde burada görünecek.</div>
             </div>
         );
     }
@@ -178,3 +309,4 @@ export function JobList({ limit, onTotalChange }: { limit?: number; onTotalChang
         </div>
     );
 }
+

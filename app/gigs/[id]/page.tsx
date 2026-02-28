@@ -38,6 +38,8 @@ interface Gig {
     title: string;
     description: string;
     category: string;
+    subCategory?: string;
+    serviceType?: string;
     price: string;
     createdAt: string;
     seller: string;
@@ -89,7 +91,7 @@ export default function GigDetailPage() {
                 const gigRes = (await withTimeout(
                     supabase
                         .from("gigs")
-                        .select("id, user_id, title, description, category, price, created_at, images, packages")
+                        .select("id, user_id, title, description, category, sub_category, service_type, price, created_at, images, packages")
                         .eq("id", idNum)
                         .maybeSingle(),
                     TIMEOUT_MS,
@@ -128,6 +130,8 @@ export default function GigDetailPage() {
                     title: row.title,
                     description: row.description,
                     category: row.category,
+                    subCategory: row.sub_category || "",
+                    serviceType: row.service_type || "",
                     price: row.price,
                     createdAt: row.created_at,
                     seller: sellerUsername || "Anonim",
@@ -370,6 +374,15 @@ export default function GigDetailPage() {
 
                     {/* LEFT COLUMN */}
                     <div className="lg:col-span-8 space-y-8">
+                        <div className="bg-white rounded-2xl border border-gray-100 p-5 flex flex-wrap gap-2 items-center">
+                            <Badge className="bg-gray-900 text-white font-black border-0">{gig.category}</Badge>
+                            {gig.subCategory ? (
+                                <Badge variant="outline" className="font-black">{gig.subCategory}</Badge>
+                            ) : null}
+                            {gig.serviceType ? (
+                                <Badge variant="outline" className="font-black">{gig.serviceType}</Badge>
+                            ) : null}
+                        </div>
                         {/* 1. Media */}
                         <Card id="ilan-ozeti" className="border-0 shadow-sm overflow-hidden rounded-2xl">
                             <CardContent className="p-0 relative group">

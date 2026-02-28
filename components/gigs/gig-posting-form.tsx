@@ -543,6 +543,8 @@ export function GigPostingForm() {
                         title: titleMod.cleanedText || titleValue,
                         description: descMod.cleanedText || formData.description,
                         category: formData.category,
+                        sub_category: formData.subCategory,
+                        service_type: formData.serviceType,
                         price: packages.basic.price,
                         is_active: true,
                         images: formData.images,
@@ -1345,7 +1347,7 @@ export function GigPostingForm() {
                                                 onClick={() => setExtras(prev => prev.map((e, i) => i === idx ? { ...e, selected: !e.selected } : e))}
                                                 className={`h-6 w-6 rounded border-2 flex items-center justify-center transition-all ${extra.selected ? "bg-blue-600 border-blue-600 text-white" : "bg-white border-gray-300 group-hover:border-blue-400"}`}
                                             >
-                                                {extra.selected && <span className="text-[10px] font-black">âœ“</span>}
+                                                {extra.selected && <span className="text-[10px] font-black">✓</span>}
                                             </button>
 
                                             {extra.isCustom ? (
@@ -1382,7 +1384,7 @@ export function GigPostingForm() {
                                                         </SelectTrigger>
                                                         <SelectContent className="rounded-xl border-2 border-gray-50">
                                                             {[0, 1, 2, 3, 5, 7].map(d => (
-                                                                <SelectItem key={d} value={d.toString()} className="font-bold">{d === 0 ? "AynÄ± GÃ¼n" : `+${d} GÃ¼n`}</SelectItem>
+                                                                <SelectItem key={d} value={d.toString()} className="font-bold">{d === 0 ? "Aynı Gün" : `+${d} Gün`}</SelectItem>
                                                             ))}
                                                         </SelectContent>
                                                     </Select>
@@ -1421,7 +1423,7 @@ export function GigPostingForm() {
                             onClick={() => setStep(3)}
                             className="px-10 py-6 rounded-xl font-bold border-2"
                         >
-                            â† Geri
+                            ← Geri
                         </Button>
                         <Button
                             type="button"
@@ -1429,7 +1431,7 @@ export function GigPostingForm() {
                             disabled={!isStep4Valid()}
                             className="bg-blue-600 hover:bg-blue-700 text-white px-12 py-6 rounded-xl font-bold shadow-xl shadow-blue-100 disabled:opacity-50"
                         >
-                            Devam Et â†’
+                            Devam Et →
                         </Button>
                     </div>
                 </div>
@@ -1480,18 +1482,18 @@ export function GigPostingForm() {
                         <div className="bg-gradient-to-br from-blue-600 to-indigo-800 rounded-3xl p-8 text-white shadow-2xl relative overflow-hidden group">
                             <div className="absolute -right-10 -top-10 w-40 h-40 bg-white/10 rounded-full blur-3xl group-hover:scale-150 transition-transform duration-1000" />
                             <h4 className="text-xl font-bold mb-6 flex items-center gap-3">
-                                <span className="h-8 w-8 rounded-full bg-white/20 flex items-center justify-center text-sm">âœ¨</span>
+                                <span className="h-8 w-8 rounded-full bg-white/20 flex items-center justify-center text-sm">✨</span>
                                 Hizmet Özeti
                             </h4>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 text-sm">
                                 <div className="space-y-4">
                                     <div className="flex flex-col gap-1">
                                         <span className="text-blue-200 text-[10px] font-black uppercase tracking-widest">Başlık</span>
-                                        <span className="text-lg font-bold leading-tight">Ben, {formData.title || "â€”"}</span>
+                                        <span className="text-lg font-bold leading-tight">Ben, {formData.title || "—"}</span>
                                     </div>
                                     <div className="flex flex-col gap-1">
                                         <span className="text-blue-200 text-[10px] font-black uppercase tracking-widest">Kategori</span>
-                                        <span className="font-semibold text-white/90">{formData.category || "â€”"}</span>
+                                        <span className="font-semibold text-white/90">{formData.category || "—"}</span>
                                     </div>
                                 </div>
                                 <div className="space-y-4">

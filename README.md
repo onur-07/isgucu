@@ -16,6 +16,31 @@ bun dev
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
+## Environment Variables (Supabase)
+
+Set the following variables locally (e.g. `.env.local`) and in Vercel (Project Settings -> Environment Variables):
+
+```
+NEXT_PUBLIC_SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_ANON_KEY=
+SUPABASE_SERVICE_ROLE_KEY=
+```
+
+## Supabase DB Migration Notes
+
+If your `gigs` table already exists, run the following in Supabase SQL Editor:
+
+```sql
+ALTER TABLE public.gigs
+  ADD COLUMN IF NOT EXISTS sub_category text;
+
+ALTER TABLE public.gigs
+  ADD COLUMN IF NOT EXISTS service_type text;
+
+ALTER TABLE public.gigs
+  ADD COLUMN IF NOT EXISTS is_active boolean DEFAULT true;
+```
+
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.

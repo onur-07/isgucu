@@ -19,6 +19,8 @@ interface Gig {
     title: string;
     description: string;
     category: string;
+    subCategory?: string;
+    serviceType?: string;
     price: string;
     createdAt: string;
     isActive?: boolean;
@@ -64,6 +66,11 @@ export function GigCard({ gig }: { gig: Gig }) {
                             <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
                             {gig.category}
                         </div>
+                        {gig.serviceType ? (
+                            <div className="bg-white/95 backdrop-blur-md text-gray-700 text-[10px] font-bold px-2.5 py-1 rounded shadow-sm border border-white/20">
+                                {gig.serviceType}
+                            </div>
+                        ) : null}
                     </div>
 
                     <button className="absolute top-3 right-3 h-9 w-9 bg-white/90 backdrop-blur-md rounded-full flex items-center justify-center hover:bg-white hover:text-red-500 transition-all shadow-md group/heart">
