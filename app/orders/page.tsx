@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Clock, CheckCircle2, XCircle, MessageCircle, Star, PackageOpen } from "lucide-react";
 import { getUserOrders, type Order } from "@/lib/data-service";
 import { supabase } from "@/lib/supabase";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 
 const statusConfig = {
     pending: { label: "Bekliyor", icon: Clock, color: "text-yellow-600 bg-yellow-50 border-yellow-200" },
@@ -21,6 +23,11 @@ export default function OrdersPage() {
     const router = useRouter();
     const [orders, setOrders] = useState<Order[]>([]);
     const [busyId, setBusyId] = useState<string>("");
+
+    const [reviewOpen, setReviewOpen] = useState(false);
+    const [reviewOrder, setReviewOrder] = useState<Order | null>(null);
+    const [reviewRating, setReviewRating] = useState<string>("5");
+    const [reviewComment, setReviewComment] = useState<string>("");
 
     useEffect(() => {
         if (!user) { router.push("/login"); return; }
@@ -72,7 +79,7 @@ export default function OrdersPage() {
         }
     };
 
-    const handleReview = async (order: Order) => {
+    const insertReview = async (order: Order, rating: number, comment: string) => {
         if (!user) return;
         if (busyId) return;
         if (order.status !== "completed") return;
@@ -83,16 +90,6 @@ export default function OrdersPage() {
             return;
         }
 
-        const ratingRaw = window.prompt("Puan (1-5):", "5");
-        if (ratingRaw === null) return;
-        const rating = Math.round(Number(String(ratingRaw).trim()));
-        if (!Number.isFinite(rating) || rating < 1 || rating > 5) {
-            window.alert("Puan 1 ile 5 arasında olmalıdır.");
-            return;
-        }
-
-        const comment = (window.prompt("Yorum (opsiyonel):", "") ?? "").trim();
-
         setBusyId(order.id);
         try {
             const { error } = await supabase.from("reviews").insert([
@@ -101,7 +98,7 @@ export default function OrdersPage() {
                     from_user_id: user.id,
                     to_user_id: otherId,
                     rating,
-                    comment: comment || null,
+                    comment: comment.trim() || null,
                 },
             ]);
             if (error) {
@@ -119,6 +116,47 @@ export default function OrdersPage() {
         } finally {
             setBusyId("");
         }
+    };
+
+    const handleReviewPrompt = async (order: Order) => {
+        if (!user) return;
+        if (busyId) return;
+        if (order.status !== "completed") return;
+
+        const ratingRaw = window.prompt("Puan (1-5):", "5");
+        if (ratingRaw === null) return;
+        const rating = Math.round(Number(String(ratingRaw).trim()));
+        if (!Number.isFinite(rating) || rating < 1 || rating > 5) {
+            window.alert("Puan 1 ile 5 arasında olmalıdır.");
+            return;
+        }
+
+        const comment = (window.prompt("Yorum (opsiyonel):", "") ?? "").trim();
+
+        await insertReview(order, rating, comment);
+    };
+
+    const openReviewModal = (order: Order) => {
+        if (!user) return;
+        if (busyId) return;
+        if (order.status !== "completed") return;
+        setReviewOrder(order);
+        setReviewRating("5");
+        setReviewComment("");
+        setReviewOpen(true);
+    };
+
+    const submitReviewModal = async () => {
+        if (!reviewOrder) return;
+        const rating = Math.round(Number(String(reviewRating).trim()));
+        if (!Number.isFinite(rating) || rating < 1 || rating > 5) {
+            window.alert("Puan 1 ile 5 arasında olmalıdır.");
+            return;
+        }
+        setReviewOpen(false);
+        const o = reviewOrder;
+        setReviewOrder(null);
+        await insertReview(o, rating, reviewComment);
     };
 
     const handleRequestRevision = async (order: Order) => {
@@ -229,6 +267,57 @@ export default function OrdersPage() {
 
     return (
         <div className="mx-auto w-full max-w-5xl px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+            {reviewOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+                    <div className="w-full max-w-lg rounded-2xl bg-white shadow-2xl border border-slate-100">
+                        <div className="p-6 border-b border-slate-100 flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                                <Star className="h-5 w-5 text-amber-500" />
+                                <h3 className="font-black text-slate-900">Değerlendirme</h3>
+                            </div>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                    setReviewOpen(false);
+                                    setReviewOrder(null);
+                                }}
+                            >
+                                Kapat
+                            </Button>
+                        </div>
+
+                        <div className="p-6 space-y-4">
+                            <div className="space-y-2">
+                                <div className="text-xs font-black uppercase tracking-widest text-slate-500">Puan (1-5)</div>
+                                <Input value={reviewRating} onChange={(e) => setReviewRating(e.target.value)} className="h-11" />
+                            </div>
+
+                            <div className="space-y-2">
+                                <div className="text-xs font-black uppercase tracking-widest text-slate-500">Yorum (opsiyonel)</div>
+                                <Textarea value={reviewComment} onChange={(e) => setReviewComment(e.target.value)} className="min-h-[110px]" />
+                            </div>
+                        </div>
+
+                        <div className="p-6 border-t border-slate-100 flex flex-col sm:flex-row gap-2 sm:items-center sm:justify-end">
+                            <Button
+                                variant="outline"
+                                onClick={() => {
+                                    const o = reviewOrder;
+                                    setReviewOpen(false);
+                                    setReviewOrder(null);
+                                    if (o) void handleReviewPrompt(o);
+                                }}
+                            >
+                                Prompt ile hızlı değerlendir
+                            </Button>
+                            <Button onClick={submitReviewModal} disabled={!!busyId} className="bg-slate-900 hover:bg-slate-800 text-white">
+                                Kaydet
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+            )}
             <div className="mb-8 text-center sm:text-left">
                 <h1 className="text-3xl font-bold font-heading">📋 Siparişlerim</h1>
                 <p className="text-gray-500 mt-1">Tüm siparişlerini buradan takip edebilirsin.</p>
@@ -334,7 +423,7 @@ export default function OrdersPage() {
                                                 </>
                                             )}
                                             {order.status === "completed" && (
-                                                <Button variant="outline" size="sm" disabled={busy} onClick={() => handleReview(order)}>
+                                                <Button variant="outline" size="sm" disabled={busy} onClick={() => openReviewModal(order)}>
                                                     <Star className="h-4 w-4 mr-1" /> Değerlendir
                                                 </Button>
                                             )}
