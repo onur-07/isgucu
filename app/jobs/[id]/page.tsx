@@ -250,6 +250,10 @@ export default function JobDetailPage() {
                 const parts = clean.split("/").filter(Boolean);
                 return parts.length ? parts[parts.length - 1] : clean;
             };
+            const normalizeForMatch = (value: string) =>
+                String(value || "")
+                    .toLowerCase()
+                    .replace(/[^a-z0-9]/g, "");
             const toStoragePathFromUrl = (url: string) => {
                 try {
                     const u = new URL(url);
@@ -278,22 +282,59 @@ export default function JobDetailPage() {
                 return signedUrl;
             };
 
+            const tryResolveByNameVariants = async (nameOrPath: string) => {
+                const clean = String(nameOrPath || "").trim();
+                if (!clean) return "";
+
+                // 1) Direct path as-is (supports legacy root files like "file.png")
+                const asIs = await resolveFromPath(clean);
+                if (asIs) return asIs;
+
+                // 2) Try prefixed paths under known owner folders
+                for (const prefix of ownerPrefixCandidates) {
+                    const maybePath = `${prefix}/${clean}`.replace(/^\/+/, "");
+                    const resolved = await resolveFromPath(maybePath);
+                    if (resolved) return resolved;
+                }
+
+                // 3) Try using extracted file name only
+                const justName = fileNameFromPath(clean);
+                if (justName && justName !== clean) {
+                    const directName = await resolveFromPath(justName);
+                    if (directName) return directName;
+                    for (const prefix of ownerPrefixCandidates) {
+                        const maybePath = `${prefix}/${justName}`.replace(/^\/+/, "");
+                        const resolved = await resolveFromPath(maybePath);
+                        if (resolved) return resolved;
+                    }
+                }
+
+                return "";
+            };
+
             const tryFindInFolder = async (searchName: string) => {
                 const cleanName = String(searchName || "").trim();
                 if (!cleanName) return "";
-                if (ownerPrefixCandidates.length === 0) return "";
+                const target = cleanName.toLowerCase();
+                const targetNorm = normalizeForMatch(cleanName);
+                const prefixes = ownerPrefixCandidates.length > 0 ? ownerPrefixCandidates : [""];
 
-                for (const prefix of ownerPrefixCandidates) {
+                for (const prefix of prefixes) {
                     try {
                         const { data } = await supabase.storage
                             .from("job-attachments")
                             .list(prefix, { limit: 500 });
                         const rows = (data || []) as StorageListItem[];
-                        const target = cleanName.toLowerCase();
                         const found = rows.find((x) => String(x?.name || "").toLowerCase() === target)
                             || rows.find((x) => String(x?.name || "").toLowerCase().endsWith(target))
-                            || rows.find((x) => String(x?.name || "").toLowerCase().includes(target));
-                        if (found?.name) return `${prefix}/${found.name}`;
+                            || rows.find((x) => String(x?.name || "").toLowerCase().includes(target))
+                            || rows.find((x) => {
+                                const n = normalizeForMatch(String(x?.name || ""));
+                                return Boolean(n) && (n === targetNorm || n.includes(targetNorm) || targetNorm.includes(n));
+                            });
+                        if (found?.name) {
+                            return prefix ? `${prefix}/${found.name}` : found.name;
+                        }
                     } catch {
                         // try next prefix
                     }
@@ -317,7 +358,7 @@ export default function JobDetailPage() {
                             || rawFile.includes("/storage/v1/object/authenticated/job-attachments/");
                         const pathFromUrl = toStoragePathFromUrl(rawFile);
                         if (pathFromUrl) {
-                            const signedFromUrl = await resolveFromPath(pathFromUrl);
+                            const signedFromUrl = await tryResolveByNameVariants(pathFromUrl);
                             if (signedFromUrl) return signedFromUrl;
 
                             const searchName = fileNameFromPath(pathFromUrl);
@@ -331,7 +372,7 @@ export default function JobDetailPage() {
                     }
 
                     if (rawFile.includes("/")) {
-                        const signedFromPath = await resolveFromPath(rawFile);
+                        const signedFromPath = await tryResolveByNameVariants(rawFile);
                         if (signedFromPath) return signedFromPath;
 
                         const searchName = fileNameFromPath(rawFile);
@@ -345,6 +386,8 @@ export default function JobDetailPage() {
                     if (ownerPrefixCandidates.length === 0) return "";
 
                     try {
+                        const directByName = await tryResolveByNameVariants(rawFile);
+                        if (directByName) return directByName;
                         const maybePath = await tryFindInFolder(rawFile);
                         if (!maybePath) return "";
                         return await resolveFromPath(maybePath);
