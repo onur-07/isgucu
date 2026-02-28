@@ -27,6 +27,7 @@ export default function Home() {
   const { user, isAuthenticated, loading } = useAuth();
   const router = useRouter();
   const [query, setQuery] = useState("");
+  const [employerQuery, setEmployerQuery] = useState("");
   const [freelancerJobCount, setFreelancerJobCount] = useState(0);
   const rotatingHeroWords = useMemo(
     () => ["Freelancerlık", "Proje Yaptırmak", "Doğru Uzmanı Bulmak"],
@@ -116,8 +117,8 @@ export default function Home() {
 
     if (user.role === "employer") {
       return (
-        <div className="container py-12 space-y-12">
-          <div className="bg-gradient-to-r from-amber-500 to-yellow-600 rounded-[2.5rem] p-10 text-white shadow-2xl relative overflow-hidden text-center md:text-left">
+        <div className="mx-auto w-full max-w-6xl px-4 sm:px-6 lg:px-8 py-10 sm:py-12 space-y-10 sm:space-y-12">
+          <div className="bg-gradient-to-r from-amber-500 to-yellow-600 rounded-[2rem] sm:rounded-[2.5rem] p-6 sm:p-10 text-white shadow-2xl relative overflow-hidden text-center md:text-left">
             <div className="absolute inset-0 opacity-10 bg-[url('/grid.svg')]" />
             <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-8">
               <div className="space-y-4 flex-1">
@@ -126,6 +127,33 @@ export default function Home() {
                   Projeniz İçin <br /> En İyi Uzmanı Hemen Bulun!
                 </h1>
                 <p className="text-yellow-50 font-bold text-sm max-w-xl">Yüzlerce profesyonel freelancer arasından seçim yapın veya ilan vererek teklifleri toplayın.</p>
+                <form
+                  className="w-full max-w-2xl"
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    const q = employerQuery.trim();
+                    if (!q) {
+                      router.push("/jobs");
+                      return;
+                    }
+                    router.push(`/jobs?q=${encodeURIComponent(q)}`);
+                  }}
+                >
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 bg-white/95 p-2 rounded-2xl border border-white/30">
+                    <div className="relative flex-1">
+                      <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                      <Input
+                        value={employerQuery}
+                        onChange={(e) => setEmployerQuery(e.target.value)}
+                        className="pl-12 h-11 border-0 shadow-none focus-visible:ring-0 text-sm text-slate-800"
+                        placeholder="İlan, kategori veya anahtar kelime ara..."
+                      />
+                    </div>
+                    <Button size="sm" className="rounded-xl bg-slate-900 hover:bg-slate-800 h-11 px-6 font-black text-white">
+                      Ara
+                    </Button>
+                  </div>
+                </form>
                 <div className="pt-4 flex gap-4 justify-center md:justify-start">
                   <Link href="/post-job">
                     <Button className="bg-white text-yellow-700 font-black rounded-xl px-8 h-12 hover:bg-yellow-50">HEMEN İLAN VER 🎯</Button>

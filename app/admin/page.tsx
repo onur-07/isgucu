@@ -451,17 +451,18 @@ function AdminPageContent() {
     const openTicketsCount = tickets.filter(t => t.status === "open").length;
 
     return (
-        <div className="container mx-auto px-4 py-8 max-w-6xl">
+        <div className="mx-auto w-full max-w-6xl px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
             <div className="mb-8">
-                <h1 className="text-3xl font-bold tracking-tight font-heading flex items-center gap-3 uppercase">
+                <h1 className="text-2xl sm:text-3xl font-bold tracking-tight font-heading flex items-center gap-3 uppercase">
                     <Shield className="h-8 w-8 text-red-600" /> Yönetim Paneli
                 </h1>
-                <p className="text-[10px] text-gray-400 font-bold mt-1">Hoş geldiniz, {user.username}. Platform yönetim alanı.</p>
+                <p className="text-[10px] sm:text-xs text-gray-400 font-bold mt-1">Hoş geldiniz, {user.username}. Platform yönetim alanı.</p>
             </div>
 
             {/* Tabs */}
-            <div className="flex gap-2 mb-8 border-b">
-                {[
+            <div className="mb-8 border-b -mx-4 px-4 sm:mx-0 sm:px-0 overflow-x-auto">
+                <div className="flex w-max min-w-full gap-1 sm:gap-2">
+                    {[
                     { key: "overview" as const, label: "📊 Genel Bakış", count: null },
                     { key: "users" as const, label: "👥 Üyeler", count: totalUsersCount },
                     { key: "support" as const, label: "🎧 Destek", count: openTicketsCount > 0 ? openTicketsCount : null },
@@ -469,13 +470,13 @@ function AdminPageContent() {
                     { key: "deletions" as const, label: "⚠️ Silme Talepleri", count: deletionRequests.length > 0 ? deletionRequests.length : null },
                     { key: "categories" as const, label: "📂 Kategoriler", count: null },
                     { key: "site_settings" as const, label: "⚙️ Site Ayarları", count: null },
-                ].map(tab => (
+                    ].map(tab => (
                     tab.key === "categories" ? (
                         <Link
                             key={tab.key}
                             href="/admin/categories"
                             prefetch
-                            className={`px-5 py-3 text-[10px] font-black uppercase tracking-widest border-b-2 transition-colors relative whitespace-nowrap ${activeTab === tab.key
+                            className={`px-3 sm:px-5 py-3 text-[10px] font-black uppercase tracking-widest border-b-2 transition-colors relative whitespace-nowrap ${activeTab === tab.key
                                 ? "border-blue-600 text-blue-600"
                                 : "border-transparent text-gray-400 hover:text-gray-700"
                                 }`}
@@ -487,7 +488,7 @@ function AdminPageContent() {
                             key={tab.key}
                             href="/admin/payouts"
                             prefetch
-                            className={`px-5 py-3 text-[10px] font-black uppercase tracking-widest border-b-2 transition-colors relative whitespace-nowrap ${activeTab === tab.key
+                            className={`px-3 sm:px-5 py-3 text-[10px] font-black uppercase tracking-widest border-b-2 transition-colors relative whitespace-nowrap ${activeTab === tab.key
                                 ? "border-blue-600 text-blue-600"
                                 : "border-transparent text-gray-400 hover:text-gray-700"
                                 }`}
@@ -498,7 +499,7 @@ function AdminPageContent() {
                         <button
                             key={tab.key}
                             onClick={() => setActiveTab(tab.key)}
-                            className={`px-5 py-3 text-[10px] font-black uppercase tracking-widest border-b-2 transition-colors relative whitespace-nowrap ${activeTab === tab.key
+                            className={`px-3 sm:px-5 py-3 text-[10px] font-black uppercase tracking-widest border-b-2 transition-colors relative whitespace-nowrap ${activeTab === tab.key
                                 ? "border-blue-600 text-blue-600"
                                 : "border-transparent text-gray-400 hover:text-gray-700"
                                 }`}
@@ -515,6 +516,7 @@ function AdminPageContent() {
                         </button>
                     )
                 ))}
+                </div>
             </div>
 
             {/* OVERVIEW TAB */}
@@ -563,31 +565,31 @@ function AdminPageContent() {
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8 text-black">
-                        <div className="bg-gradient-to-br from-blue-600 to-indigo-700 rounded-[2rem] p-8 text-white shadow-2xl flex items-center justify-between group cursor-pointer hover:scale-[1.02] transition-all" onClick={() => router.push("/admin/categories")}>
+                        <div className="bg-gradient-to-br from-blue-600 to-indigo-700 rounded-[2rem] p-6 sm:p-8 text-white shadow-2xl flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6 group cursor-pointer hover:scale-[1.02] transition-all" onClick={() => router.push("/admin/categories")}>
                             <div>
                                 <h3 className="text-2xl font-black uppercase mb-2">Kategori Yönetimi</h3>
                                 <p className="text-white/80 font-bold text-sm leading-relaxed">Platformdaki tüm hizmet ve kategorileri buradan düzenleyebilir veya yeni eklemeler yapabilirsin.</p>
                                 <Button className="mt-6 bg-white text-blue-700 font-black rounded-xl group-hover:bg-blue-50 px-8 h-12">HEMEN YÖNET →</Button>
                             </div>
-                            <TrendingUp className="h-24 w-24 opacity-20 transition-transform group-hover:scale-110" />
+                            <TrendingUp className="h-16 w-16 sm:h-24 sm:w-24 opacity-20 transition-transform group-hover:scale-110 self-end lg:self-auto" />
                         </div>
 
-                        <div className="bg-white border-2 border-red-100 rounded-[2rem] p-8 flex items-center justify-between group cursor-pointer hover:bg-red-50 transition-all" onClick={() => setActiveTab("deletions")}>
+                        <div className="bg-white border-2 border-red-100 rounded-[2rem] p-6 sm:p-8 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6 group cursor-pointer hover:bg-red-50 transition-all" onClick={() => setActiveTab("deletions")}>
                             <div>
                                 <h3 className="text-2xl font-black text-gray-900 uppercase mb-2">Silme Talepleri</h3>
                                 <p className="text-gray-400 font-bold text-sm leading-relaxed">Hesabını kapatmak isteyen {deletionRequests.length} kullanıcı bekliyor.</p>
                                 <Button variant="outline" className="mt-6 border-red-200 text-red-600 font-black rounded-xl hover:bg-red-600 hover:text-white px-8 h-12">TALEPLERİ GÖR</Button>
                             </div>
-                            <Trash2 className="h-24 w-24 text-red-100 transition-transform group-hover:scale-110" />
+                            <Trash2 className="h-16 w-16 sm:h-24 sm:w-24 text-red-100 transition-transform group-hover:scale-110 self-end lg:self-auto" />
                         </div>
                     </div>
 
                     {/* Recent Activity */}
-                    <div className="bg-white border rounded-[2rem] p-8 shadow-sm">
+                    <div className="bg-white border rounded-[2rem] p-5 sm:p-8 shadow-sm">
                         <h3 className="font-black text-gray-900 text-lg uppercase mb-6 tracking-tight">Son Destek Talepleri</h3>
                         <div className="space-y-4">
                             {tickets.slice(0, 5).map(ticket => (
-                                <div key={ticket.id} className="flex items-center gap-4 p-4 rounded-2xl hover:bg-gray-50 border border-transparent hover:border-gray-100 transition-all">
+                                <div key={ticket.id} className="flex flex-col sm:flex-row sm:items-center gap-4 p-4 rounded-2xl hover:bg-gray-50 border border-transparent hover:border-gray-100 transition-all">
                                     <div className={`h-12 w-12 rounded-full flex items-center justify-center text-xs font-black text-white ${ticket.status === "open" ? "bg-orange-500" : ticket.status === "replied" ? "bg-emerald-500" : "bg-gray-400"
                                         }`}>
                                         {ticket.from_user.charAt(0).toUpperCase()}
@@ -596,7 +598,7 @@ function AdminPageContent() {
                                         <p className="text-sm font-black text-gray-900 uppercase truncate">{ticket.subject}</p>
                                         <p className="text-[10px] text-gray-400 font-bold uppercase">{ticket.from_user} • {ticket.category}</p>
                                     </div>
-                                    <span className={`text-[9px] font-black px-3 py-1 rounded-lg uppercase tracking-widest ${ticket.status === "open" ? "bg-orange-50 text-orange-600" :
+                                    <span className={`text-[9px] font-black px-3 py-1 rounded-lg uppercase tracking-widest w-fit ${ticket.status === "open" ? "bg-orange-50 text-orange-600" :
                                         ticket.status === "replied" ? "bg-emerald-50 text-emerald-600" :
                                             "bg-gray-50 text-gray-400"
                                         }`}>
@@ -618,7 +620,7 @@ function AdminPageContent() {
             {/* USERS TAB */}
             {activeTab === "users" && (
                 <div className="bg-white border rounded-[2rem] overflow-hidden shadow-sm">
-                    <div className="p-8 border-b flex items-center justify-between bg-gray-50/30">
+                    <div className="p-5 sm:p-8 border-b flex items-center justify-between bg-gray-50/30">
                         <div>
                             <h3 className="font-black text-gray-900 text-lg uppercase tracking-tight">Kayıtlı Üyeler ({users.length})</h3>
                             <p className="text-[10px] text-gray-400 font-bold uppercase mt-1">Platformdaki tüm kullanıcıları yönetin</p>
@@ -671,7 +673,7 @@ function AdminPageContent() {
                                             {u.createdAt ? new Date(u.createdAt).toLocaleDateString("tr-TR") : "—"}
                                         </td>
                                         <td className="p-6 text-right">
-                                            <div className="flex items-center justify-end gap-2">
+                                            <div className="flex flex-wrap items-center justify-end gap-2">
                                                 <Button variant="outline" size="sm" className="h-9 px-4 text-[10px] font-black border-gray-100 hover:bg-black hover:text-white rounded-xl uppercase" onClick={() => handleUpdate(u, 'username')}>Kullanıcı</Button>
                                                 <Button variant="outline" size="sm" className="h-9 px-4 text-[10px] font-black border-gray-100 hover:bg-black hover:text-white rounded-xl uppercase" onClick={() => handleUpdate(u, 'email')}>E-posta</Button>
                                                 <Button variant="outline" size="sm" className="h-9 px-4 text-[10px] font-black border-gray-100 hover:bg-black hover:text-white rounded-xl uppercase" onClick={() => handleUpdate(u, 'password')}>Şifre</Button>
@@ -716,9 +718,9 @@ function AdminPageContent() {
                             const employerId = sec.callerRole === "employer" ? sec.callerId : sec.otherRole === "employer" ? sec.otherId : "";
                             return (
                             <div key={ticket.id} className={`bg-white border rounded-[2rem] overflow-hidden shadow-sm transition-all ${ticket.status === 'open' ? 'border-l-8 border-l-orange-500' : 'border-l-8 border-l-emerald-500'}`}>
-                                <div className="p-8">
-                                    <div className="flex items-start justify-between gap-4 mb-6">
-                                        <div className="flex items-center gap-4">
+                                <div className="p-5 sm:p-8">
+                                    <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-6">
+                                        <div className="flex items-center gap-4 min-w-0">
                                             <div className="h-14 w-14 rounded-full bg-black text-white flex items-center justify-center text-xl font-black uppercase">
                                                 {ticket.from_user.charAt(0)}
                                             </div>
@@ -789,18 +791,18 @@ function AdminPageContent() {
                                     )}
 
                                     {ticket.status !== 'closed' && (
-                                        <div className="mt-8 space-y-4">
+                                    <div className="mt-8 space-y-4">
                                             <Textarea
                                                 placeholder="Resmi yanıtınızı buraya yazın..."
                                                 value={replyInputs[ticket.id] || ""}
                                                 onChange={(e) => setReplyInputs(prev => ({ ...prev, [ticket.id]: e.target.value }))}
                                                 className="min-h-[120px] rounded-2xl border-gray-100 font-bold text-sm bg-gray-50/30 focus:bg-white transition-all shadow-inner"
                                             />
-                                            <div className="flex gap-4">
-                                                <Button onClick={() => replyToTicket(ticket.id)} className="bg-blue-600 hover:bg-blue-700 text-white font-black uppercase tracking-widest h-14 px-8 rounded-2xl shadow-xl shadow-blue-100 transition-all hover:scale-[1.02]">
+                                            <div className="flex flex-col sm:flex-row gap-4">
+                                                <Button onClick={() => replyToTicket(ticket.id)} className="bg-blue-600 hover:bg-blue-700 text-white font-black uppercase tracking-widest h-14 px-8 rounded-2xl shadow-xl shadow-blue-100 transition-all hover:scale-[1.02] w-full sm:w-auto">
                                                     <Send className="h-5 w-5 mr-3" /> Yanıtı Gönder
                                                 </Button>
-                                                <Button variant="outline" onClick={() => closeTicket(ticket.id)} className="h-14 px-8 rounded-2xl border-gray-100 text-gray-400 font-black uppercase tracking-widest hover:bg-black hover:text-white transition-all">
+                                                <Button variant="outline" onClick={() => closeTicket(ticket.id)} className="h-14 px-8 rounded-2xl border-gray-100 text-gray-400 font-black uppercase tracking-widest hover:bg-black hover:text-white transition-all w-full sm:w-auto">
                                                     Talebi Kapat
                                                 </Button>
                                             </div>
@@ -816,7 +818,7 @@ function AdminPageContent() {
             {/* DELETIONS TAB */}
             {activeTab === "deletions" && (
                 <div className="bg-white border rounded-[2rem] overflow-hidden shadow-sm">
-                    <div className="p-8 border-b bg-red-50/30">
+                    <div className="p-5 sm:p-8 border-b bg-red-50/30">
                         <h3 className="font-black text-gray-900 text-lg uppercase tracking-tight">Hesap Silme Talepleri ({deletionRequests.length})</h3>
                         <p className="text-[10px] text-gray-400 font-bold uppercase mt-1">Kullanıcıların hesap kapatma isteklerini onaylayın veya reddedin.</p>
                     </div>
@@ -884,8 +886,8 @@ function AdminPageContent() {
             {/* SITE SETTINGS TAB */}
             {activeTab === "site_settings" && (
                 <div className="space-y-8 animate-in fade-in duration-500">
-                    <div className="bg-white border rounded-[2.5rem] p-10 shadow-sm border-slate-100">
-                        <div className="flex items-center justify-between mb-8 pb-4 border-b">
+                    <div className="bg-white border rounded-[2.5rem] p-5 sm:p-10 shadow-sm border-slate-100">
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8 pb-4 border-b">
                             <div>
                                 <h3 className="text-2xl font-black text-slate-900 uppercase">Genel Site Yapılandırması</h3>
                                 <p className="text-[10px] text-slate-400 font-bold uppercase mt-1">Sitenin ismini, logosunu ve temel bilgilerini buradan yönetin.</p>
@@ -895,7 +897,7 @@ function AdminPageContent() {
                                     await saveSiteConfig(siteConfig);
                                     alert("Site ayarları kaydedildi.");
                                 }}
-                                className="bg-blue-600 hover:bg-blue-700 text-white font-black rounded-xl px-10 h-14"
+                                className="bg-blue-600 hover:bg-blue-700 text-white font-black rounded-xl px-6 sm:px-10 h-12 sm:h-14 w-full sm:w-auto"
                             >
                                 <Save className="w-5 h-5 mr-3" /> AYARLARI KAYDET
                             </Button>
@@ -975,7 +977,7 @@ function AdminPageContent() {
                     </div>
 
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                        <div className="bg-white border rounded-[2.5rem] p-10 shadow-sm border-slate-100">
+                        <div className="bg-white border rounded-[2.5rem] p-5 sm:p-10 shadow-sm border-slate-100">
                             <h3 className="text-xl font-black text-slate-900 uppercase mb-6 flex items-center gap-3">
                                 <Layout className="w-6 h-6 text-blue-600" /> Üst Menü (Header)
                             </h3>
@@ -1027,7 +1029,7 @@ function AdminPageContent() {
                             </div>
                         </div>
 
-                        <div className="bg-white border rounded-[2.5rem] p-10 shadow-sm border-slate-100">
+                        <div className="bg-white border rounded-[2.5rem] p-5 sm:p-10 shadow-sm border-slate-100">
                             <h3 className="text-xl font-black text-slate-900 uppercase mb-6 flex items-center gap-3">
                                 <Palette className="w-6 h-6 text-purple-600" /> Alt Menü (Footer)
                             </h3>
@@ -1079,7 +1081,7 @@ function AdminPageContent() {
                     </div>
 
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                        <div className="bg-white border rounded-[2.5rem] p-10 shadow-sm border-slate-100">
+                        <div className="bg-white border rounded-[2.5rem] p-5 sm:p-10 shadow-sm border-slate-100">
                             <h3 className="text-xl font-black text-slate-900 uppercase mb-6 flex items-center gap-3">
                                 <Globe className="w-6 h-6 text-cyan-600" /> Sosyal Linkler
                             </h3>
@@ -1131,7 +1133,7 @@ function AdminPageContent() {
                             </div>
                         </div>
 
-                        <div className="bg-white border rounded-[2.5rem] p-10 shadow-sm border-slate-100">
+                        <div className="bg-white border rounded-[2.5rem] p-5 sm:p-10 shadow-sm border-slate-100">
                             <h3 className="text-xl font-black text-slate-900 uppercase mb-6 flex items-center gap-3">
                                 <Layout className="w-6 h-6 text-emerald-600" /> Sayfa Yönetimi
                             </h3>
@@ -1289,7 +1291,7 @@ function AdminPageContent() {
                         </div>
                     </div>
 
-                    <div className="bg-slate-900 rounded-[3rem] p-12 text-white shadow-2xl relative overflow-hidden">
+                    <div className="bg-slate-900 rounded-[3rem] p-6 sm:p-12 text-white shadow-2xl relative overflow-hidden">
                         <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-10">
                             <div className="max-w-xl">
                                 <h3 className="text-3xl font-black uppercase italic mb-4">Duyuru Yönetimi</h3>

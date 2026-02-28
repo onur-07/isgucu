@@ -658,10 +658,11 @@ function ProfilePageContent() {
     };
 
     const addSkill = () => {
-        if (skillInput.trim() && !profile.skills.includes(skillInput.trim())) {
-            setProfile((prev) => ({ ...prev, skills: [...prev.skills, skillInput.trim()] }));
-            setSkillInput("");
-        }
+        const nextSkill = skillInput.trim();
+        if (!nextSkill) return;
+        if (profile.skills.includes(nextSkill)) return;
+        setProfile((prev) => ({ ...prev, skills: [...prev.skills, nextSkill] }));
+        setSkillInput("");
     };
 
     const removeSkill = (skill: string) => {
