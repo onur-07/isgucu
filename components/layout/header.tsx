@@ -170,6 +170,17 @@ export function Header() {
             return;
         }
 
+        const q = (v: string) => `"${String(v).replace(/\\/g, "\\\\").replace(/\"/g, "\\\"")}"`;
+        const orParts = [
+            meU ? `from_user.eq.${q(meU)}` : "",
+            meE ? `from_email.eq.${q(meE)}` : "",
+        ].filter(Boolean);
+        const orFilter = orParts.join(",");
+        if (!orFilter) {
+            setSupportReplyCount(0);
+            return;
+        }
+
         const seenKey = `isgucu_support_reply_seen_${usernameKey(user.username)}`;
         let seen: Record<string, string> = {};
         try {
@@ -182,7 +193,7 @@ export function Header() {
         const res = await supabase
             .from("support_tickets")
             .select("id, replied_at")
-            .or(`from_user.eq.${meU},from_email.eq.${meE}`)
+            .or(orFilter)
             .not("reply", "is", null)
             .order("replied_at", { ascending: false })
             .limit(100);

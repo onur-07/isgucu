@@ -66,10 +66,24 @@ export default function SupportPage() {
         const loadMyTickets = async () => {
             setLoadingTickets(true);
             try {
+                const meU = String(user.username || "").trim();
+                const meE = String(user.email || "").trim();
+                const q = (v: string) => `"${String(v).replace(/\\/g, "\\\\").replace(/\"/g, "\\\"")}"`;
+                const orParts = [
+                    meU ? `from_user.eq.${q(meU)}` : "",
+                    meE ? `from_email.eq.${q(meE)}` : "",
+                ].filter(Boolean);
+                const orFilter = orParts.join(",");
+
+                if (!orFilter) {
+                    setMyTickets([]);
+                    return;
+                }
+
                 const res = await supabase
                     .from("support_tickets")
                     .select("id, from_user, from_email, subject, category, message, status, created_at, reply, replied_at")
-                    .or(`from_user.eq.${user.username},from_email.eq.${user.email}`)
+                    .or(orFilter)
                     .order("created_at", { ascending: false })
                     .limit(50);
 
