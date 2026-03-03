@@ -54,9 +54,12 @@ export function Header() {
                     id: "welcome-" + Date.now(),
                     type: "system",
                     title: "Hoş Geldiniz!",
-                    description: "İşgücü platformuna hoş geldiniz. Sizi aramızda görmekten mutluyuz!",
+                    description:
+                        "Kurallar: İletişim bilgisi (telefon/e-posta/IBAN) paylaşmayın. Güvenli ödeme ve mesajlaşma kullanın. Detaylar için Kurallar sayfasını inceleyin.",
                     time: new Date().toLocaleString("tr-TR"),
                     read: false,
+                    actionUrl: "/rules",
+                    actionLabel: "Kuralları Oku",
                 },
             ];
             localStorage.setItem(key, JSON.stringify(defaultNotifs));

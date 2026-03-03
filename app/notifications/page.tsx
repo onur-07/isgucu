@@ -51,9 +51,12 @@ function loadNotifications(username: string): Notification[] {
             id: Date.now().toString(),
             type: "system",
             title: "Hoş Geldiniz!",
-            description: "İşgücü platformuna hoş geldiniz. Profilinizi tamamlamayı unutmayın.",
+            description:
+                "Kurallar: İletişim bilgisi (telefon/e-posta/IBAN) paylaşmayın. Güvenli ödeme ve mesajlaşma kullanın. Detaylar için Kurallar sayfasını inceleyin.",
             time: new Date().toLocaleString("tr-TR"),
             read: false,
+            actionUrl: "/rules",
+            actionLabel: "Kuralları Oku",
         },
     ];
     localStorage.setItem(normKey, JSON.stringify(defaultNotifs));
