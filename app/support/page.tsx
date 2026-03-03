@@ -3,6 +3,7 @@
 import { useAuth } from "@/components/auth/auth-context";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -45,6 +46,8 @@ export default function SupportPage() {
     const router = useRouter();
     const [submitted, setSubmitted] = useState(false);
     const [myTickets, setMyTickets] = useState<SupportTicket[]>([]);
+    const [loadingTickets, setLoadingTickets] = useState(false);
+    const [submitError, setSubmitError] = useState<string>("");
     const [form, setForm] = useState({
         subject: "",
         category: "",
@@ -56,49 +59,92 @@ export default function SupportPage() {
             router.push("/login");
             return;
         }
-        // Load user's previous tickets
-        const allTickets: SupportTicket[] = JSON.parse(localStorage.getItem("isgucu_support_tickets") || "[]");
-        setMyTickets(allTickets.filter(t => t.fromUser === user.username));
+
+        let cancelled = false;
+        const loadMyTickets = async () => {
+            setLoadingTickets(true);
+            try {
+                const res = await supabase
+                    .from("support_tickets")
+                    .select("id, from_user, from_email, subject, category, message, status, created_at, reply, replied_at")
+                    .or(`from_user.eq.${user.username},from_email.eq.${user.email}`)
+                    .order("created_at", { ascending: false })
+                    .limit(50);
+
+                if (res.error) throw res.error;
+
+                const normalized: SupportTicket[] = (res.data || []).map((t: any) => ({
+                    id: String(t.id),
+                    fromUser: String(t.from_user || ""),
+                    fromEmail: String(t.from_email || ""),
+                    subject: String(t.subject || ""),
+                    category: String(t.category || ""),
+                    message: String(t.message || ""),
+                    status: (String(t.status || "open") as any) as SupportTicket["status"],
+                    createdAt: String(t.created_at || new Date().toISOString()),
+                    reply: t.reply ? String(t.reply) : undefined,
+                    repliedAt: t.replied_at ? String(t.replied_at) : undefined,
+                }));
+
+                if (!cancelled) setMyTickets(normalized);
+            } catch (e) {
+                console.error("Support tickets load error:", e);
+                if (!cancelled) setMyTickets([]);
+            } finally {
+                if (!cancelled) setLoadingTickets(false);
+            }
+        };
+
+        loadMyTickets();
+        return () => {
+            cancelled = true;
+        };
     }, [user, router]);
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!user) return;
 
-        const ticket: SupportTicket = {
-            id: `TKT-${Date.now()}`,
-            fromUser: user.username,
-            fromEmail: "",
-            subject: form.subject,
-            category: form.category,
-            message: form.message,
-            status: "open",
-            createdAt: new Date().toISOString(),
-        };
+        setSubmitError("");
 
-        const users = JSON.parse(localStorage.getItem("isgucu_users") || "[]");
-        const currentUser = users.find((u: any) => u.username === user.username);
-        if (currentUser) ticket.fromEmail = currentUser.email;
+        try {
+            const insertRes = await supabase
+                .from("support_tickets")
+                .insert({
+                    from_user: user.username,
+                    from_email: user.email,
+                    subject: form.subject,
+                    category: form.category,
+                    message: form.message,
+                    status: "open",
+                })
+                .select("id, from_user, from_email, subject, category, message, status, created_at, reply, replied_at")
+                .maybeSingle();
 
-        const allTickets: SupportTicket[] = JSON.parse(localStorage.getItem("isgucu_support_tickets") || "[]");
-        localStorage.setItem("isgucu_support_tickets", JSON.stringify([ticket, ...allTickets]));
+            if (insertRes.error) throw insertRes.error;
+            const t: any = insertRes.data;
 
-        const notifs = JSON.parse(localStorage.getItem(`isgucu_notifications_${user.username}`) || "[]");
-        notifs.unshift({
-            id: `support_${Date.now()}`,
-            type: "system",
-            title: "📩 Destek Talebiniz Alındı",
-            description: `"${form.subject}" konulu destek talebiniz başarıyla oluşturuldu. Talep No: ${ticket.id}. Ekibimiz en kısa sürede size dönüş yapacaktır.`,
-            time: new Date().toLocaleString("tr-TR"),
-            read: false,
-        });
-        localStorage.setItem(`isgucu_notifications_${user.username}`, JSON.stringify(notifs));
+            const nextTicket: SupportTicket = {
+                id: String(t?.id || `TKT-${Date.now()}`),
+                fromUser: String(t?.from_user || user.username),
+                fromEmail: String(t?.from_email || user.email || ""),
+                subject: String(t?.subject || form.subject),
+                category: String(t?.category || form.category),
+                message: String(t?.message || form.message),
+                status: (String(t?.status || "open") as any) as SupportTicket["status"],
+                createdAt: String(t?.created_at || new Date().toISOString()),
+                reply: t?.reply ? String(t.reply) : undefined,
+                repliedAt: t?.replied_at ? String(t.replied_at) : undefined,
+            };
 
-        setSubmitted(true);
-        setMyTickets(prev => [ticket, ...prev]);
-        setForm({ subject: "", category: "", message: "" });
-
-        setTimeout(() => setSubmitted(false), 5000);
+            setSubmitted(true);
+            setMyTickets((prev) => [nextTicket, ...prev]);
+            setForm({ subject: "", category: "", message: "" });
+            setTimeout(() => setSubmitted(false), 5000);
+        } catch (e: any) {
+            console.error("Support ticket insert error:", e);
+            setSubmitError(e?.message ? String(e.message) : "Destek talebi gönderilemedi.");
+        }
     };
 
     if (!user) return null;
@@ -177,6 +223,16 @@ export default function SupportPage() {
                                 </div>
                             )}
 
+                            {submitError && (
+                                <div className="mb-8 p-6 bg-red-600 rounded-[2rem] text-white font-black flex items-center gap-4 animate-in zoom-in duration-300 shadow-xl shadow-red-200">
+                                    <AlertCircle className="h-8 w-8 shrink-0" />
+                                    <div className="text-sm">
+                                        Talep gönderilemedi. <br />
+                                        <span className="opacity-80 font-medium">{submitError}</span>
+                                    </div>
+                                </div>
+                            )}
+
                             <form onSubmit={handleSubmit} className="space-y-8">
                                 <div className="grid grid-cols-1 gap-8">
                                     <div className="space-y-3">
@@ -228,7 +284,14 @@ export default function SupportPage() {
                         <div className="bg-slate-900 rounded-[3.5rem] p-10 text-white shadow-2xl shadow-slate-300">
                             <h3 className="text-2xl font-black mb-6 italic border-b border-white/10 pb-4">Önceki Taleplerim</h3>
 
-                            {myTickets.length === 0 ? (
+                            {loadingTickets ? (
+                                <div className="text-center py-12">
+                                    <div className="w-20 h-20 bg-white/5 rounded-full flex items-center justify-center mx-auto mb-6">
+                                        <AlertCircle className="w-10 h-10 text-white/20" />
+                                    </div>
+                                    <p className="text-slate-400 font-medium">Yükleniyor...</p>
+                                </div>
+                            ) : myTickets.length === 0 ? (
                                 <div className="text-center py-12">
                                     <div className="w-20 h-20 bg-white/5 rounded-full flex items-center justify-center mx-auto mb-6">
                                         <AlertCircle className="w-10 h-10 text-white/20" />
