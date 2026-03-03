@@ -22,9 +22,15 @@ jobs:
         env:
           SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
         run: |
+          if [ -z "$SUPABASE_DB_URL" ]; then
+            echo "SUPABASE_DB_URL secret is missing. Add it in GitHub -> Settings -> Secrets and variables -> Actions." >&2
+            echo "Example (Supabase): postgresql://postgres:<PASSWORD>@db.<PROJECT_REF>.supabase.co:5432/postgres?sslmode=require" >&2
+            exit 1
+          fi
+
           ts=$(date -u +"%Y%m%d_%H%M%S")
           file="supabase_backup_${ts}.dump"
-          pg_dump "$SUPABASE_DB_URL" --format=c --no-owner --no-acl --file "$file"
+          pg_dump --dbname="$SUPABASE_DB_URL" --format=c --no-owner --no-acl --file "$file"
           gzip -9 "$file"
           echo "BACKUP_FILE=${file}.gz" >> $GITHUB_ENV
 
