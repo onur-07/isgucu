@@ -48,6 +48,7 @@ export default function SupportPage() {
     const [myTickets, setMyTickets] = useState<SupportTicket[]>([]);
     const [loadingTickets, setLoadingTickets] = useState(false);
     const [submitError, setSubmitError] = useState<string>("");
+    const [selectedTicketId, setSelectedTicketId] = useState<string>("");
     const [form, setForm] = useState({
         subject: "",
         category: "",
@@ -148,6 +149,10 @@ export default function SupportPage() {
     };
 
     if (!user) return null;
+
+    const selectedTicket = selectedTicketId
+        ? myTickets.find((t) => String(t.id) === String(selectedTicketId)) || null
+        : null;
 
     return (
         <div className="min-h-screen bg-slate-50 pb-24">
@@ -301,7 +306,12 @@ export default function SupportPage() {
                             ) : (
                                 <div className="space-y-4 max-h-[600px] overflow-y-auto pr-2 custom-scrollbar">
                                     {myTickets.map(ticket => (
-                                        <div key={ticket.id} className="bg-white/5 rounded-[2rem] p-6 border border-white/5 hover:bg-white/10 transition-all group">
+                                        <button
+                                            key={ticket.id}
+                                            type="button"
+                                            onClick={() => setSelectedTicketId(String(ticket.id))}
+                                            className="w-full text-left bg-white/5 rounded-[2rem] p-6 border border-white/5 hover:bg-white/10 transition-all group"
+                                        >
                                             <div className="flex items-start justify-between mb-4">
                                                 <span className={`px-4 py-1 rounded-full text-[10px] font-black uppercase tracking-tighter ${ticket.status === "open" ? "bg-amber-500/20 text-amber-500" :
                                                     ticket.status === "replied" ? "bg-blue-500/20 text-blue-500" :
@@ -325,7 +335,7 @@ export default function SupportPage() {
                                                 <span>{new Date(ticket.createdAt).toLocaleDateString("tr-TR")}</span>
                                                 <span className="text-white/40">{ticket.category}</span>
                                             </div>
-                                        </div>
+                                        </button>
                                     ))}
                                 </div>
                             )}
@@ -341,6 +351,78 @@ export default function SupportPage() {
                     </div>
                 </div>
             </div>
+
+            {selectedTicket ? (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                    <button
+                        type="button"
+                        className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
+                        onClick={() => setSelectedTicketId("")}
+                        aria-label="Kapat"
+                    />
+                    <div className="relative w-full max-w-2xl rounded-[2.5rem] bg-white shadow-2xl border border-slate-100 overflow-hidden">
+                        <div className="p-6 sm:p-8 border-b border-slate-100 bg-gradient-to-br from-slate-50 to-white">
+                            <div className="flex items-start justify-between gap-4">
+                                <div className="min-w-0">
+                                    <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">Destek Talebi Detayı</div>
+                                    <div className="mt-2 text-xl sm:text-2xl font-black text-slate-900 truncate">{selectedTicket.subject}</div>
+                                    <div className="mt-2 flex flex-wrap gap-2">
+                                        <span className="inline-flex items-center rounded-full bg-slate-100 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-slate-700">
+                                            {selectedTicket.category}
+                                        </span>
+                                        <span className={`inline-flex items-center rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-widest ${
+                                            selectedTicket.status === "open"
+                                                ? "bg-amber-50 text-amber-700"
+                                                : selectedTicket.status === "replied"
+                                                    ? "bg-blue-50 text-blue-700"
+                                                    : "bg-slate-50 text-slate-500"
+                                        }`}>
+                                            {selectedTicket.status === "open" ? "Bekliyor" : selectedTicket.status === "replied" ? "Cevaplandı" : "Kapalı"}
+                                        </span>
+                                        <span className="inline-flex items-center rounded-full bg-slate-50 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-slate-500">
+                                            {new Date(selectedTicket.createdAt).toLocaleString("tr-TR")}
+                                        </span>
+                                    </div>
+                                </div>
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    className="h-11 rounded-2xl font-black uppercase tracking-widest text-[10px]"
+                                    onClick={() => setSelectedTicketId("")}
+                                >
+                                    Kapat
+                                </Button>
+                            </div>
+                        </div>
+
+                        <div className="p-6 sm:p-8 space-y-6">
+                            <div className="rounded-[2rem] border border-slate-100 bg-white p-6">
+                                <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">Mesajın</div>
+                                <div className="mt-3 text-slate-700 font-medium leading-relaxed whitespace-pre-wrap">{selectedTicket.message}</div>
+                            </div>
+
+                            {selectedTicket.reply ? (
+                                <div className="rounded-[2rem] border border-blue-100 bg-blue-50/60 p-6">
+                                    <div className="flex items-center justify-between gap-3 flex-wrap">
+                                        <div className="text-[10px] font-black uppercase tracking-widest text-blue-700">Destek Yanıtı</div>
+                                        {selectedTicket.repliedAt ? (
+                                            <div className="text-[10px] font-black uppercase tracking-widest text-blue-600">
+                                                {new Date(selectedTicket.repliedAt).toLocaleString("tr-TR")}
+                                            </div>
+                                        ) : null}
+                                    </div>
+                                    <div className="mt-3 text-blue-900 font-medium leading-relaxed whitespace-pre-wrap">{selectedTicket.reply}</div>
+                                </div>
+                            ) : (
+                                <div className="rounded-[2rem] border border-slate-100 bg-slate-50 p-6">
+                                    <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">Yanıt</div>
+                                    <div className="mt-3 text-slate-600 font-medium">Bu talep için henüz yanıt yok.</div>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            ) : null}
 
             <style jsx>{`
                 .custom-scrollbar::-webkit-scrollbar {
