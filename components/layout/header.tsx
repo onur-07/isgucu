@@ -16,6 +16,7 @@ export function Header() {
     const [profileOpen, setProfileOpen] = useState(false);
     const [notifCount, setNotifCount] = useState(0);
     const [orderApprovalCount, setOrderApprovalCount] = useState(0);
+    const [supportReplyCount, setSupportReplyCount] = useState(0);
     const [siteConfig, setSiteConfig] = useState(getSiteConfig());
 
     const handleLogout = async () => {
@@ -68,6 +69,50 @@ export function Header() {
         setNotifCount(unread);
     }, [user]);
 
+    const upsertLocalNotification = useCallback(
+        (payload: {
+            id: string;
+            type: "message" | "order" | "review" | "system";
+            title: string;
+            description: string;
+            actionUrl?: string;
+            actionLabel?: string;
+        }) => {
+            if (!user) return;
+            const key = `isgucu_notifications_${usernameKey(user.username)}`;
+            const initKey = `isgucu_notifications_init_${usernameKey(user.username)}`;
+
+            let list: any[] = [];
+            try {
+                const raw = localStorage.getItem(key);
+                list = raw ? (JSON.parse(raw) as any[]) : [];
+            } catch {
+                list = [];
+            }
+
+            if (list.some((n) => String(n?.id) === String(payload.id))) return;
+
+            const next = [
+                {
+                    id: payload.id,
+                    type: payload.type,
+                    title: payload.title,
+                    description: payload.description,
+                    time: new Date().toLocaleString("tr-TR"),
+                    read: false,
+                    actionUrl: payload.actionUrl,
+                    actionLabel: payload.actionLabel,
+                },
+                ...list,
+            ];
+
+            localStorage.setItem(key, JSON.stringify(next));
+            localStorage.setItem(initKey, "1");
+            window.dispatchEvent(new Event("storage_updated"));
+        },
+        [user]
+    );
+
     const handleConfigUpdate = useCallback(() => {
         setSiteConfig(getSiteConfig());
     }, []);
@@ -109,10 +154,158 @@ export function Header() {
         setOrderApprovalCount(Number(res.count || 0));
     }, [user]);
 
+    const updateSupportReplyCount = useCallback(async () => {
+        if (!user) {
+            setSupportReplyCount(0);
+            return;
+        }
+
+        const meU = String(user.username || "").trim();
+        const meE = String(user.email || "").trim();
+        if (!meU && !meE) {
+            setSupportReplyCount(0);
+            return;
+        }
+
+        const seenKey = `isgucu_support_reply_seen_${usernameKey(user.username)}`;
+        let seen: Record<string, string> = {};
+        try {
+            const raw = localStorage.getItem(seenKey);
+            if (raw) seen = JSON.parse(raw);
+        } catch {
+            seen = {};
+        }
+
+        const res = await supabase
+            .from("support_tickets")
+            .select("id, replied_at")
+            .or(`from_user.eq.${meU},from_email.eq.${meE}`)
+            .not("reply", "is", null)
+            .order("replied_at", { ascending: false })
+            .limit(100);
+
+        if (res.error) {
+            setSupportReplyCount(0);
+            return;
+        }
+
+        const rows = (res.data || []) as Array<{ id: any; replied_at: any }>;
+        const unread = rows.filter((r) => {
+            const id = String(r.id);
+            const repliedAt = r.replied_at ? String(r.replied_at) : "";
+            if (!repliedAt) return false;
+            return String(seen[id] || "") !== repliedAt;
+        }).length;
+
+        setSupportReplyCount(unread);
+    }, [user]);
+
+    const pollAdminIncoming = useCallback(async () => {
+        if (!user || user.role !== "admin") return;
+
+        const baseKey = `isgucu_admin_inbox_${usernameKey(user.username)}`;
+        const lastSupportKey = `${baseKey}_support_last`;
+        const lastPayoutKey = `${baseKey}_payout_last`;
+        const lastDeletionKey = `${baseKey}_deletion_last`;
+
+        const lastSupport = String(localStorage.getItem(lastSupportKey) || "");
+        const lastPayout = String(localStorage.getItem(lastPayoutKey) || "");
+        const lastDeletion = String(localStorage.getItem(lastDeletionKey) || "");
+
+        const [supportRes, payoutRes, deletionRes] = await Promise.all([
+            supabase
+                .from("support_tickets")
+                .select("id, subject, created_at")
+                .eq("status", "open")
+                .order("created_at", { ascending: false })
+                .limit(5),
+            supabase
+                .from("payout_requests")
+                .select("id, created_at")
+                .eq("status", "pending")
+                .order("created_at", { ascending: false })
+                .limit(5),
+            supabase
+                .from("account_deletion_requests")
+                .select("id, created_at")
+                .eq("status", "pending")
+                .order("created_at", { ascending: false })
+                .limit(5),
+        ]);
+
+        if (!supportRes.error) {
+            const rows = (supportRes.data || []) as Array<{ id: any; subject: any; created_at: any }>;
+            const newest = rows[0]?.created_at ? String(rows[0].created_at) : "";
+            if (!lastSupport) {
+                if (newest) localStorage.setItem(lastSupportKey, newest);
+            } else {
+                for (const r of rows) {
+                    const createdAt = r.created_at ? String(r.created_at) : "";
+                    if (!createdAt || createdAt <= lastSupport) continue;
+                    upsertLocalNotification({
+                        id: `admin-support-${String(r.id)}`,
+                        type: "system",
+                        title: "🎧 Yeni Destek Talebi",
+                        description: String(r.subject || "Yeni destek talebi oluşturuldu."),
+                        actionUrl: "/admin",
+                        actionLabel: "Panele Git",
+                    });
+                }
+                if (newest) localStorage.setItem(lastSupportKey, newest);
+            }
+        }
+
+        if (!payoutRes.error) {
+            const rows = (payoutRes.data || []) as Array<{ id: any; created_at: any }>;
+            const newest = rows[0]?.created_at ? String(rows[0].created_at) : "";
+            if (!lastPayout) {
+                if (newest) localStorage.setItem(lastPayoutKey, newest);
+            } else {
+                for (const r of rows) {
+                    const createdAt = r.created_at ? String(r.created_at) : "";
+                    if (!createdAt || createdAt <= lastPayout) continue;
+                    upsertLocalNotification({
+                        id: `admin-payout-${String(r.id)}`,
+                        type: "system",
+                        title: "💸 Yeni Ödeme Talebi",
+                        description: "Yeni bir ödeme talebi geldi.",
+                        actionUrl: "/admin/payouts",
+                        actionLabel: "İncele",
+                    });
+                }
+                if (newest) localStorage.setItem(lastPayoutKey, newest);
+            }
+        }
+
+        if (!deletionRes.error) {
+            const rows = (deletionRes.data || []) as Array<{ id: any; created_at: any }>;
+            const newest = rows[0]?.created_at ? String(rows[0].created_at) : "";
+            if (!lastDeletion) {
+                if (newest) localStorage.setItem(lastDeletionKey, newest);
+            } else {
+                for (const r of rows) {
+                    const createdAt = r.created_at ? String(r.created_at) : "";
+                    if (!createdAt || createdAt <= lastDeletion) continue;
+                    upsertLocalNotification({
+                        id: `admin-deletion-${String(r.id)}`,
+                        type: "system",
+                        title: "⚠️ Yeni Hesap Silme Talebi",
+                        description: "Yeni bir hesap silme talebi geldi.",
+                        actionUrl: "/admin",
+                        actionLabel: "İncele",
+                    });
+                }
+                if (newest) localStorage.setItem(lastDeletionKey, newest);
+            }
+        }
+    }, [upsertLocalNotification, user]);
+
     useEffect(() => {
         const initialId = window.setTimeout(() => {
             updateCounts();
             void updateOrderApprovalCount();
+            void updateSupportReplyCount();
+            void pollAdminIncoming();
         }, 0);
         hydrateSiteConfigFromRemote().then((remoteConfig) => {
             if (!remoteConfig) return;
@@ -122,8 +315,11 @@ export function Header() {
         window.addEventListener("storage_updated", updateCounts);
         window.addEventListener("orders_updated", updateOrderApprovalCount);
         window.addEventListener("site_config_updated", handleConfigUpdate);
+        window.addEventListener("support_seen_updated", updateSupportReplyCount);
         const intervalId = window.setInterval(() => {
             void updateOrderApprovalCount();
+            void updateSupportReplyCount();
+            void pollAdminIncoming();
         }, 10000);
         return () => {
             window.clearTimeout(initialId);
@@ -132,8 +328,9 @@ export function Header() {
             window.removeEventListener("storage_updated", updateCounts);
             window.removeEventListener("orders_updated", updateOrderApprovalCount);
             window.removeEventListener("site_config_updated", handleConfigUpdate);
+            window.removeEventListener("support_seen_updated", updateSupportReplyCount);
         };
-    }, [updateCounts, handleConfigUpdate, updateOrderApprovalCount]);
+    }, [updateCounts, handleConfigUpdate, updateOrderApprovalCount, updateSupportReplyCount, pollAdminIncoming]);
 
     useEffect(() => {
         const faviconHref = siteConfig.faviconUrl || siteConfig.logoUrl || "/logo.png";
@@ -177,7 +374,14 @@ export function Header() {
         <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
             {siteConfig.announcement?.enabled && (
                 <div
-                    className={`w-full text-white text-center text-xs font-black uppercase tracking-wider py-2 ${
+                    className={`w-fu<span className="flex items-center justify-between w-full">
+                                        <span>ll text-w</span>
+                                        {supportReplyCount > 0 && (
+                                            <span className="h-5 min-w-5 px-1.5 bg-red-500 text-white text-[10px] font-black rounded-full flex items-center justify-center">
+                                                {supportReplyCount}
+                                            </span>
+                                        )}
+                                    </span>hite text-center text-xs font-black uppercase tracking-wider py-2 ${
                         siteConfig.announcement.theme === "red"
                             ? "bg-red-600"
                             : siteConfig.announcement.theme === "orange"

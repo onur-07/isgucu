@@ -4,6 +4,7 @@ import { useAuth } from "@/components/auth/auth-context";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
+import { usernameKey } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -153,6 +154,27 @@ export default function SupportPage() {
     const selectedTicket = selectedTicketId
         ? myTickets.find((t) => String(t.id) === String(selectedTicketId)) || null
         : null;
+
+    useEffect(() => {
+        if (!user) return;
+        if (!selectedTicket) return;
+        if (!selectedTicket.repliedAt) return;
+
+        const seenKey = `isgucu_support_reply_seen_${usernameKey(user.username)}`;
+        try {
+            const raw = localStorage.getItem(seenKey);
+            const seen = raw ? (JSON.parse(raw) as Record<string, string>) : {};
+            const id = String(selectedTicket.id);
+            const repliedAt = String(selectedTicket.repliedAt);
+            if (seen[id] !== repliedAt) {
+                seen[id] = repliedAt;
+                localStorage.setItem(seenKey, JSON.stringify(seen));
+                window.dispatchEvent(new Event("support_seen_updated"));
+            }
+        } catch (e) {
+            console.error("Support seen mark error:", e);
+        }
+    }, [selectedTicket, user]);
 
     return (
         <div className="min-h-screen bg-slate-50 pb-24">
