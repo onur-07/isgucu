@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useState, Suspense } from "react";
 import { getAllUsers, getPlatformStats, updateUserInfo, type PlatformUser, type PlatformStats } from "@/lib/data-service";
-import { Users, Briefcase, TrendingUp, Shield, Trash2, Headphones, MessageCircle, CheckCircle2, Clock, Send, Settings, Globe, Layout, Palette, Plus, Save, FileText } from "lucide-react";
+import { Users, Briefcase, TrendingUp, Shield, Trash2, Headphones, MessageCircle, CheckCircle2, Clock, Send, Settings, Globe, Layout, Palette, Plus, Save, FileText, ChevronDown, ChevronUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/lib/supabase";
@@ -101,6 +101,7 @@ function AdminPageContent() {
     const [deletionRequests, setDeletionRequests] = useState<any[]>([]);
     const [deletedUsers, setDeletedUsers] = useState<DeletedUserRow[]>([]);
     const [siteConfig, setSiteConfig] = useState<SiteConfig>(getSiteConfig());
+    const [overviewSupportOpen, setOverviewSupportOpen] = useState(false);
 
     const parseTabFromUrl = (raw: string | null) => {
         const v = String(raw || "").trim();
@@ -918,10 +919,45 @@ function AdminPageContent() {
 
                     {/* Recent Activity */}
                     <div className="bg-white border rounded-[2rem] p-5 sm:p-8 shadow-sm">
-                        <h3 className="font-black text-gray-900 text-lg uppercase mb-6 tracking-tight">Son Destek Talepleri</h3>
+                        <div className="flex items-center justify-between gap-3 mb-4">
+                            <h3 className="font-black text-gray-900 text-lg uppercase tracking-tight">Son Destek Talepleri</h3>
+                            <Button
+                                type="button"
+                                variant="outline"
+                                className="h-10 px-3 rounded-xl border-gray-200 text-gray-700 font-black text-[10px] uppercase tracking-widest"
+                                onClick={() => setOverviewSupportOpen((prev) => !prev)}
+                            >
+                                {overviewSupportOpen ? (
+                                    <>
+                                        <ChevronUp className="h-4 w-4 mr-1" /> Kapat
+                                    </>
+                                ) : (
+                                    <>
+                                        <ChevronDown className="h-4 w-4 mr-1" /> Aç
+                                    </>
+                                )}
+                            </Button>
+                        </div>
+                        {overviewSupportOpen ? (
                         <div className="space-y-3 max-h-[420px] overflow-y-auto pr-1">
                             {tickets.slice(0, 5).map(ticket => (
-                                <div key={ticket.id} className="flex flex-col sm:flex-row sm:items-center gap-3 p-4 rounded-2xl hover:bg-gray-50 border border-transparent hover:border-gray-100 transition-all">
+                                <div
+                                    key={ticket.id}
+                                    onClick={() => {
+                                        setActiveTab("support");
+                                        router.push("/admin?tab=support");
+                                    }}
+                                    onKeyDown={(e) => {
+                                        if (e.key === "Enter" || e.key === " ") {
+                                            e.preventDefault();
+                                            setActiveTab("support");
+                                            router.push("/admin?tab=support");
+                                        }
+                                    }}
+                                    role="button"
+                                    tabIndex={0}
+                                    className="w-full text-left flex flex-col sm:flex-row sm:items-center gap-3 p-4 rounded-2xl hover:bg-gray-50 border border-transparent hover:border-gray-100 transition-all cursor-pointer"
+                                >
                                     <div className={`h-12 w-12 rounded-full flex items-center justify-center text-xs font-black text-white ${ticket.status === "open" ? "bg-orange-500" : ticket.status === "replied" ? "bg-emerald-500" : "bg-gray-400"
                                         }`}>
                                         {ticket.from_user.charAt(0).toUpperCase()}
@@ -941,7 +977,10 @@ function AdminPageContent() {
                                             variant="outline"
                                             size="sm"
                                             className="h-8 px-3 rounded-lg border-red-100 text-red-600 hover:bg-red-600 hover:text-white font-black text-[10px] uppercase tracking-widest"
-                                            onClick={() => deleteTicket(ticket.id)}
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                deleteTicket(ticket.id);
+                                            }}
                                         >
                                             <Trash2 className="h-3.5 w-3.5 mr-1" /> Sil
                                         </Button>
@@ -955,6 +994,11 @@ function AdminPageContent() {
                                 </div>
                             )}
                         </div>
+                        ) : (
+                            <div className="text-[10px] font-black uppercase tracking-widest text-gray-400 bg-gray-50 border border-gray-100 rounded-2xl px-4 py-3">
+                                Liste kapalı. Aşağı ok ile açabilirsiniz.
+                            </div>
+                        )}
                     </div>
                 </>
             )}
