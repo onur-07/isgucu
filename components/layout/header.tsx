@@ -388,14 +388,7 @@ export function Header() {
         <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
             {siteConfig.announcement?.enabled && (
                 <div
-                    className={`w-fu<span className="flex items-center justify-between w-full">
-                                        <span>ll text-w</span>
-                                        {supportReplyCount > 0 && (
-                                            <span className="h-5 min-w-5 px-1.5 bg-red-500 text-white text-[10px] font-black rounded-full flex items-center justify-center">
-                                                {supportReplyCount}
-                                            </span>
-                                        )}
-                                    </span>hite text-center text-xs font-black uppercase tracking-wider py-2 ${
+                    className={`w-full text-white text-center text-xs font-black uppercase tracking-wider py-2 ${
                         siteConfig.announcement.theme === "red"
                             ? "bg-red-600"
                             : siteConfig.announcement.theme === "orange"
@@ -508,8 +501,17 @@ export function Header() {
                                         <Link href="/wallet" className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors" onClick={() => setProfileOpen(false)}>
                                             💰 Cüzdanım
                                         </Link>
-                                        <Link href="/support" className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors" onClick={() => setProfileOpen(false)}>
-                                            🎧 Destek
+                                        <Link
+                                            href="/support"
+                                            className="flex items-center justify-between gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                                            onClick={() => setProfileOpen(false)}
+                                        >
+                                            <span>🎧 Destek</span>
+                                            {supportReplyCount > 0 && (
+                                                <span className="h-5 min-w-5 px-1.5 bg-red-500 text-white text-[10px] font-black rounded-full flex items-center justify-center">
+                                                    {supportReplyCount}
+                                                </span>
+                                            )}
                                         </Link>
                                         {user.role === "admin" && (
                                             <Link href="/admin" className="flex items-center gap-3 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors" onClick={() => setProfileOpen(false)}>
@@ -587,8 +589,17 @@ export function Header() {
                                 <Link href="/notifications" className="px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-lg" onClick={() => setMobileOpen(false)}>
                                     🔔 Bildirimler
                                 </Link>
-                                <Link href="/support" className="px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-lg" onClick={() => setMobileOpen(false)}>
-                                    🎧 Destek
+                                <Link
+                                    href="/support"
+                                    className="px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-lg flex items-center justify-between gap-3"
+                                    onClick={() => setMobileOpen(false)}
+                                >
+                                    <span>🎧 Destek</span>
+                                    {supportReplyCount > 0 && (
+                                        <span className="h-5 min-w-5 px-1.5 bg-red-500 text-white text-[10px] font-black rounded-full flex items-center justify-center">
+                                            {supportReplyCount}
+                                        </span>
+                                    )}
                                 </Link>
                                 <div className="border-t my-2" />
                                 <button onClick={handleLogout} className="px-4 py-3 text-sm font-medium text-red-600 hover:bg-red-50 rounded-lg text-left">
