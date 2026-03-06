@@ -5,9 +5,6 @@ import { getSupabaseAdmin } from "@/lib/supabase-admin";
 export async function GET(req: Request) {
   try {
     const supabaseAdmin = getSupabaseAdmin();
-    if (!supabaseAdmin) {
-      return NextResponse.json({ error: "missing_service_role" }, { status: 500 });
-    }
     const authHeader = req.headers.get("authorization") || "";
     const token = authHeader.toLowerCase().startsWith("bearer ")
       ? authHeader.slice(7).trim()
@@ -34,7 +31,8 @@ export async function GET(req: Request) {
 
     const callerId = authData.user.id;
 
-    const { data: callerProfile, error: callerProfileErr } = await supabaseAdmin
+    const profileClient = supabaseAdmin || supabase;
+    const { data: callerProfile, error: callerProfileErr } = await profileClient
       .from("profiles")
       .select("role")
       .eq("id", callerId)
@@ -51,7 +49,7 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: "forbidden" }, { status: 403 });
     }
 
-    const { data: profiles, error: profilesErr } = await supabaseAdmin
+    const { data: profiles, error: profilesErr } = await profileClient
       .from("profiles")
       .select("id, username, email, role, created_at, is_banned")
       .order("created_at", { ascending: false });
@@ -63,22 +61,20 @@ export async function GET(req: Request) {
       );
     }
 
-    const { data: authUsersRes, error: authUsersErr } = await supabaseAdmin.auth.admin.listUsers({
-      page: 1,
-      perPage: 1000,
-    });
-
-    if (authUsersErr) {
-      return NextResponse.json(
-        { error: "auth_list_users_failed", details: authUsersErr.message },
-        { status: 500 }
-      );
+    // Service role varsa auth user listesini birleştir, yoksa profiles verisi ile devam et.
+    let authById: Record<string, any> = {};
+    if (supabaseAdmin) {
+      const { data: authUsersRes, error: authUsersErr } = await supabaseAdmin.auth.admin.listUsers({
+        page: 1,
+        perPage: 1000,
+      });
+      if (!authUsersErr) {
+        authById = (authUsersRes?.users || []).reduce((acc: Record<string, any>, u: any) => {
+          if (u?.id) acc[String(u.id)] = u;
+          return acc;
+        }, {});
+      }
     }
-
-    const authById = (authUsersRes?.users || []).reduce((acc: Record<string, any>, u: any) => {
-      if (u?.id) acc[String(u.id)] = u;
-      return acc;
-    }, {});
 
     const merged = (profiles || []).map((p: any) => {
       const authU = authById[String(p.id)];
@@ -90,7 +86,7 @@ export async function GET(req: Request) {
 
       // Eğer profildeki username bozuk görünüyorsa VE metadata'da gerçek username varsa → düzelt
       let finalUsername = profileUsername;
-      if (metaUsername && (looksGenerated || !profileUsername)) {
+      if (supabaseAdmin && metaUsername && (looksGenerated || !profileUsername)) {
         finalUsername = metaUsername;
         // Arka planda veritabanını da düzelt (fire-and-forget)
         supabaseAdmin
@@ -115,7 +111,7 @@ export async function GET(req: Request) {
       };
     });
 
-    return NextResponse.json({ ok: true, users: merged });
+    return NextResponse.json({ ok: true, users: merged, source: supabaseAdmin ? "auth+profiles" : "profiles_only" });
   } catch (err: any) {
     return NextResponse.json(
       { error: "unexpected", details: err?.message ? String(err.message) : String(err) },
