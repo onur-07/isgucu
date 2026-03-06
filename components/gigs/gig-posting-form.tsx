@@ -1232,28 +1232,30 @@ export function GigPostingForm() {
                                         ))}
                                     </tr>
 
-                                    <tr>
-                                        <td className="p-6 bg-blue-600 font-bold text-white text-[11px] uppercase border-r border-gray-300 border-b border-white/20 text-center">Revizyon Hakkı</td>
-                                        {(["basic", "standard", "premium"] as const).map((key) => (
-                                            <td key={key} className={`p-4 border-r border-gray-300 last:border-r-0 transition-colors ${!activePackages[key] ? "bg-gray-50/20" : ""}`}>
-                                                {activePackages[key] && (
-                                                    <Select
-                                                        value={packages[key].revisions}
-                                                        onValueChange={(val) => setPackages(prev => ({ ...prev, [key]: { ...prev[key], revisions: val } }))}
-                                                    >
-                                                        <SelectTrigger className="border-none shadow-none focus:ring-2 focus:ring-blue-50 text-center text-xs font-black bg-gray-100/50 text-black h-12 rounded-xl">
-                                                            <SelectValue placeholder="Rev" />
-                                                        </SelectTrigger>
-                                                        <SelectContent>
-                                                            {[0, 1, 2, 3, 5, 99].map(r => (
-                                                                <SelectItem key={r} value={r.toString()}>{r === 99 ? "∞ SINIRSIZ" : `${r} ADET`} REVİZYON</SelectItem>
-                                                            ))}
-                                                        </SelectContent>
-                                                    </Select>
-                                                )}
-                                            </td>
-                                        ))}
-                                    </tr>
+                                    {siteCfg?.catalog?.pricingTable?.showRevisionsRow !== false && (
+                                        <tr>
+                                            <td className="p-6 bg-blue-600 font-bold text-white text-[11px] uppercase border-r border-gray-300 border-b border-white/20 text-center">Revizyon Hakkı</td>
+                                            {(["basic", "standard", "premium"] as const).map((key) => (
+                                                <td key={key} className={`p-4 border-r border-gray-300 last:border-r-0 transition-colors ${!activePackages[key] ? "bg-gray-50/20" : ""}`}>
+                                                    {activePackages[key] && (
+                                                        <Select
+                                                            value={packages[key].revisions}
+                                                            onValueChange={(val) => setPackages(prev => ({ ...prev, [key]: { ...prev[key], revisions: val } }))}
+                                                        >
+                                                            <SelectTrigger className="border-none shadow-none focus:ring-2 focus:ring-blue-50 text-center text-xs font-black bg-gray-100/50 text-black h-12 rounded-xl">
+                                                                <SelectValue placeholder="Rev" />
+                                                            </SelectTrigger>
+                                                            <SelectContent>
+                                                                {[0, 1, 2, 3, 5, 99].map(r => (
+                                                                    <SelectItem key={r} value={r.toString()}>{r === 99 ? "∞ SINIRSIZ" : `${r} ADET`} REVİZYON</SelectItem>
+                                                                ))}
+                                                            </SelectContent>
+                                                        </Select>
+                                                    )}
+                                                </td>
+                                            ))}
+                                        </tr>
+                                    )}
                                     {/* Dynamic Category Specific Rows */}
                                     {dynamicExtraRows.map((row) => (
                                         <tr key={row.key as string}>

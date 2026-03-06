@@ -21,6 +21,7 @@ export default function AdminCategoriesPage() {
     const [subCategories, setSubCategories] = useState<Record<string, string[]>>({});
     const [serviceTypes, setServiceTypes] = useState<Record<string, string[]>>({});
     const [gigExtras, setGigExtras] = useState<Record<string, Array<{ label: string; key: string; type: "select" | "toggle" | "input"; options?: Array<string | number> }>>>({});
+    const [pricingTable, setPricingTable] = useState<{ showRevisionsRow: boolean }>({ showRevisionsRow: true });
     const [publishStatus, setPublishStatus] = useState<"idle" | "publishing" | "success">("idle");
     const [initStatus, setInitStatus] = useState<"loading" | "ready" | "error">("loading");
 
@@ -29,6 +30,8 @@ export default function AdminCategoriesPage() {
     const [newSub, setNewSub] = useState("");
     const [selectedSub, setSelectedSub] = useState<string | null>(null);
     const [newService, setNewService] = useState("");
+
+    const [gigExtraOptionsDraft, setGigExtraOptionsDraft] = useState<Record<string, string>>({});
 
     const slugify = (s: string) => {
         return (s || "")
@@ -75,6 +78,7 @@ export default function AdminCategoriesPage() {
                 const remoteSubs = cfg?.catalog?.subCategories && typeof cfg.catalog.subCategories === "object" ? cfg.catalog.subCategories : {};
                 const remoteServices = cfg?.catalog?.serviceTypes && typeof cfg.catalog.serviceTypes === "object" ? cfg.catalog.serviceTypes : {};
                 const remoteGigExtras = cfg?.catalog?.gigExtras && typeof cfg.catalog.gigExtras === "object" ? cfg.catalog.gigExtras : {};
+                const remotePricingTable = cfg?.catalog?.pricingTable && typeof cfg.catalog.pricingTable === "object" ? cfg.catalog.pricingTable : null;
 
                 const mergedCategories = (remoteCats.length > 0 ? remoteCats : [...DEFAULT_CATEGORIES, ...localCats]).filter(
                     (c: { id?: string; title?: string }) => String(c?.id || "") !== "freelancerlik" && String(c?.title || "").trim() !== "Freelancerlık"
@@ -97,6 +101,7 @@ export default function AdminCategoriesPage() {
                 setSubCategories(mergedSubs);
                 setServiceTypes(mergedServices);
                 setGigExtras(remoteGigExtras as any);
+                setPricingTable({ showRevisionsRow: typeof (remotePricingTable as any)?.showRevisionsRow === "boolean" ? Boolean((remotePricingTable as any).showRevisionsRow) : true });
                 setInitStatus("ready");
             } catch (e) {
                 console.error("AdminCategories: init failed", e);
@@ -105,7 +110,7 @@ export default function AdminCategoriesPage() {
         })();
     }, [authLoading, user, router]);
 
-    const persistRemote = async (next: { cats: any[]; subs: any; services: any; extras: any }) => {
+    const persistRemote = async (next: { cats: any[]; subs: any; services: any; extras: any; pricingTable: { showRevisionsRow: boolean } }) => {
         const cfg = getSiteConfig();
         const nextConfig = {
             ...cfg,
@@ -115,6 +120,7 @@ export default function AdminCategoriesPage() {
                 subCategories: next.subs,
                 serviceTypes: next.services,
                 gigExtras: next.extras,
+                pricingTable: next.pricingTable,
             },
         } as any;
         await saveSiteConfig(nextConfig);
@@ -130,7 +136,7 @@ export default function AdminCategoriesPage() {
         const id = exists ? `${baseId}-${Date.now()}` : baseId;
         const updated = [...categories, { ...newCat, id, color: "bg-blue-50" }];
         setCategories(updated);
-        persistRemote({ cats: updated, subs: subCategories, services: serviceTypes, extras: gigExtras });
+        persistRemote({ cats: updated, subs: subCategories, services: serviceTypes, extras: gigExtras, pricingTable });
         setNewCat({ title: "", icon: "", id: "" });
     };
 
@@ -144,7 +150,7 @@ export default function AdminCategoriesPage() {
             setSelectedCat(null);
             setSelectedSub(null);
         }
-        persistRemote({ cats: updated, subs: subCategories, services: serviceTypes, extras: gigExtras });
+        persistRemote({ cats: updated, subs: subCategories, services: serviceTypes, extras: gigExtras, pricingTable });
     };
 
     const addSubCategory = () => {
@@ -152,7 +158,7 @@ export default function AdminCategoriesPage() {
         if (!selectedCat || !newSub) return;
         const updated = { ...subCategories, [selectedCat]: [...(subCategories[selectedCat] || []), newSub] };
         setSubCategories(updated);
-        persistRemote({ cats: categories, subs: updated, services: serviceTypes, extras: gigExtras });
+        persistRemote({ cats: categories, subs: updated, services: serviceTypes, extras: gigExtras, pricingTable });
         setNewSub("");
     };
 
@@ -164,7 +170,7 @@ export default function AdminCategoriesPage() {
         const updated = { ...subCategories, [selectedCat]: currentList.filter(s => s !== sub) };
         setSubCategories(updated);
         if (selectedSub === sub) setSelectedSub(null);
-        persistRemote({ cats: categories, subs: updated, services: serviceTypes, extras: gigExtras });
+        persistRemote({ cats: categories, subs: updated, services: serviceTypes, extras: gigExtras, pricingTable });
     };
 
     const addServiceType = () => {
@@ -172,7 +178,7 @@ export default function AdminCategoriesPage() {
         if (!selectedSub || !newService) return;
         const updated = { ...serviceTypes, [selectedSub]: [...(serviceTypes[selectedSub] || []), newService] };
         setServiceTypes(updated);
-        persistRemote({ cats: categories, subs: subCategories, services: updated, extras: gigExtras });
+        persistRemote({ cats: categories, subs: subCategories, services: updated, extras: gigExtras, pricingTable });
         setNewService("");
     };
 
@@ -182,21 +188,23 @@ export default function AdminCategoriesPage() {
         const currentList = serviceTypes[selectedSub] || serviceTypes.default || [];
         const updated = { ...serviceTypes, [selectedSub]: currentList.filter(s => s !== svc) };
         setServiceTypes(updated);
-        persistRemote({ cats: categories, subs: subCategories, services: updated, extras: gigExtras });
+        persistRemote({ cats: categories, subs: subCategories, services: updated, extras: gigExtras, pricingTable });
     };
 
     const addGigExtraRow = () => {
         if (!selectedSub) return;
         const current = gigExtras[selectedSub] || [];
+        const nextKey = `custom_${Date.now()}`;
         const updated = {
             ...gigExtras,
             [selectedSub]: [
                 ...current,
-                { label: "", key: `custom_${Date.now()}`, type: "toggle" as const },
+                { label: "", key: nextKey, type: "toggle" as const },
             ],
         };
         setGigExtras(updated);
-        persistRemote({ cats: categories, subs: subCategories, services: serviceTypes, extras: updated });
+        setGigExtraOptionsDraft((prev) => ({ ...prev, [`${selectedSub}::${nextKey}`]: "" }));
+        persistRemote({ cats: categories, subs: subCategories, services: serviceTypes, extras: updated, pricingTable });
     };
 
     const updateGigExtraRow = (idx: number, patch: Partial<{ label: string; key: string; type: "select" | "toggle" | "input"; options?: Array<string | number> }>) => {
@@ -205,7 +213,17 @@ export default function AdminCategoriesPage() {
         const nextList = current.map((r, i) => (i === idx ? { ...r, ...patch } : r));
         const updated = { ...gigExtras, [selectedSub]: nextList };
         setGigExtras(updated);
-        persistRemote({ cats: categories, subs: subCategories, services: serviceTypes, extras: updated });
+        persistRemote({ cats: categories, subs: subCategories, services: serviceTypes, extras: updated, pricingTable });
+    };
+
+    const commitGigExtraOptionsDraft = (subKey: string, rowKey: string, raw: string, idx: number) => {
+        const opts = String(raw || "")
+            .split(",")
+            .map((x) => x.trim())
+            .filter(Boolean)
+            .map((x) => (String(Number(x)) === x ? Number(x) : x));
+        updateGigExtraRow(idx, { options: opts });
+        setGigExtraOptionsDraft((prev) => ({ ...prev, [`${subKey}::${rowKey}`]: String(raw || "") }));
     };
 
     const deleteGigExtraRow = (idx: number) => {
@@ -214,12 +232,12 @@ export default function AdminCategoriesPage() {
         const nextList = current.filter((_, i) => i !== idx);
         const updated = { ...gigExtras, [selectedSub]: nextList };
         setGigExtras(updated);
-        persistRemote({ cats: categories, subs: subCategories, services: serviceTypes, extras: updated });
+        persistRemote({ cats: categories, subs: subCategories, services: serviceTypes, extras: updated, pricingTable });
     };
 
     const publishChanges = async () => {
         setPublishStatus("publishing");
-        await persistRemote({ cats: categories, subs: subCategories, services: serviceTypes, extras: gigExtras });
+        await persistRemote({ cats: categories, subs: subCategories, services: serviceTypes, extras: gigExtras, pricingTable });
         setPublishStatus("success");
         setTimeout(() => setPublishStatus("idle"), 3000);
     };
@@ -433,6 +451,21 @@ export default function AdminCategoriesPage() {
                     </CardTitle>
                 </CardHeader>
                 <CardContent className="p-6 space-y-4">
+                    <div className="rounded-2xl border-2 border-gray-100 bg-white p-4">
+                        <div className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Temel Satırlar</div>
+                        <label className="flex items-center gap-3 cursor-pointer select-none">
+                            <input
+                                type="checkbox"
+                                checked={pricingTable.showRevisionsRow}
+                                onChange={(e) => {
+                                    const next = { ...pricingTable, showRevisionsRow: e.target.checked };
+                                    setPricingTable(next);
+                                    persistRemote({ cats: categories, subs: subCategories, services: serviceTypes, extras: gigExtras, pricingTable: next });
+                                }}
+                            />
+                            <span className="text-sm font-black text-black">Revizyon Hakkı satırı görünsün</span>
+                        </label>
+                    </div>
                     {!selectedSub ? (
                         <div className="text-center py-12 text-black/40 font-black italic uppercase text-sm tracking-widest">Önce bir alt kategori seç</div>
                     ) : (
@@ -489,11 +522,20 @@ export default function AdminCategoriesPage() {
                                         <div className="mt-3">
                                             <div className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Seçenekler (virgülle)</div>
                                             <Input
-                                                value={(row.options || []).map(String).join(",")}
+                                                value={gigExtraOptionsDraft[`${selectedSub}::${row.key}`] ?? (row.options || []).map(String).join(",")}
                                                 onChange={(e) => {
                                                     const raw = String(e.target.value || "");
-                                                    const opts = raw.split(",").map((x) => x.trim()).filter(Boolean).map((x) => (String(Number(x)) === x ? Number(x) : x));
-                                                    updateGigExtraRow(idx, { options: opts });
+                                                    setGigExtraOptionsDraft((prev) => ({ ...prev, [`${selectedSub}::${row.key}`]: raw }));
+                                                }}
+                                                onBlur={(e) => {
+                                                    const raw = String(e.target.value || "");
+                                                    commitGigExtraOptionsDraft(selectedSub, row.key, raw, idx);
+                                                }}
+                                                onKeyDown={(e) => {
+                                                    if (e.key === "Enter") {
+                                                        e.preventDefault();
+                                                        commitGigExtraOptionsDraft(selectedSub, row.key, (e.currentTarget as HTMLInputElement).value, idx);
+                                                    }
                                                 }}
                                                 className="h-11 rounded-xl border-2 font-bold"
                                                 placeholder="Örn: 1,2,3,5"

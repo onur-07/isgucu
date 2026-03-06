@@ -39,6 +39,9 @@ export interface SiteConfig {
         subCategories: Record<string, string[]>;
         serviceTypes: Record<string, string[]>;
         gigExtras: Record<string, Array<{ label: string; key: string; type: "select" | "toggle" | "input"; options?: Array<string | number> }>>;
+        pricingTable: {
+            showRevisionsRow: boolean;
+        };
     };
     announcement: {
         enabled: boolean;
@@ -81,6 +84,9 @@ const DEFAULT_CONFIG: SiteConfig = {
         subCategories: {},
         serviceTypes: {},
         gigExtras: {},
+        pricingTable: {
+            showRevisionsRow: true,
+        },
     },
     managedPages: [
         {
@@ -237,6 +243,11 @@ function mergeSiteConfig(parsed: Partial<SiteConfig>): SiteConfig {
             subCategories: parsed?.catalog?.subCategories && typeof parsed.catalog.subCategories === "object" ? (parsed.catalog.subCategories as any) : DEFAULT_CONFIG.catalog.subCategories,
             serviceTypes: parsed?.catalog?.serviceTypes && typeof parsed.catalog.serviceTypes === "object" ? (parsed.catalog.serviceTypes as any) : DEFAULT_CONFIG.catalog.serviceTypes,
             gigExtras: parsed?.catalog?.gigExtras && typeof parsed.catalog.gigExtras === "object" ? (parsed.catalog.gigExtras as any) : DEFAULT_CONFIG.catalog.gigExtras,
+            pricingTable: {
+                ...DEFAULT_CONFIG.catalog.pricingTable,
+                ...(parsed?.catalog?.pricingTable || {}),
+                showRevisionsRow: typeof parsed?.catalog?.pricingTable?.showRevisionsRow === "boolean" ? parsed.catalog.pricingTable.showRevisionsRow : DEFAULT_CONFIG.catalog.pricingTable.showRevisionsRow,
+            },
         },
         managedPages: (Array.isArray(parsed?.managedPages) ? parsed.managedPages : DEFAULT_CONFIG.managedPages).map((p: Partial<ManagedPage>) => {
             const page = { ...p };
