@@ -16,8 +16,6 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     },
     global: {
         headers: {
-            'Accept': 'application/json',
-            'Content-Type': 'application/json',
             'X-Client-Info': 'isgucu-web'
         }
     }
