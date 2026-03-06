@@ -34,6 +34,12 @@ export interface SiteConfig {
     contactAddress: string;
     customCss: string;
     managedPages: ManagedPage[];
+    catalog: {
+        categories: Array<{ id: string; title: string; icon: string; color: string }>;
+        subCategories: Record<string, string[]>;
+        serviceTypes: Record<string, string[]>;
+        gigExtras: Record<string, Array<{ label: string; key: string; type: "select" | "toggle" | "input"; options?: Array<string | number> }>>;
+    };
     announcement: {
         enabled: boolean;
         text: string;
@@ -70,6 +76,12 @@ const DEFAULT_CONFIG: SiteConfig = {
     contactPhone: "0850 555 0101",
     contactAddress: "Levent, Büyükdere Cad. No:199, İstanbul",
     customCss: "",
+    catalog: {
+        categories: [],
+        subCategories: {},
+        serviceTypes: {},
+        gigExtras: {},
+    },
     managedPages: [
         {
             id: "home-system",
@@ -218,6 +230,14 @@ function mergeSiteConfig(parsed: Partial<SiteConfig>): SiteConfig {
         headerLinks: Array.isArray(parsed?.headerLinks) ? parsed.headerLinks : DEFAULT_CONFIG.headerLinks,
         footerLinks: Array.isArray(parsed?.footerLinks) ? parsed.footerLinks : DEFAULT_CONFIG.footerLinks,
         socialLinks: Array.isArray(parsed?.socialLinks) ? parsed.socialLinks : DEFAULT_CONFIG.socialLinks,
+        catalog: {
+            ...DEFAULT_CONFIG.catalog,
+            ...(parsed?.catalog || {}),
+            categories: Array.isArray(parsed?.catalog?.categories) ? (parsed!.catalog!.categories as any) : DEFAULT_CONFIG.catalog.categories,
+            subCategories: parsed?.catalog?.subCategories && typeof parsed.catalog.subCategories === "object" ? (parsed.catalog.subCategories as any) : DEFAULT_CONFIG.catalog.subCategories,
+            serviceTypes: parsed?.catalog?.serviceTypes && typeof parsed.catalog.serviceTypes === "object" ? (parsed.catalog.serviceTypes as any) : DEFAULT_CONFIG.catalog.serviceTypes,
+            gigExtras: parsed?.catalog?.gigExtras && typeof parsed.catalog.gigExtras === "object" ? (parsed.catalog.gigExtras as any) : DEFAULT_CONFIG.catalog.gigExtras,
+        },
         managedPages: (Array.isArray(parsed?.managedPages) ? parsed.managedPages : DEFAULT_CONFIG.managedPages).map((p: Partial<ManagedPage>) => {
             const page = { ...p };
             if (page?.id === "home-system") {

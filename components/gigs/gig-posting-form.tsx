@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useState, useEffect } from "react";
+import { useMemo, useState, useEffect } from "react";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,6 +17,7 @@ import { useAuth } from "@/components/auth/auth-context";
 import { ImagePlus, X } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { sanitizeListingText } from "@/lib/utils";
+import { getSiteConfig, hydrateSiteConfigFromRemote } from "@/lib/site-config";
 import {
     CATEGORIES_DETAILED as DEFAULT_CATEGORIES,
     SUB_CATEGORIES_DATA as DEFAULT_SUB_CATEGORIES,
@@ -25,34 +26,34 @@ import {
 
 // These are now handled by local state or shared lib to allow admin edits
 // We create helper functions to get the merged data
-const getMergedCategories = () => {
-    if (typeof window === "undefined") {
-        return DEFAULT_CATEGORIES.filter((c) => c.id !== "freelancerlik" && c.title !== "Freelancerlık");
-    }
-    const adminData = JSON.parse(localStorage.getItem("isgucu_admin_categories") || "[]");
-    return [...DEFAULT_CATEGORIES, ...adminData].filter(
-        (c: { id?: string; title?: string }) => String(c?.id || "") !== "freelancerlik" && String(c?.title || "").trim() !== "Freelancerlık"
-    );
+type Cat = { id: string; title: string; icon: string; color: string };
+
+const getMergedCategories = (cfg: any | null) => {
+    const remoteCats = Array.isArray(cfg?.catalog?.categories) ? (cfg.catalog.categories as Cat[]) : [];
+    const base = remoteCats.length > 0 ? remoteCats : DEFAULT_CATEGORIES;
+    return base.filter((c) => String((c as any)?.id || "") !== "freelancerlik" && String((c as any)?.title || "").trim() !== "Freelancerlık");
 };
 
-const getMergedSubCategories = () => {
-    if (typeof window === "undefined") return DEFAULT_SUB_CATEGORIES;
-    const adminData = JSON.parse(localStorage.getItem("isgucu_admin_subcategories") || "{}");
-    const merged = { ...DEFAULT_SUB_CATEGORIES };
-    Object.keys(adminData).forEach(cat => {
-        merged[cat] = [...(merged[cat] || []), ...adminData[cat]];
-    });
+const getMergedSubCategories = (cfg: any | null) => {
+    const remote = cfg?.catalog?.subCategories && typeof cfg.catalog.subCategories === "object" ? (cfg.catalog.subCategories as Record<string, string[]>) : null;
+    const merged: any = { ...DEFAULT_SUB_CATEGORIES };
+    if (remote && Object.keys(remote).length > 0) {
+        Object.keys(remote).forEach((cat) => {
+            merged[cat] = Array.isArray(remote[cat]) ? remote[cat] : (merged[cat] || []);
+        });
+    }
     delete merged.freelancerlik;
     return merged;
 };
 
-const getMergedServiceTypes = () => {
-    if (typeof window === "undefined") return DEFAULT_SERVICE_TYPES;
-    const adminData = JSON.parse(localStorage.getItem("isgucu_admin_servicetypes") || "{}");
-    const merged = { ...DEFAULT_SERVICE_TYPES };
-    Object.keys(adminData).forEach(sub => {
-        merged[sub] = [...(merged[sub] || []), ...adminData[sub]];
-    });
+const getMergedServiceTypes = (cfg: any | null) => {
+    const remote = cfg?.catalog?.serviceTypes && typeof cfg.catalog.serviceTypes === "object" ? (cfg.catalog.serviceTypes as Record<string, string[]>) : null;
+    const merged: any = { ...DEFAULT_SERVICE_TYPES };
+    if (remote && Object.keys(remote).length > 0) {
+        Object.keys(remote).forEach((sub) => {
+            merged[sub] = Array.isArray(remote[sub]) ? remote[sub] : (merged[sub] || []);
+        });
+    }
     delete merged["Profil & Portföy"];
     delete merged["Teklif & Fiyatlandırma"];
     delete merged["Müşteri İletişimi"];
@@ -74,13 +75,12 @@ const buildServiceTypeFallback = (subCategory: string) => {
     ];
 };
 
-const getServiceTypesForSubCategory = (subCategory: string) => {
-    const merged = getMergedServiceTypes();
+const getServiceTypesForSubCategory = (subCategory: string, cfg: any | null) => {
+    const merged = getMergedServiceTypes(cfg);
     const direct = merged[subCategory];
     if (Array.isArray(direct) && direct.length > 0) return direct;
     return buildServiceTypeFallback(subCategory);
 };
-
 
 const CATEGORY_ADDONS: Record<string, ExtraItem[]> = {
     yazilim: [
@@ -113,7 +113,7 @@ const CATEGORY_ADDONS: Record<string, ExtraItem[]> = {
     ],
 };
 
-const CATEGORY_EXTRAS: Record<string, { label: string, key: string, type: "select" | "toggle" | "input", options?: unknown[] }[]> = {
+const DEFAULT_CATEGORY_EXTRAS: Record<string, { label: string, key: string, type: "select" | "toggle" | "input", options?: unknown[] }[]> = {
     // Software Sub-categories
     "Web Yazılım": [
         { label: "Sayfa Sayısı", key: "pageCount", type: "select", options: [1, 2, 3, 5, 10, 15, 20, 30] },
@@ -230,15 +230,22 @@ interface ExtraItem {
     isCustom?: boolean;
 }
 
+type GigExtraRow = {
+    label: string;
+    key: string;
+    type: "select" | "toggle" | "input";
+    options?: unknown[];
+};
+
 const emptyPackage = (name: string): PackageData => {
     void name;
     return {
-    name: "",
-    description: "",
-    price: "",
-    deliveryDays: "",
-    revisions: "1",
-    features: [],
+        name: "",
+        description: "",
+        price: "",
+        deliveryDays: "",
+        revisions: "1",
+        features: [],
     };
 };
 
@@ -289,6 +296,22 @@ export function GigPostingForm() {
     const { user } = useAuth();
     const [loading, setLoading] = useState(false);
     const [step, setStep] = useState(1);
+
+    const [siteCfg, setSiteCfg] = useState<any | null>(null);
+
+    useEffect(() => {
+        let mounted = true;
+        hydrateSiteConfigFromRemote().then((cfg) => {
+            if (!mounted) return;
+            setSiteCfg(cfg || getSiteConfig());
+        });
+        const onUpdate = () => setSiteCfg(getSiteConfig());
+        window.addEventListener("site_config_updated", onUpdate);
+        return () => {
+            mounted = false;
+            window.removeEventListener("site_config_updated", onUpdate);
+        };
+    }, []);
 
     useEffect(() => {
         window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -347,6 +370,13 @@ export function GigPostingForm() {
     }, [formData.category]);
 
     const [tagInput, setTagInput] = useState("");
+
+    const dynamicExtraRows = useMemo<GigExtraRow[]>(() => {
+        const fromCfg = (siteCfg?.catalog?.gigExtras && (siteCfg.catalog.gigExtras[formData.subCategory] || siteCfg.catalog.gigExtras[formData.category])) as any;
+        const fromDefaults = DEFAULT_CATEGORY_EXTRAS[formData.subCategory] || DEFAULT_CATEGORY_EXTRAS[formData.category] || [];
+        const rows = fromCfg || fromDefaults || [];
+        return Array.isArray(rows) ? (rows as any as GigExtraRow[]) : [];
+    }, [siteCfg, formData.subCategory, formData.category]);
 
     const sanitizeGigTitle = (value: string) => value.replace(/^ben,\s*/i, "").trimStart();
 
@@ -448,7 +478,6 @@ export function GigPostingForm() {
     const removeCustomExtra = (id: string) => {
         setExtras(prev => prev.filter(e => e.id !== id));
     };
-
 
     const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
         const files = e.target.files;
@@ -631,7 +660,7 @@ export function GigPostingForm() {
                         <p className="text-black font-black">Sana en uygun kategoriyi seçerek başla.</p>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                        {getMergedCategories().map((cat) => (
+                        {getMergedCategories(siteCfg).map((cat) => (
                             <div
                                 key={cat.id}
                                 onClick={() => {
@@ -658,10 +687,10 @@ export function GigPostingForm() {
                         <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/10 rounded-full -mr-32 -mt-32 blur-3xl"></div>
                         <div className="relative z-10 flex items-center gap-8">
                             <div className="h-24 w-24 bg-gray-800 border-4 border-gray-700/50 rounded-3xl flex items-center justify-center text-4xl shadow-2xl">
-                                {getMergedCategories().find(c => c.id === formData.category)?.icon}
+                                {getMergedCategories(siteCfg).find(c => c.id === formData.category)?.icon}
                             </div>
                             <div>
-                                <h3 className="text-3xl font-black mb-1">{getMergedCategories().find(c => c.id === formData.category)?.title}</h3>
+                                <h3 className="text-3xl font-black mb-1">{getMergedCategories(siteCfg).find(c => c.id === formData.category)?.title}</h3>
                                 <p className="text-white font-black text-lg">Bu kategoride hizmet veren uzman freelancerlar projeni bekliyor.</p>
                             </div>
                         </div>
@@ -669,12 +698,12 @@ export function GigPostingForm() {
 
                     {/* Sub-category Grid */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-16">
-                        {(getMergedSubCategories()[formData.category] || getMergedSubCategories().yazilim).map((sub) => (
+                        {((getMergedSubCategories(siteCfg)[formData.category] || getMergedSubCategories(siteCfg).yazilim) as string[]).map((sub: string) => (
                             <button
                                 key={sub}
                                 type="button"
-                                onClick={() => setFormData(prev => ({ ...prev, subCategory: sub }))}
-                                className={`p-8 text-left rounded-3xl border-4 font-black transition-all hover:shadow-xl hover:-translate-y-1 ${formData.subCategory === sub
+                                onClick={() => setFormData(prev => ({ ...prev, subCategory: sub, serviceType: "" }))}
+                                className={`p-8 text-left rounded-3xl border-4 font-black transition-all ${formData.subCategory === sub
                                     ? "bg-green-50 border-green-500 text-green-700 shadow-xl shadow-green-100"
                                     : "bg-white border-gray-100 text-black hover:border-blue-200"}`}
                             >
@@ -702,7 +731,7 @@ export function GigPostingForm() {
                                 <SelectValue placeholder="Bir hizmet türü seçiniz..." />
                             </SelectTrigger>
                             <SelectContent className="rounded-2xl border-4 border-gray-50">
-                                {getServiceTypesForSubCategory(formData.subCategory).map((type) => (
+                                {getServiceTypesForSubCategory(formData.subCategory, siteCfg).map((type) => (
                                     <SelectItem key={type} value={type} className="py-4 font-bold">{type}</SelectItem>
                                 ))}
                             </SelectContent>
@@ -1068,12 +1097,12 @@ export function GigPostingForm() {
                                                 value={packages.basic.revisions}
                                                 onValueChange={(val) => setPackages(p => ({ ...p, basic: { ...p.basic, revisions: val } }))}
                                             >
-                                                <SelectTrigger className="h-14 rounded-2xl border-4 border-gray-50 font-black text-lg bg-gray-50/30">
+                                                <SelectTrigger className="h-14 rounded-2xl border-4 border-gray-100 text-black font-black text-lg focus:ring-blue-500 focus:border-blue-500 shadow-sm">
                                                     <SelectValue placeholder="Seç" />
                                                 </SelectTrigger>
                                                 <SelectContent className="rounded-2xl border-4 border-gray-50">
                                                     {[0, 1, 2, 3, 5, 99].map(r => (
-                                                        <SelectItem key={r} value={r.toString()} className="font-bold py-3">{r === 99 ? "∞ SINIRSIZ" : `${r} ADET`}</SelectItem>
+                                                        <SelectItem key={r} value={r.toString()} className="font-bold">{r === 99 ? "∞ SINIRSIZ" : `${r} ADET`}</SelectItem>
                                                     ))}
                                                 </SelectContent>
                                             </Select>
@@ -1088,7 +1117,7 @@ export function GigPostingForm() {
                                                 value={packages.basic.deliveryDays}
                                                 onValueChange={(val) => setPackages(p => ({ ...p, basic: { ...p.basic, deliveryDays: val } }))}
                                             >
-                                                <SelectTrigger className="h-14 rounded-2xl border-4 border-gray-50 font-black text-lg bg-gray-50/30">
+                                                <SelectTrigger className="h-14 rounded-2xl border-4 border-gray-100 text-black font-black text-lg focus:ring-blue-500 focus:border-blue-500 shadow-sm">
                                                     <SelectValue placeholder="Süre Seçin" />
                                                 </SelectTrigger>
                                                 <SelectContent className="rounded-2xl border-4 border-gray-50">
@@ -1225,9 +1254,8 @@ export function GigPostingForm() {
                                             </td>
                                         ))}
                                     </tr>
-
                                     {/* Dynamic Category Specific Rows */}
-                                    {(CATEGORY_EXTRAS[formData.subCategory] || CATEGORY_EXTRAS[formData.category] || []).map((row) => (
+                                    {dynamicExtraRows.map((row) => (
                                         <tr key={row.key as string}>
                                             <td className="p-6 bg-blue-600 font-bold text-white text-[11px] uppercase border-r border-gray-300 border-b border-white/20 text-center">
                                                 {row.label}
@@ -1261,7 +1289,7 @@ export function GigPostingForm() {
                                                                         <SelectValue placeholder="..." />
                                                                     </SelectTrigger>
                                                                     <SelectContent>
-                                                                        {row.options?.map((opt) => {
+                                                                        {row.options?.map((opt: unknown) => {
                                                                             const optValue = typeof opt === "string" || typeof opt === "number" ? String(opt) : String(opt ?? "");
                                                                             return (
                                                                                 <SelectItem key={optValue} value={optValue}>

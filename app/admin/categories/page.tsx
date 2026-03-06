@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Plus, Trash2, Check, ChevronRight, LayoutGrid, ListTree, Tags } from "lucide-react";
+import { getSiteConfig, hydrateSiteConfigFromRemote, saveSiteConfig } from "@/lib/site-config";
 
 export default function AdminCategoriesPage() {
     const { user, loading: authLoading } = useAuth();
@@ -19,10 +20,11 @@ export default function AdminCategoriesPage() {
     const [categories, setCategories] = useState<any[]>([]);
     const [subCategories, setSubCategories] = useState<Record<string, string[]>>({});
     const [serviceTypes, setServiceTypes] = useState<Record<string, string[]>>({});
+    const [gigExtras, setGigExtras] = useState<Record<string, Array<{ label: string; key: string; type: "select" | "toggle" | "input"; options?: Array<string | number> }>>>({});
     const [publishStatus, setPublishStatus] = useState<"idle" | "publishing" | "success">("idle");
     const [initStatus, setInitStatus] = useState<"loading" | "ready" | "error">("loading");
 
-    const [newCat, setNewCat] = useState({ title: "", icon: "📁", id: "" });
+    const [newCat, setNewCat] = useState({ title: "", icon: "", id: "" });
     const [selectedCat, setSelectedCat] = useState<string | null>(null);
     const [newSub, setNewSub] = useState("");
     const [selectedSub, setSelectedSub] = useState<string | null>(null);
@@ -62,27 +64,39 @@ export default function AdminCategoriesPage() {
                 defaultSubCategoriesRef.current = DEFAULT_SUB_CATEGORIES;
                 defaultServiceTypesRef.current = DEFAULT_SERVICE_TYPES;
 
-                const storedCats = JSON.parse(localStorage.getItem("isgucu_admin_categories") || "[]");
-                const storedSubs = JSON.parse(localStorage.getItem("isgucu_admin_subcategories") || "{}");
-                const storedServices = JSON.parse(localStorage.getItem("isgucu_admin_servicetypes") || "{}");
+                const localCats = JSON.parse(localStorage.getItem("isgucu_admin_categories") || "[]");
+                const localSubs = JSON.parse(localStorage.getItem("isgucu_admin_subcategories") || "{}");
+                const localServices = JSON.parse(localStorage.getItem("isgucu_admin_servicetypes") || "{}");
 
-                const mergedCategories = [...DEFAULT_CATEGORIES, ...storedCats].filter(
+                await hydrateSiteConfigFromRemote();
+                const cfg = getSiteConfig();
+
+                const remoteCats = Array.isArray(cfg?.catalog?.categories) ? cfg.catalog.categories : [];
+                const remoteSubs = cfg?.catalog?.subCategories && typeof cfg.catalog.subCategories === "object" ? cfg.catalog.subCategories : {};
+                const remoteServices = cfg?.catalog?.serviceTypes && typeof cfg.catalog.serviceTypes === "object" ? cfg.catalog.serviceTypes : {};
+                const remoteGigExtras = cfg?.catalog?.gigExtras && typeof cfg.catalog.gigExtras === "object" ? cfg.catalog.gigExtras : {};
+
+                const mergedCategories = (remoteCats.length > 0 ? remoteCats : [...DEFAULT_CATEGORIES, ...localCats]).filter(
                     (c: { id?: string; title?: string }) => String(c?.id || "") !== "freelancerlik" && String(c?.title || "").trim() !== "Freelancerlık"
                 );
-                setCategories(mergedCategories);
 
                 const mergedSubs: any = { ...DEFAULT_SUB_CATEGORIES };
-                Object.keys(storedSubs).forEach((k) => {
-                    mergedSubs[k] = [...(mergedSubs[k] || []), ...storedSubs[k]];
+                const sourceSubs = Object.keys(remoteSubs).length > 0 ? remoteSubs : localSubs;
+                Object.keys(sourceSubs).forEach((k) => {
+                    mergedSubs[k] = [...(mergedSubs[k] || []), ...(sourceSubs as any)[k]];
                 });
                 delete mergedSubs.freelancerlik;
-                setSubCategories(mergedSubs);
 
                 const mergedServices: any = { ...DEFAULT_SERVICE_TYPES };
-                Object.keys(storedServices).forEach((k) => {
-                    mergedServices[k] = [...(mergedServices[k] || []), ...storedServices[k]];
+                const sourceServices = Object.keys(remoteServices).length > 0 ? remoteServices : localServices;
+                Object.keys(sourceServices).forEach((k) => {
+                    mergedServices[k] = [...(mergedServices[k] || []), ...(sourceServices as any)[k]];
                 });
+
+                setCategories(mergedCategories);
+                setSubCategories(mergedSubs);
                 setServiceTypes(mergedServices);
+                setGigExtras(remoteGigExtras as any);
                 setInitStatus("ready");
             } catch (e) {
                 console.error("AdminCategories: init failed", e);
@@ -91,43 +105,33 @@ export default function AdminCategoriesPage() {
         })();
     }, [authLoading, user, router]);
 
-    // 3. PERSISTENCE HELPERS
-    const saveToLocal = (cats: any[], subs: any, services: any) => {
-        const DEFAULT_CATEGORIES = defaultCategoriesRef.current;
-        const DEFAULT_SUB_CATEGORIES = defaultSubCategoriesRef.current;
-        const DEFAULT_SERVICE_TYPES = defaultServiceTypesRef.current;
-
-        const customCats = cats.filter(c => !DEFAULT_CATEGORIES.find((dc: any) => dc.id === c.id));
-        localStorage.setItem("isgucu_admin_categories", JSON.stringify(customCats));
-
-        const customSubs: any = {};
-        Object.keys(subs).forEach(k => {
-            const defaults = DEFAULT_SUB_CATEGORIES[k] || [];
-            const customs = subs[k].filter((s: string) => !defaults.includes(s));
-            if (customs.length > 0) customSubs[k] = customs;
-        });
-        localStorage.setItem("isgucu_admin_subcategories", JSON.stringify(customSubs));
-
-        const customServices: any = {};
-        Object.keys(services).forEach(k => {
-            const defaults = DEFAULT_SERVICE_TYPES[k] || [];
-            const customs = services[k].filter((s: string) => !defaults.includes(s));
-            if (customs.length > 0) customServices[k] = customs;
-        });
-        localStorage.setItem("isgucu_admin_servicetypes", JSON.stringify(customServices));
+    const persistRemote = async (next: { cats: any[]; subs: any; services: any; extras: any }) => {
+        const cfg = getSiteConfig();
+        const nextConfig = {
+            ...cfg,
+            catalog: {
+                ...(cfg as any).catalog,
+                categories: next.cats,
+                subCategories: next.subs,
+                serviceTypes: next.services,
+                gigExtras: next.extras,
+            },
+        } as any;
+        await saveSiteConfig(nextConfig);
     };
 
     // 4. ACTIONS
     const addCategory = () => {
         if (initStatus !== "ready") return;
         if (!newCat.title) return;
+
         const baseId = slugify(newCat.title);
         const exists = categories.some(c => c.id === baseId);
         const id = exists ? `${baseId}-${Date.now()}` : baseId;
         const updated = [...categories, { ...newCat, id, color: "bg-blue-50" }];
         setCategories(updated);
-        saveToLocal(updated, subCategories, serviceTypes);
-        setNewCat({ title: "", icon: "📁", id: "" });
+        persistRemote({ cats: updated, subs: subCategories, services: serviceTypes, extras: gigExtras });
+        setNewCat({ title: "", icon: "", id: "" });
     };
 
     const deleteCategory = (id: string) => {
@@ -135,11 +139,12 @@ export default function AdminCategoriesPage() {
         if (!confirm("Bu kategoriyi silmek istediğinizden emin misiniz? Alt kategoriler de etkilenebilir.")) return;
         const updated = categories.filter(c => c.id !== id);
         setCategories(updated);
+
         if (selectedCat === id) {
             setSelectedCat(null);
             setSelectedSub(null);
         }
-        saveToLocal(updated, subCategories, serviceTypes);
+        persistRemote({ cats: updated, subs: subCategories, services: serviceTypes, extras: gigExtras });
     };
 
     const addSubCategory = () => {
@@ -147,7 +152,7 @@ export default function AdminCategoriesPage() {
         if (!selectedCat || !newSub) return;
         const updated = { ...subCategories, [selectedCat]: [...(subCategories[selectedCat] || []), newSub] };
         setSubCategories(updated);
-        saveToLocal(categories, updated, serviceTypes);
+        persistRemote({ cats: categories, subs: updated, services: serviceTypes, extras: gigExtras });
         setNewSub("");
     };
 
@@ -159,7 +164,7 @@ export default function AdminCategoriesPage() {
         const updated = { ...subCategories, [selectedCat]: currentList.filter(s => s !== sub) };
         setSubCategories(updated);
         if (selectedSub === sub) setSelectedSub(null);
-        saveToLocal(categories, updated, serviceTypes);
+        persistRemote({ cats: categories, subs: updated, services: serviceTypes, extras: gigExtras });
     };
 
     const addServiceType = () => {
@@ -167,7 +172,7 @@ export default function AdminCategoriesPage() {
         if (!selectedSub || !newService) return;
         const updated = { ...serviceTypes, [selectedSub]: [...(serviceTypes[selectedSub] || []), newService] };
         setServiceTypes(updated);
-        saveToLocal(categories, subCategories, updated);
+        persistRemote({ cats: categories, subs: subCategories, services: updated, extras: gigExtras });
         setNewService("");
     };
 
@@ -177,19 +182,46 @@ export default function AdminCategoriesPage() {
         const currentList = serviceTypes[selectedSub] || serviceTypes.default || [];
         const updated = { ...serviceTypes, [selectedSub]: currentList.filter(s => s !== svc) };
         setServiceTypes(updated);
-        saveToLocal(categories, subCategories, updated);
+        persistRemote({ cats: categories, subs: subCategories, services: updated, extras: gigExtras });
     };
 
-    const publishChanges = () => {
+    const addGigExtraRow = () => {
+        if (!selectedSub) return;
+        const current = gigExtras[selectedSub] || [];
+        const updated = {
+            ...gigExtras,
+            [selectedSub]: [
+                ...current,
+                { label: "", key: `custom_${Date.now()}`, type: "toggle" as const },
+            ],
+        };
+        setGigExtras(updated);
+        persistRemote({ cats: categories, subs: subCategories, services: serviceTypes, extras: updated });
+    };
+
+    const updateGigExtraRow = (idx: number, patch: Partial<{ label: string; key: string; type: "select" | "toggle" | "input"; options?: Array<string | number> }>) => {
+        if (!selectedSub) return;
+        const current = gigExtras[selectedSub] || [];
+        const nextList = current.map((r, i) => (i === idx ? { ...r, ...patch } : r));
+        const updated = { ...gigExtras, [selectedSub]: nextList };
+        setGigExtras(updated);
+        persistRemote({ cats: categories, subs: subCategories, services: serviceTypes, extras: updated });
+    };
+
+    const deleteGigExtraRow = (idx: number) => {
+        if (!selectedSub) return;
+        const current = gigExtras[selectedSub] || [];
+        const nextList = current.filter((_, i) => i !== idx);
+        const updated = { ...gigExtras, [selectedSub]: nextList };
+        setGigExtras(updated);
+        persistRemote({ cats: categories, subs: subCategories, services: serviceTypes, extras: updated });
+    };
+
+    const publishChanges = async () => {
         setPublishStatus("publishing");
-        if (typeof window !== "undefined") {
-            window.dispatchEvent(new Event("storage_updated"));
-            window.dispatchEvent(new Event("storage"));
-        }
-        setTimeout(() => {
-            setPublishStatus("success");
-            setTimeout(() => setPublishStatus("idle"), 3000);
-        }, 800);
+        await persistRemote({ cats: categories, subs: subCategories, services: serviceTypes, extras: gigExtras });
+        setPublishStatus("success");
+        setTimeout(() => setPublishStatus("idle"), 3000);
     };
 
     // 5. RENDER
@@ -222,9 +254,9 @@ export default function AdminCategoriesPage() {
     }
 
     return (
-        <div className="p-8 max-w-7xl mx-auto space-y-8 bg-gray-50 min-h-screen">
+        <div className="p-4 sm:p-8 max-w-7xl mx-auto space-y-8 bg-gray-50 min-h-screen">
             {/* Header */}
-            <div className="flex justify-between items-center mb-10">
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-10">
                 <div>
                     <h1 className="text-4xl font-black text-blue-900 tracking-tight">Kategori Yönetimi</h1>
                     <p className="text-black font-black mt-1 uppercase tracking-widest text-xs">Admin Panel / İçerik Yapılandırma</p>
@@ -235,7 +267,6 @@ export default function AdminCategoriesPage() {
                             <Check className="h-5 w-5" /> YAYINLANDI!
                         </div>
                     )}
-                    <Button variant="outline" className="rounded-xl font-bold border-2">Yedeği İndir</Button>
                     <Button
                         onClick={publishChanges}
                         disabled={publishStatus !== "idle"}
@@ -385,6 +416,96 @@ export default function AdminCategoriesPage() {
                     </CardContent>
                 </Card>
             </div>
+
+            <Card className="border-4 border-white shadow-2xl rounded-[2.5rem] overflow-hidden">
+                <CardHeader className={`${selectedSub ? 'bg-slate-900' : 'bg-gray-200'} text-white p-6 transition-colors`}>
+                    <CardTitle className="flex items-center justify-between gap-3 text-xl font-black uppercase tracking-tight flex-wrap">
+                        <span>4. Özellikler (Fiyatlandırma Satırları)</span>
+                        <Button
+                            type="button"
+                            variant="outline"
+                            className="h-10 px-4 rounded-xl border-white/20 text-white font-black uppercase tracking-widest text-[10px]"
+                            onClick={addGigExtraRow}
+                            disabled={!selectedSub}
+                        >
+                            <Plus className="h-4 w-4 mr-2" /> Satır Ekle
+                        </Button>
+                    </CardTitle>
+                </CardHeader>
+                <CardContent className="p-6 space-y-4">
+                    {!selectedSub ? (
+                        <div className="text-center py-12 text-black/40 font-black italic uppercase text-sm tracking-widest">Önce bir alt kategori seç</div>
+                    ) : (
+                        <div className="space-y-3">
+                            {(gigExtras[selectedSub] || []).length === 0 ? (
+                                <div className="text-center py-10 text-black/40 font-black italic uppercase text-sm tracking-widest">Bu alt kategori için henüz özellik yok</div>
+                            ) : null}
+
+                            {(gigExtras[selectedSub] || []).map((row, idx) => (
+                                <div key={`${row.key}-${idx}`} className="rounded-2xl border-2 border-gray-100 bg-white p-4">
+                                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 items-center">
+                                        <div className="lg:col-span-4">
+                                            <div className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Başlık</div>
+                                            <Input
+                                                value={row.label}
+                                                onChange={(e) => updateGigExtraRow(idx, { label: e.target.value })}
+                                                className="h-11 rounded-xl border-2 font-bold"
+                                                placeholder="Örn: Plugin"
+                                            />
+                                        </div>
+                                        <div className="lg:col-span-3">
+                                            <div className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Key</div>
+                                            <Input
+                                                value={row.key}
+                                                onChange={(e) => updateGigExtraRow(idx, { key: e.target.value })}
+                                                className="h-11 rounded-xl border-2 font-bold"
+                                                placeholder="Örn: plugin"
+                                            />
+                                        </div>
+                                        <div className="lg:col-span-3">
+                                            <div className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Tür</div>
+                                            <select
+                                                value={row.type}
+                                                onChange={(e) => updateGigExtraRow(idx, { type: e.target.value as any, options: e.target.value === "select" ? (row.options || []) : undefined })}
+                                                className="h-11 w-full rounded-xl border-2 border-gray-200 px-3 font-black"
+                                            >
+                                                <option value="toggle">Checkbox</option>
+                                                <option value="select">Seçim</option>
+                                                <option value="input">Sayı</option>
+                                            </select>
+                                        </div>
+                                        <div className="lg:col-span-2 flex justify-end">
+                                            <Button
+                                                type="button"
+                                                variant="ghost"
+                                                className="h-10 px-3 rounded-xl text-red-500 hover:text-red-600 hover:bg-red-50 font-black uppercase tracking-widest text-[10px]"
+                                                onClick={() => deleteGigExtraRow(idx)}
+                                            >
+                                                <Trash2 className="h-4 w-4 mr-2" /> Sil
+                                            </Button>
+                                        </div>
+                                    </div>
+                                    {row.type === "select" ? (
+                                        <div className="mt-3">
+                                            <div className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Seçenekler (virgülle)</div>
+                                            <Input
+                                                value={(row.options || []).map(String).join(",")}
+                                                onChange={(e) => {
+                                                    const raw = String(e.target.value || "");
+                                                    const opts = raw.split(",").map((x) => x.trim()).filter(Boolean).map((x) => (String(Number(x)) === x ? Number(x) : x));
+                                                    updateGigExtraRow(idx, { options: opts });
+                                                }}
+                                                className="h-11 rounded-xl border-2 font-bold"
+                                                placeholder="Örn: 1,2,3,5"
+                                            />
+                                        </div>
+                                    ) : null}
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </CardContent>
+            </Card>
         </div>
     );
 }
