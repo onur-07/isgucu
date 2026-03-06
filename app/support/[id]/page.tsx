@@ -186,10 +186,10 @@ export default function SupportTicketDetailPage() {
 
         setUploading(true);
         try {
-            const bytes = new Uint8Array(await file.arrayBuffer());
-            const up = await supabase.storage.from(BUCKET).upload(path, bytes, {
+            const up = await supabase.storage.from(BUCKET).upload(path, file, {
                 upsert: false,
                 contentType: file.type || undefined,
+                cacheControl: "3600",
             });
             if (up.error) throw up.error;
 
