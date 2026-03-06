@@ -93,7 +93,7 @@ export default function Home() {
             <div className="absolute inset-0 opacity-10 bg-[url('/grid.svg')]" />
             <div className="relative z-10 space-y-4 text-center sm:text-left">
               <span className="inline-flex bg-white/20 px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border border-white/10">👋 Hoş Geldin, Freelancer</span>
-              <h1 className="text-3xl sm:text-4xl md:text-5xl font-black font-heading leading-tight italic">
+              <h1 className="text-3xl sm:text-4xl md:text-5xl font-black font-sans leading-tight">
                 Kazancınızı Artıracak <br /> Yeni İş Fırsatlarını Yakalayın!
               </h1>
               <p className="text-blue-100 font-bold text-sm max-w-xl mx-auto sm:mx-0">Yeteneklerinize uygun en son ilanları aşağıda bulabilir ve hemen teklif vererek yeni projelere başlayabilirsiniz.</p>
