@@ -106,6 +106,7 @@ function AdminPageContent() {
     const [openSupportTickets, setOpenSupportTickets] = useState<Record<string, boolean>>({});
     const [showBannedModal, setShowBannedModal] = useState(false);
     const [showDeletedModal, setShowDeletedModal] = useState(false);
+    const [supportSearch, setSupportSearch] = useState("");
 
     const parseTabFromUrl = (raw: string | null) => {
         const v = String(raw || "").trim();
@@ -970,8 +971,49 @@ function AdminPageContent() {
         const subject = String(ticket.subject || "").toLowerCase();
         return category === "security" || subject.includes("yasakli bilgi");
     };
+
+    const getTicketOwnerRole = (ticket: SupportTicket): "freelancer" | "employer" | "admin" | "" => {
+        const fromUser = String(ticket.from_user || "").trim().toLowerCase();
+        const fromEmail = String(ticket.from_email || "").trim().toLowerCase();
+        const found = users.find((u) => {
+            const uName = String(u.username || "").trim().toLowerCase();
+            const uMail = String(u.email || "").trim().toLowerCase();
+            return (fromUser && uName === fromUser) || (fromEmail && uMail === fromEmail);
+        });
+        const role = String(found?.role || "").toLowerCase();
+        if (role === "freelancer" || role === "employer" || role === "admin") return role;
+        return "";
+    };
+
+    const getTicketCode = (ticket: SupportTicket) => {
+        if (isSystemTicket(ticket) || String(ticket.from_user || "").trim().toLowerCase() === "system") {
+            return `S${String(ticket.id)}`;
+        }
+        const role = getTicketOwnerRole(ticket);
+        const prefix = role === "freelancer" ? "F" : role === "employer" ? "I" : "T";
+        return `${prefix}${String(ticket.id)}`;
+    };
+
+    const supportSearchKey = String(supportSearch || "").trim().toLowerCase();
+    const ticketMatchesSearch = (ticket: SupportTicket) => {
+        if (!supportSearchKey) return true;
+        const code = getTicketCode(ticket).toLowerCase();
+        const id = String(ticket.id || "").toLowerCase();
+        const fromUser = String(ticket.from_user || "").toLowerCase();
+        const fromEmail = String(ticket.from_email || "").toLowerCase();
+        const subject = String(ticket.subject || "").toLowerCase();
+        return (
+            code.includes(supportSearchKey) ||
+            id.includes(supportSearchKey) ||
+            fromUser.includes(supportSearchKey) ||
+            fromEmail.includes(supportSearchKey) ||
+            subject.includes(supportSearchKey)
+        );
+    };
     const systemTickets = tickets.filter((t) => isSystemTicket(t));
     const userTickets = tickets.filter((t) => !isSystemTicket(t));
+    const filteredSystemTickets = systemTickets.filter(ticketMatchesSearch);
+    const filteredUserTickets = userTickets.filter(ticketMatchesSearch);
     const openTicketsCount = tickets.filter(t => t.status === "open").length;
     const bannedUsers = users.filter((u) => !!u.isBanned);
 
@@ -1449,11 +1491,30 @@ function AdminPageContent() {
                         </div>
                     </div>
 
+                    <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                        <div className="grid grid-cols-1 md:grid-cols-[1fr_auto] gap-3 items-center">
+                            <Input
+                                value={supportSearch}
+                                onChange={(e) => setSupportSearch(e.target.value)}
+                                placeholder="Ticket ara: kullanıcı adı (onur1907) veya kod (F20 / I21 / S8)"
+                                className="h-11 rounded-xl border-slate-200"
+                            />
+                            <div className="text-[10px] font-black uppercase tracking-widest text-slate-500">
+                                Sonuç: {filteredUserTickets.length + filteredSystemTickets.length}
+                            </div>
+                        </div>
+                    </div>
+
                     <div className="space-y-6">
                         <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Kullanıcı Ticketları ({userTickets.length})</p>
+                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Kullanıcı Ticketları ({filteredUserTickets.length})</p>
                         </div>
-                        {userTickets.map(ticket => {
+                        {filteredUserTickets.length === 0 && (
+                            <div className="rounded-2xl border border-slate-200 bg-white p-6 text-center text-sm font-bold text-slate-500">
+                                Kullanıcı ticketı bulunamadı.
+                            </div>
+                        )}
+                        {filteredUserTickets.map(ticket => {
                             const sec = parseSecurityMeta(ticket.message);
                             const fromUserId = sec.callerId || usernameToId[ticket.from_user] || "";
                             const freelancerId = sec.callerRole === "freelancer" ? sec.callerId : sec.otherRole === "freelancer" ? sec.otherId : "";
@@ -1461,6 +1522,7 @@ function AdminPageContent() {
                             const ticketMessageUrls = extractUrls(ticket.message);
                             const ticketMessageBody = stripUrls(ticket.message);
                             const isOpen = !!openSupportTickets[String(ticket.id)];
+                            const ticketCode = getTicketCode(ticket);
                             return (
                             <div key={ticket.id} className={`bg-white border rounded-[2rem] overflow-hidden shadow-sm transition-all ${ticket.status === 'open' ? 'border-l-8 border-l-orange-500' : 'border-l-8 border-l-emerald-500'}`}>
                                 <div className="p-5 sm:p-8">
@@ -1485,6 +1547,7 @@ function AdminPageContent() {
                                                     )}
                                                 </p>
                                                 <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">{ticket.from_email} • {new Date(ticket.created_at).toLocaleString("tr-TR")}</p>
+                                                <p className="text-[10px] text-indigo-700 font-black uppercase tracking-widest mt-1">Ticket: {ticketCode}</p>
                                                 {sec.otherUsername && (
                                                     <p className="text-[10px] text-gray-500 font-black uppercase tracking-widest mt-1">
                                                         Hedef: {sec.otherId ? (
@@ -1661,19 +1724,20 @@ function AdminPageContent() {
 
                     <div className="space-y-4">
                         <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
-                            <p className="text-[10px] font-black uppercase tracking-widest text-amber-700">Sistem Ticketları ({systemTickets.length})</p>
+                            <p className="text-[10px] font-black uppercase tracking-widest text-amber-700">Sistem Ticketları ({filteredSystemTickets.length})</p>
                             <p className="text-xs font-bold text-amber-700/80 mt-1">Güvenlik logları burada ayrı listelenir, kullanıcı talepleriyle karışmaz.</p>
                         </div>
-                        {systemTickets.length === 0 ? (
+                        {filteredSystemTickets.length === 0 ? (
                             <div className="rounded-2xl border border-slate-200 bg-white p-6 text-center text-sm font-bold text-slate-500">
                                 Sistem ticketı yok.
                             </div>
                         ) : (
                             <div className="space-y-3">
-                                {systemTickets.map((ticket) => {
+                                {filteredSystemTickets.map((ticket) => {
                                     const isOpen = !!openSupportTickets[`sys-${String(ticket.id)}`];
                                     const ticketMessageUrls = extractUrls(ticket.message);
                                     const ticketMessageBody = stripUrls(ticket.message);
+                                    const ticketCode = getTicketCode(ticket);
                                     return (
                                         <div key={`sys-${ticket.id}`} className="rounded-2xl border border-amber-200 bg-white overflow-hidden">
                                             <button
@@ -1684,6 +1748,7 @@ function AdminPageContent() {
                                                 <div>
                                                     <p className="text-sm font-black text-slate-900">{ticket.subject}</p>
                                                     <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">{new Date(ticket.created_at).toLocaleString("tr-TR")}</p>
+                                                    <p className="text-[10px] font-black uppercase tracking-widest text-amber-700 mt-1">Ticket: {ticketCode}</p>
                                                 </div>
                                                 <span className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-amber-200 bg-amber-50 text-amber-700">
                                                     {isOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
