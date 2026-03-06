@@ -48,6 +48,8 @@ interface DeletedUserRow {
     restored_user_id?: string;
 }
 
+const DELETED_USERS_CACHE_KEY = "isgucu_admin_deleted_users_cache";
+
 function AdminPageContent() {
     const { user, loading: authLoading } = useAuth();
     const router = useRouter();
@@ -168,6 +170,23 @@ function AdminPageContent() {
         const json = await resp.json().catch(() => ({}));
         if (!resp.ok) throw new Error(String((json as any)?.details || (json as any)?.error || resp.status));
         return Array.isArray((json as any)?.deletedUsers) ? (json as any).deletedUsers : [];
+    };
+
+    const readDeletedUsersCache = (): DeletedUserRow[] => {
+        try {
+            const raw = localStorage.getItem(DELETED_USERS_CACHE_KEY);
+            if (!raw) return [];
+            const rows = JSON.parse(raw);
+            return Array.isArray(rows) ? rows : [];
+        } catch {
+            return [];
+        }
+    };
+
+    const writeDeletedUsersCache = (rows: DeletedUserRow[]) => {
+        try {
+            localStorage.setItem(DELETED_USERS_CACHE_KEY, JSON.stringify(rows.slice(0, 500)));
+        } catch { }
     };
 
     const loadData = async (opts?: { fetchUsers?: boolean }) => {
@@ -295,7 +314,19 @@ function AdminPageContent() {
 
                 try {
                     const dData = await withTimeout(fetchDeletedUsersFromAdminApi(), 10000, "deletedUsersApi");
-                    setDeletedUsers(dData || []);
+                    const cache = readDeletedUsersCache();
+                    const merged = new Map<string, DeletedUserRow>();
+                    for (const r of [...(dData || []), ...cache]) {
+                        const k = `${String(r.original_user_id || "")}-${String(r.deleted_at || "")}-${String(r.email || "")}`;
+                        if (!merged.has(k)) merged.set(k, r);
+                    }
+                    const mergedRows = Array.from(merged.values()).sort((a, b) => {
+                        const ta = new Date(String(a.deleted_at || 0)).getTime();
+                        const tb = new Date(String(b.deleted_at || 0)).getTime();
+                        return tb - ta;
+                    });
+                    setDeletedUsers(mergedRows);
+                    writeDeletedUsersCache(mergedRows);
                 } catch (e) {
                     console.warn("AdminPage: deleted users api failed, trying approved deletion requests fallback:", e);
                     const approvedRes = await withTimeout(
@@ -312,7 +343,7 @@ function AdminPageContent() {
                         setDeletedUsers([]);
                     } else {
                         const rows = ((approvedRes as any)?.data || []) as Array<any>;
-                        setDeletedUsers(
+                        const fallbackRows = (
                             rows.map((r) => ({
                                 id: Number(r.id || 0),
                                 original_user_id: String(r.user_id || ""),
@@ -325,6 +356,19 @@ function AdminPageContent() {
                                 restore_status: "unknown",
                             }))
                         );
+                        const cache = readDeletedUsersCache();
+                        const merged = new Map<string, DeletedUserRow>();
+                        for (const r of [...fallbackRows, ...cache]) {
+                            const k = `${String(r.original_user_id || "")}-${String(r.deleted_at || "")}-${String(r.email || "")}`;
+                            if (!merged.has(k)) merged.set(k, r);
+                        }
+                        const mergedRows = Array.from(merged.values()).sort((a, b) => {
+                            const ta = new Date(String(a.deleted_at || 0)).getTime();
+                            const tb = new Date(String(b.deleted_at || 0)).getTime();
+                            return tb - ta;
+                        });
+                        setDeletedUsers(mergedRows);
+                        writeDeletedUsersCache(mergedRows);
                     }
                 }
             }
@@ -501,6 +545,21 @@ function AdminPageContent() {
             alert("Kullanıcı silme işlemi başarısız: " + String((json as any)?.details || (json as any)?.error || resp.status));
             return;
         }
+        const nowIso = new Date().toISOString();
+        const newRow: DeletedUserRow = {
+            id: -Date.now(),
+            original_user_id: String(u.id || ""),
+            username: String(u.username || ""),
+            email: String(u.email || ""),
+            role: String(u.role || ""),
+            delete_reason: "Admin panelinden manuel silindi",
+            source: "local_cache",
+            deleted_at: nowIso,
+            restore_status: "deleted",
+        };
+        const nextDeleted = [newRow, ...deletedUsers];
+        setDeletedUsers(nextDeleted);
+        writeDeletedUsersCache(nextDeleted);
         loadData({ fetchUsers: true });
     };
 
