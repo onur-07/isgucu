@@ -962,6 +962,13 @@ function AdminPageContent() {
         </div>
     );
 
+    const isSystemTicket = (ticket: SupportTicket) => {
+        const category = String(ticket.category || "").toLowerCase();
+        const subject = String(ticket.subject || "").toLowerCase();
+        return category === "security" || subject.includes("yasakli bilgi");
+    };
+    const systemTickets = tickets.filter((t) => isSystemTicket(t));
+    const userTickets = tickets.filter((t) => !isSystemTicket(t));
     const openTicketsCount = tickets.filter(t => t.status === "open").length;
     const bannedUsers = users.filter((u) => !!u.isBanned);
 
@@ -1334,15 +1341,20 @@ function AdminPageContent() {
                                                         <p className="text-[10px] text-orange-600 font-black">Eski kayıt (arşiv yok)</p>
                                                     )}
                                                 </div>
-                                                <Button
-                                                    variant="outline"
-                                                    size="sm"
-                                                    disabled={d.source === "legacy_approved_request" || d.restore_status !== "deleted"}
-                                                    className="h-8 px-3 text-[10px] font-black rounded-lg bg-blue-600 text-white border-blue-600 hover:bg-blue-700 disabled:bg-gray-200 disabled:text-gray-500 disabled:border-gray-200"
-                                                    onClick={() => handleRestoreDeletedUser(d)}
-                                                >
-                                                    Geri Al
-                                                </Button>
+                                                {d.restore_status !== "deleted" ? (
+                                                    <span className="text-[10px] font-black text-emerald-600 bg-emerald-100 px-3 py-1.5 rounded-lg uppercase">Geri Alındı</span>
+                                                ) : d.source === "legacy_approved_request" ? (
+                                                    <span className="text-[10px] font-black text-orange-600 bg-orange-100 px-3 py-1.5 rounded-lg uppercase">Eski Kayıt</span>
+                                                ) : (
+                                                    <Button
+                                                        variant="outline"
+                                                        size="sm"
+                                                        className="h-8 px-3 text-[10px] font-black rounded-lg bg-blue-600 text-white border-blue-600 hover:bg-blue-700"
+                                                        onClick={() => handleRestoreDeletedUser(d)}
+                                                    >
+                                                        Geri Al
+                                                    </Button>
+                                                )}
                                             </div>
                                         ))}
                                         {deletedUsers.length > 3 && (
@@ -1351,10 +1363,6 @@ function AdminPageContent() {
                                             </p>
                                         )}
                                     </div>
-                                )}
-                            </div>
-                        </div>
-                    </div>
 
                     <div className="overflow-x-auto">
                         <table className="w-full text-left border-collapse">
@@ -1419,23 +1427,26 @@ function AdminPageContent() {
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                         <div className="bg-orange-50 border border-orange-100 rounded-2xl p-6 text-center shadow-sm">
                             <Clock className="h-8 w-8 text-orange-600 mx-auto mb-2" />
-                            <div className="text-3xl font-black text-orange-700">{openTicketsCount}</div>
-                            <div className="text-[10px] font-black uppercase tracking-widest">Açık Talepler</div>
+                            <div className="text-3xl font-black text-orange-700">{userTickets.filter(t => t.status === 'open').length}</div>
+                            <div className="text-[10px] font-black uppercase tracking-widest">Açık Kullanıcı Talebi</div>
                         </div>
                         <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-6 text-center shadow-sm">
                             <CheckCircle2 className="h-8 w-8 text-emerald-600 mx-auto mb-2" />
-                            <div className="text-3xl font-black text-emerald-700">{tickets.filter(t => t.status === 'replied').length}</div>
-                            <div className="text-[10px] font-black uppercase tracking-widest">Yanıtlanan</div>
+                            <div className="text-3xl font-black text-emerald-700">{userTickets.filter(t => t.status === 'replied').length}</div>
+                            <div className="text-[10px] font-black uppercase tracking-widest">Yanıtlanan Kullanıcı</div>
                         </div>
                         <div className="bg-blue-50 border border-blue-100 rounded-2xl p-6 text-center shadow-sm">
                             <MessageCircle className="h-8 w-8 text-blue-600 mx-auto mb-2" />
-                            <div className="text-3xl font-black text-blue-700">{tickets.length}</div>
-                            <div className="text-[10px] font-black uppercase tracking-widest">Toplam</div>
+                            <div className="text-3xl font-black text-blue-700">{systemTickets.length}</div>
+                            <div className="text-[10px] font-black uppercase tracking-widest">Sistem Ticketı</div>
                         </div>
                     </div>
 
                     <div className="space-y-6">
-                        {tickets.map(ticket => {
+                        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Kullanıcı Ticketları ({userTickets.length})</p>
+                        </div>
+                        {userTickets.map(ticket => {
                             const sec = parseSecurityMeta(ticket.message);
                             const fromUserId = sec.callerId || usernameToId[ticket.from_user] || "";
                             const freelancerId = sec.callerRole === "freelancer" ? sec.callerId : sec.otherRole === "freelancer" ? sec.otherId : "";
@@ -1639,6 +1650,50 @@ function AdminPageContent() {
                             </div>
                             );
                         })}
+                    </div>
+
+                    <div className="space-y-4">
+                        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
+                            <p className="text-[10px] font-black uppercase tracking-widest text-amber-700">Sistem Ticketları ({systemTickets.length})</p>
+                            <p className="text-xs font-bold text-amber-700/80 mt-1">Güvenlik logları burada ayrı listelenir, kullanıcı talepleriyle karışmaz.</p>
+                        </div>
+                        {systemTickets.length === 0 ? (
+                            <div className="rounded-2xl border border-slate-200 bg-white p-6 text-center text-sm font-bold text-slate-500">
+                                Sistem ticketı yok.
+                            </div>
+                        ) : (
+                            <div className="space-y-3">
+                                {systemTickets.map((ticket) => {
+                                    const isOpen = !!openSupportTickets[`sys-${String(ticket.id)}`];
+                                    const ticketMessageUrls = extractUrls(ticket.message);
+                                    const ticketMessageBody = stripUrls(ticket.message);
+                                    return (
+                                        <div key={`sys-${ticket.id}`} className="rounded-2xl border border-amber-200 bg-white overflow-hidden">
+                                            <button
+                                                type="button"
+                                                className="w-full flex items-center justify-between gap-3 px-5 py-4 text-left"
+                                                onClick={() => toggleSupportTicket(`sys-${String(ticket.id)}`)}
+                                            >
+                                                <div>
+                                                    <p className="text-sm font-black text-slate-900">{ticket.subject}</p>
+                                                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">{new Date(ticket.created_at).toLocaleString("tr-TR")}</p>
+                                                </div>
+                                                <span className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-amber-200 bg-amber-50 text-amber-700">
+                                                    {isOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                                                </span>
+                                            </button>
+                                            {isOpen ? (
+                                                <div className="px-5 pb-5">
+                                                    <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm font-medium text-slate-700 whitespace-pre-wrap">
+                                                        {ticketMessageBody || (ticketMessageUrls.length > 0 ? "" : ticket.message)}
+                                                    </div>
+                                                </div>
+                                            ) : null}
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        )}
                     </div>
                 </div>
             )}
