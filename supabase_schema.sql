@@ -28,6 +28,37 @@ CREATE TABLE IF NOT EXISTS account_deletion_requests (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
 );
 
+-- DELETED USERS ARCHIVE (for admin restore)
+CREATE TABLE IF NOT EXISTS deleted_users (
+  id BIGSERIAL PRIMARY KEY,
+  original_user_id UUID,
+  username TEXT NOT NULL,
+  email TEXT NOT NULL,
+  role TEXT,
+  full_name TEXT,
+  bio TEXT,
+  skills TEXT[] DEFAULT '{}',
+  location TEXT,
+  hourly_rate TEXT,
+  phone TEXT,
+  website TEXT,
+  iban TEXT,
+  avatar_url TEXT,
+  created_at_profile TIMESTAMP WITH TIME ZONE,
+  deleted_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL,
+  deleted_by_admin_id UUID REFERENCES auth.users ON DELETE SET NULL,
+  delete_reason TEXT,
+  source TEXT,
+  restore_status TEXT CHECK (restore_status IN ('deleted', 'restored')) DEFAULT 'deleted',
+  restored_at TIMESTAMP WITH TIME ZONE,
+  restored_user_id UUID,
+  restored_by_admin_id UUID REFERENCES auth.users ON DELETE SET NULL,
+  raw_profile JSONB,
+  raw_auth_user JSONB
+);
+
+CREATE INDEX IF NOT EXISTS deleted_users_restore_status_idx ON deleted_users(restore_status, deleted_at DESC);
+
 -- GIGS TABLE
 CREATE TABLE IF NOT EXISTS gigs (
   id BIGSERIAL PRIMARY KEY,
@@ -187,6 +218,7 @@ ALTER TABLE orders ENABLE ROW LEVEL SECURITY;
 ALTER TABLE support_tickets ENABLE ROW LEVEL SECURITY;
 ALTER TABLE support_ticket_replies ENABLE ROW LEVEL SECURITY;
 ALTER TABLE account_deletion_requests ENABLE ROW LEVEL SECURITY;
+ALTER TABLE deleted_users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE order_deliveries ENABLE ROW LEVEL SECURITY;
 ALTER TABLE wallet_ledger ENABLE ROW LEVEL SECURITY;
 ALTER TABLE payout_requests ENABLE ROW LEVEL SECURITY;
@@ -352,6 +384,10 @@ DROP POLICY IF EXISTS "Users can create deletion requests" ON account_deletion_r
 CREATE POLICY "Users can create deletion requests" ON account_deletion_requests FOR INSERT WITH CHECK (auth.uid() = user_id);
 DROP POLICY IF EXISTS "Admins can view deletion requests" ON account_deletion_requests;
 CREATE POLICY "Admins can view deletion requests" ON account_deletion_requests FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Admins can view deleted users archive" ON deleted_users;
+CREATE POLICY "Admins can view deleted users archive" ON deleted_users
+  FOR SELECT
+  USING (EXISTS (SELECT 1 FROM profiles p WHERE p.id = auth.uid() AND p.role = 'admin'));
 
 -- STORAGE POLICIES (Run these in SQL Editor)
 -- 1. Allow public access to view avatars

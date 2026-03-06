@@ -34,6 +34,20 @@ interface SupportTicketReply {
     created_at: string;
 }
 
+interface DeletedUserRow {
+    id: number;
+    original_user_id: string;
+    username: string;
+    email: string;
+    role: string;
+    delete_reason?: string;
+    source?: string;
+    deleted_at: string;
+    restore_status?: string;
+    restored_at?: string;
+    restored_user_id?: string;
+}
+
 function AdminPageContent() {
     const { user, loading: authLoading } = useAuth();
     const router = useRouter();
@@ -51,6 +65,7 @@ function AdminPageContent() {
     const [replyInputs, setReplyInputs] = useState<Record<string, string>>({});
     const [replySuccess, setReplySuccess] = useState<string | null>(null);
     const [deletionRequests, setDeletionRequests] = useState<any[]>([]);
+    const [deletedUsers, setDeletedUsers] = useState<DeletedUserRow[]>([]);
     const [siteConfig, setSiteConfig] = useState<SiteConfig>(getSiteConfig());
 
     const parseTabFromUrl = (raw: string | null) => {
@@ -135,6 +150,25 @@ function AdminPageContent() {
             createdAt: u.createdAt,
             isBanned: u.isBanned,
         })) as PlatformUser[];
+    };
+
+    const fetchDeletedUsersFromAdminApi = async (): Promise<DeletedUserRow[]> => {
+        const { data: sessionData, error: sessionErr } = await supabase.auth.getSession();
+        if (sessionErr || !sessionData?.session?.access_token) {
+            throw new Error("Oturum alınamadı. Lütfen tekrar giriş yapın.");
+        }
+
+        const resp = await fetch(`/api/admin/deleted-users?t=${Date.now()}`, {
+            method: "GET",
+            cache: "no-store",
+            headers: {
+                Authorization: `Bearer ${sessionData.session.access_token}`,
+            },
+        });
+
+        const json = await resp.json().catch(() => ({}));
+        if (!resp.ok) throw new Error(String((json as any)?.details || (json as any)?.error || resp.status));
+        return Array.isArray((json as any)?.deletedUsers) ? (json as any).deletedUsers : [];
     };
 
     const loadData = async (opts?: { fetchUsers?: boolean }) => {
@@ -250,15 +284,20 @@ function AdminPageContent() {
             if (fetchUsers) {
                 console.log("AdminPage: Kullanıcılar listesi isteniyor...");
                 try {
-                    const uData = await withTimeout(fetchUsersFromAdminApi(), 10000, "usersListApi");
+                    const [uData, dData] = await Promise.all([
+                        withTimeout(fetchUsersFromAdminApi(), 10000, "usersListApi"),
+                        withTimeout(fetchDeletedUsersFromAdminApi(), 10000, "deletedUsersApi"),
+                    ]);
                     console.log("AdminPage: Kullanıcılar (api):", uData?.length || 0);
                     setUsers(uData || []);
+                    setDeletedUsers(dData || []);
                     setUsersSource("api");
                 } catch (e) {
                     console.warn("AdminPage: users api failed, falling back to profiles:", e);
                     const uData = await withTimeout(getAllUsers(), 10000, "usersList");
                     console.log("AdminPage: Kullanıcılar (fallback):", uData?.length || 0);
                     setUsers(uData || []);
+                    setDeletedUsers([]);
                     setUsersSource("fallback");
                 }
             }
@@ -273,19 +312,72 @@ function AdminPageContent() {
 
     const handleApproveDeletion = async (requestId: string, targetUserId: string) => {
         if (!confirm("BU HESABI KALICI OLARAK SİLMEK İSTEDİĞİNİZE EMİN MİSİNİZ? Bu işlem geri alınamaz.")) return;
-
-        // 1. Mark request as approved
-        await supabase.from('account_deletion_requests').update({ status: 'approved' }).eq('id', requestId);
-
-        // 2. Delete from profiles
-        const { error } = await supabase.from('profiles').delete().eq('id', targetUserId);
-
-        if (!error) {
-            alert("Hesap başarıyla silindi.");
-            loadData();
-        } else {
-            alert("Hata: " + error.message);
+        const { data: sessionData, error: sessionErr } = await supabase.auth.getSession();
+        if (sessionErr || !sessionData?.session?.access_token) {
+            alert("Oturum alınamadı. Lütfen tekrar giriş yapın.");
+            return;
         }
+        const resp = await fetch(`/api/admin/deletion-requests?t=${Date.now()}`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${sessionData.session.access_token}`,
+            },
+            body: JSON.stringify({ requestId: Number(requestId), action: "approve", targetUserId }),
+        });
+        const json = await resp.json().catch(() => ({}));
+        if (!resp.ok) {
+            alert("Silme talebi onaylanamadı: " + String((json as any)?.details || (json as any)?.error || resp.status));
+            return;
+        }
+        alert("Hesap silme talebi onaylandı ve kullanıcı silindi.");
+        loadData({ fetchUsers: true });
+    };
+
+    const handleRejectDeletion = async (requestId: string) => {
+        const { data: sessionData, error: sessionErr } = await supabase.auth.getSession();
+        if (sessionErr || !sessionData?.session?.access_token) {
+            alert("Oturum alınamadı. Lütfen tekrar giriş yapın.");
+            return;
+        }
+        const resp = await fetch(`/api/admin/deletion-requests?t=${Date.now()}`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${sessionData.session.access_token}`,
+            },
+            body: JSON.stringify({ requestId: Number(requestId), action: "reject" }),
+        });
+        const json = await resp.json().catch(() => ({}));
+        if (!resp.ok) {
+            alert("Silme talebi reddedilemedi: " + String((json as any)?.details || (json as any)?.error || resp.status));
+            return;
+        }
+        loadData({ fetchUsers: true });
+    };
+
+    const handleRestoreDeletedUser = async (row: DeletedUserRow) => {
+        if (!confirm(`${row.username} kullanıcısını geri almak istiyor musunuz?`)) return;
+        const { data: sessionData, error: sessionErr } = await supabase.auth.getSession();
+        if (sessionErr || !sessionData?.session?.access_token) {
+            alert("Oturum alınamadı. Lütfen tekrar giriş yapın.");
+            return;
+        }
+        const resp = await fetch(`/api/admin/deleted-users?t=${Date.now()}`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${sessionData.session.access_token}`,
+            },
+            body: JSON.stringify({ archiveId: Number(row.id) }),
+        });
+        const json = await resp.json().catch(() => ({}));
+        if (!resp.ok) {
+            alert("Kullanıcı geri alınamadı: " + String((json as any)?.details || (json as any)?.error || resp.status));
+            return;
+        }
+        alert(`Kullanıcı geri alındı.\nKullanıcı adı: ${String((json as any)?.username || "")}\nE-posta: ${String((json as any)?.email || "")}\nGeçici şifre: ${String((json as any)?.tempPassword || "")}`);
+        loadData({ fetchUsers: true });
     };
 
     useEffect(() => {
@@ -548,6 +640,7 @@ function AdminPageContent() {
     );
 
     const openTicketsCount = tickets.filter(t => t.status === "open").length;
+    const bannedUsers = users.filter((u) => !!u.isBanned);
 
     return (
         <div className="mx-auto w-full max-w-6xl px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
@@ -728,6 +821,66 @@ function AdminPageContent() {
                                     Uyarı: Kullanıcı listesi Auth API yerine sadece profiles tablosundan geldiği için e-posta/kullanıcı adı yanlış görünebilir.
                                 </p>
                             )}
+                        </div>
+                    </div>
+
+                    <div className="p-5 sm:p-8 border-b bg-white">
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                            <div className="rounded-2xl border border-orange-100 bg-orange-50/40 p-4">
+                                <h4 className="text-[10px] font-black uppercase tracking-widest text-orange-700 mb-3">
+                                    Engellenmiş Üyeler ({bannedUsers.length})
+                                </h4>
+                                {bannedUsers.length === 0 ? (
+                                    <p className="text-xs font-bold text-orange-500">Engelli kullanıcı bulunmuyor.</p>
+                                ) : (
+                                    <div className="space-y-2 max-h-48 overflow-auto pr-1">
+                                        {bannedUsers.map((u) => (
+                                            <div key={`banned-${u.id}`} className="flex items-center justify-between gap-3 rounded-xl bg-white border border-orange-100 px-3 py-2">
+                                                <div className="min-w-0">
+                                                    <p className="text-xs font-black text-gray-900 truncate">{u.username}</p>
+                                                    <p className="text-[10px] text-gray-500 truncate">{u.email}</p>
+                                                </div>
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    className="h-8 px-3 text-[10px] font-black rounded-lg bg-emerald-50 text-emerald-700 border-emerald-100"
+                                                    onClick={() => handleBan(u)}
+                                                >
+                                                    Engel Kaldır
+                                                </Button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="rounded-2xl border border-blue-100 bg-blue-50/40 p-4">
+                                <h4 className="text-[10px] font-black uppercase tracking-widest text-blue-700 mb-3">
+                                    Silinmiş Üyeler ({deletedUsers.length})
+                                </h4>
+                                {deletedUsers.length === 0 ? (
+                                    <p className="text-xs font-bold text-blue-500">Silinmiş kullanıcı arşivi boş.</p>
+                                ) : (
+                                    <div className="space-y-2 max-h-48 overflow-auto pr-1">
+                                        {deletedUsers.map((d) => (
+                                            <div key={`deleted-${d.id}`} className="flex items-center justify-between gap-3 rounded-xl bg-white border border-blue-100 px-3 py-2">
+                                                <div className="min-w-0">
+                                                    <p className="text-xs font-black text-gray-900 truncate">{d.username}</p>
+                                                    <p className="text-[10px] text-gray-500 truncate">{d.email}</p>
+                                                </div>
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    className="h-8 px-3 text-[10px] font-black rounded-lg bg-blue-600 text-white border-blue-600 hover:bg-blue-700"
+                                                    onClick={() => handleRestoreDeletedUser(d)}
+                                                >
+                                                    Geri Al
+                                                </Button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     </div>
 
@@ -981,10 +1134,7 @@ function AdminPageContent() {
                                                 <Button
                                                     variant="outline"
                                                     className="h-10 px-6 border-gray-100 text-gray-400 font-black rounded-xl uppercase text-[10px] tracking-widest hover:bg-gray-50"
-                                                    onClick={async () => {
-                                                        await supabase.from('account_deletion_requests').update({ status: 'rejected' }).eq('id', req.id);
-                                                        loadData();
-                                                    }}
+                                                    onClick={() => handleRejectDeletion(String(req.id))}
                                                 >
                                                     Reddet
                                                 </Button>

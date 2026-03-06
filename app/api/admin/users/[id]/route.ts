@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
+import { archiveUserAndDelete } from "@/lib/admin-user-archive";
 
 export async function GET(
   req: Request,
@@ -313,27 +314,21 @@ export async function DELETE(
       return NextResponse.json({ error: "forbidden" }, { status: 403 });
     }
 
-    const [profileDeleteRes, authDeleteRes] = await Promise.allSettled([
-      supabaseAdmin.from("profiles").delete().eq("id", targetUserId),
-      supabaseAdmin.auth.admin.deleteUser(targetUserId),
-    ]);
-
-    const profileErr =
-      profileDeleteRes.status === "fulfilled" ? profileDeleteRes.value.error : profileDeleteRes.reason;
-    const authErrDelete =
-      authDeleteRes.status === "fulfilled" ? authDeleteRes.value.error : authDeleteRes.reason;
-
-    if (profileErr && authErrDelete) {
+    const archived = await archiveUserAndDelete({
+      supabaseAdmin,
+      targetUserId,
+      deletedByAdminId: authData.user.id,
+      source: "admin_manual",
+      deleteReason: "Admin panelinden manuel silindi",
+    });
+    if (!archived.ok) {
       return NextResponse.json(
-        {
-          error: "delete_failed",
-          details: `profile: ${String((profileErr as any)?.message || profileErr)}; auth: ${String((authErrDelete as any)?.message || authErrDelete)}`,
-        },
+        { error: archived.error, details: (archived as any).details || "" },
         { status: 400 }
       );
     }
 
-    return NextResponse.json({ ok: true, userId: targetUserId });
+    return NextResponse.json({ ok: true, userId: targetUserId, archived: true });
   } catch (e: any) {
     return NextResponse.json({ error: "server_error", details: e?.message || String(e) }, { status: 500 });
   }
