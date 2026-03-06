@@ -13,6 +13,39 @@ import { getSiteConfig, hydrateSiteConfigFromRemote, saveSiteConfig, type SiteCo
 import { Input } from "@/components/ui/input";
 import Link from "next/link";
 
+const extractUrls = (text: string) => {
+    const s = String(text || "");
+    const matches = s.match(/https?:\/\/[^\s)\]]+/g);
+    return Array.isArray(matches) ? matches : [];
+};
+
+const stripUrls = (text: string) => {
+    const s = String(text || "");
+    return s.replace(/https?:\/\/[^\s)\]]+/g, "").replace(/\n{3,}/g, "\n\n").trim();
+};
+
+const isImageUrl = (url: string) => {
+    try {
+        const parsed = new URL(String(url || ""));
+        const p = decodeURIComponent(parsed.pathname || "").toLowerCase();
+        return p.endsWith(".png") || p.endsWith(".jpg") || p.endsWith(".jpeg") || p.endsWith(".webp") || p.endsWith(".gif");
+    } catch {
+        const u = String(url || "").toLowerCase();
+        return u.endsWith(".png") || u.endsWith(".jpg") || u.endsWith(".jpeg") || u.endsWith(".webp") || u.endsWith(".gif");
+    }
+};
+
+const displayNameFromUrl = (url: string) => {
+    try {
+        const parsed = new URL(String(url || ""));
+        const parts = decodeURIComponent(parsed.pathname || "").split("/").filter(Boolean);
+        const last = parts[parts.length - 1] || url;
+        return last.length > 60 ? `${last.slice(0, 20)}...${last.slice(-25)}` : last;
+    } catch {
+        return url;
+    }
+};
+
 interface SupportTicket {
     id: string;
     from_user: string;
