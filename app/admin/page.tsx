@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useState, Suspense } from "react";
 import { getAllUsers, getPlatformStats, updateUserInfo, type PlatformUser, type PlatformStats } from "@/lib/data-service";
-import { Users, Briefcase, TrendingUp, Shield, Trash2, Headphones, MessageCircle, CheckCircle2, Clock, Send, Settings, Globe, Layout, Palette, Plus, Save, FileText, ChevronDown, ChevronUp } from "lucide-react";
+import { Users, Briefcase, TrendingUp, Shield, Trash2, Headphones, MessageCircle, CheckCircle2, Clock, Send, Settings, Globe, Layout, Palette, Plus, Save, FileText, ChevronDown, ChevronUp, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/lib/supabase";
@@ -104,6 +104,8 @@ function AdminPageContent() {
     const [overviewSupportOpen, setOverviewSupportOpen] = useState(false);
     const [reportBusy, setReportBusy] = useState<string>("");
     const [openSupportTickets, setOpenSupportTickets] = useState<Record<string, boolean>>({});
+    const [showBannedModal, setShowBannedModal] = useState(false);
+    const [showDeletedModal, setShowDeletedModal] = useState(false);
 
     const parseTabFromUrl = (raw: string | null) => {
         const v = String(raw || "").trim();
@@ -113,6 +115,68 @@ function AdminPageContent() {
 
     const toggleSupportTicket = (ticketId: string) => {
         setOpenSupportTickets((prev) => ({ ...prev, [ticketId]: !prev[ticketId] }));
+    };
+
+    const UserModal = ({ title, count, users, isBanned, onClose }: { title: string; count: number; users: PlatformUser[] | DeletedUserRow[]; isBanned: boolean; onClose: () => void; }) => {
+        return (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={onClose}>
+                <div className="w-full max-w-4xl max-h-[90vh] bg-white rounded-[2rem] shadow-2xl overflow-hidden flex flex-col" onClick={(e) => e.stopPropagation()}>
+                    <div className="flex items-center justify-between p-6 border-b bg-gray-50/50">
+                        <div>
+                            <h3 className="font-black text-gray-900 text-lg uppercase tracking-tight">{title} ({count})</h3>
+                            <p className="text-[10px] text-gray-400 font-bold uppercase mt-1">{isBanned ? "Engellenmiş tüm kullanıcıları görüntülüyorsunuz" : "Silinmiş tüm kullanıcıları görüntülüyorsunuz"}</p>
+                        </div>
+                        <Button variant="outline" size="icon" className="h-10 w-10 rounded-xl border-gray-200 hover:bg-gray-100" onClick={onClose}>
+                            <ArrowLeft className="h-5 w-5 text-gray-600" />
+                        </Button>
+                    </div>
+                    <div className="flex-1 overflow-y-auto p-6">
+                        <div className="space-y-3">
+                            {users.length === 0 ? (
+                                <p className="text-center text-gray-400 font-bold py-12">{isBanned ? "Engellenmiş kullanıcı bulunmuyor." : "Silinmiş kullanıcı arşivi boş."}</p>
+                            ) : (
+                                users.map((u: any) => (
+                                    <div key={u.id} className={`flex items-center justify-between gap-3 rounded-2xl border px-4 py-3 ${isBanned ? 'bg-white border-orange-100' : 'bg-white border-blue-100'}`}>
+                                        <div className="min-w-0">
+                                            <p className="text-sm font-black text-gray-900 truncate">{u.username}</p>
+                                            <p className="text-[10px] text-gray-500 truncate">{u.email}</p>
+                                            {!isBanned && (u as DeletedUserRow).source === "legacy_approved_request" && (
+                                                <p className="text-[10px] text-orange-600 font-black">Eski kayıt (arşiv yok)</p>
+                                            )}
+                                        </div>
+                                        {isBanned ? (
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                className="h-9 px-4 text-[10px] font-black rounded-lg bg-emerald-50 text-emerald-700 border-emerald-100"
+                                                onClick={() => handleBan(u)}
+                                            >
+                                                Engel Kaldır
+                                            </Button>
+                                        ) : (
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                disabled={(u as DeletedUserRow).source === "legacy_approved_request" || (u as DeletedUserRow).restore_status !== "deleted"}
+                                                className="h-9 px-4 text-[10px] font-black rounded-lg bg-blue-600 text-white border-blue-600 hover:bg-blue-700 disabled:bg-gray-200 disabled:text-gray-500 disabled:border-gray-200"
+                                                onClick={() => handleRestoreDeletedUser(u as DeletedUserRow)}
+                                            >
+                                                Geri Al
+                                            </Button>
+                                        )}
+                                    </div>
+                                ))
+                            )}
+                        </div>
+                    </div>
+                    <div className="p-6 border-t bg-gray-50/50 flex justify-center">
+                        <Button variant="outline" className="h-12 px-8 rounded-xl border-gray-200 text-gray-600 font-black uppercase tracking-widest hover:bg-gray-100" onClick={onClose}>
+                            <ArrowLeft className="h-4 w-4 mr-2" /> Geri Dön
+                        </Button>
+                    </div>
+                </div>
+            </div>
+        );
     };
 
     const toCsv = (rows: Record<string, unknown>[]) => {
@@ -1197,14 +1261,26 @@ function AdminPageContent() {
                     <div className="p-5 sm:p-8 border-b bg-white">
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                             <div className="rounded-2xl border border-orange-100 bg-orange-50/40 p-4">
-                                <h4 className="text-[10px] font-black uppercase tracking-widest text-orange-700 mb-3">
-                                    Engellenmiş Üyeler ({bannedUsers.length})
-                                </h4>
+                                <div className="flex items-center justify-between mb-3">
+                                    <h4 className="text-[10px] font-black uppercase tracking-widest text-orange-700">
+                                        Engellenmiş Üyeler ({bannedUsers.length})
+                                    </h4>
+                                    {bannedUsers.length > 0 && (
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            className="h-7 px-3 text-[10px] font-black rounded-lg border-orange-200 text-orange-600 hover:bg-orange-100"
+                                            onClick={() => setShowBannedModal(true)}
+                                        >
+                                            Tümünü Göster
+                                        </Button>
+                                    )}
+                                </div>
                                 {bannedUsers.length === 0 ? (
                                     <p className="text-xs font-bold text-orange-500">Engelli kullanıcı bulunmuyor.</p>
                                 ) : (
                                     <div className="space-y-2 max-h-48 overflow-auto pr-1">
-                                        {bannedUsers.map((u) => (
+                                        {bannedUsers.slice(0, 3).map((u) => (
                                             <div key={`banned-${u.id}`} className="flex items-center justify-between gap-3 rounded-xl bg-white border border-orange-100 px-3 py-2">
                                                 <div className="min-w-0">
                                                     <p className="text-xs font-black text-gray-900 truncate">{u.username}</p>
@@ -1220,19 +1296,36 @@ function AdminPageContent() {
                                                 </Button>
                                             </div>
                                         ))}
+                                        {bannedUsers.length > 3 && (
+                                            <p className="text-[10px] text-center text-orange-600 font-black py-2">
+                                                +{bannedUsers.length - 3} kullanıcı daha...
+                                            </p>
+                                        )}
                                     </div>
                                 )}
                             </div>
 
                             <div className="rounded-2xl border border-blue-100 bg-blue-50/40 p-4">
-                                <h4 className="text-[10px] font-black uppercase tracking-widest text-blue-700 mb-3">
-                                    Silinmiş Üyeler ({deletedUsers.length})
-                                </h4>
+                                <div className="flex items-center justify-between mb-3">
+                                    <h4 className="text-[10px] font-black uppercase tracking-widest text-blue-700">
+                                        Silinmiş Üyeler ({deletedUsers.length})
+                                    </h4>
+                                    {deletedUsers.length > 0 && (
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            className="h-7 px-3 text-[10px] font-black rounded-lg border-blue-200 text-blue-600 hover:bg-blue-100"
+                                            onClick={() => setShowDeletedModal(true)}
+                                        >
+                                            Tümünü Göster
+                                        </Button>
+                                    )}
+                                </div>
                                 {deletedUsers.length === 0 ? (
                                     <p className="text-xs font-bold text-blue-500">Silinmiş kullanıcı arşivi boş.</p>
                                 ) : (
                                     <div className="space-y-2 max-h-48 overflow-auto pr-1">
-                                        {deletedUsers.map((d) => (
+                                        {deletedUsers.slice(0, 3).map((d) => (
                                             <div key={`deleted-${d.id}`} className="flex items-center justify-between gap-3 rounded-xl bg-white border border-blue-100 px-3 py-2">
                                                 <div className="min-w-0">
                                                     <p className="text-xs font-black text-gray-900 truncate">{d.username}</p>
@@ -1252,6 +1345,11 @@ function AdminPageContent() {
                                                 </Button>
                                             </div>
                                         ))}
+                                        {deletedUsers.length > 3 && (
+                                            <p className="text-[10px] text-center text-blue-600 font-black py-2">
+                                                +{deletedUsers.length - 3} kullanıcı daha...
+                                            </p>
+                                        )}
                                     </div>
                                 )}
                             </div>
@@ -2060,6 +2158,26 @@ function AdminPageContent() {
                         </div>
                     </div>
                 </div>
+            )}
+
+            {/* Modals */}
+            {showBannedModal && (
+                <UserModal
+                    title="Engellenmiş Üyeler"
+                    count={bannedUsers.length}
+                    users={bannedUsers}
+                    isBanned={true}
+                    onClose={() => setShowBannedModal(false)}
+                />
+            )}
+            {showDeletedModal && (
+                <UserModal
+                    title="Silinmiş Üyeler"
+                    count={deletedUsers.length}
+                    users={deletedUsers}
+                    isBanned={false}
+                    onClose={() => setShowDeletedModal(false)}
+                />
             )}
         </div>
     );
