@@ -263,7 +263,7 @@ export default function SupportTicketDetailPage() {
                         <Button
                             type="button"
                             variant="outline"
-                            className="rounded-2xl border-white/20 !text-white hover:bg-white/10 hover:!text-white font-black uppercase tracking-widest text-[10px] h-11 px-6"
+                            className="rounded-2xl border-white/20 bg-transparent !text-white hover:bg-white/10 hover:!text-white font-black uppercase tracking-widest text-[10px] h-11 px-6"
                             onClick={() => router.push("/support")}
                         >
                             <ArrowLeft className="h-4 w-4 mr-2" /> Geri
