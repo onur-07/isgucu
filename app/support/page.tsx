@@ -57,9 +57,6 @@ export default function SupportPage() {
     const [myTickets, setMyTickets] = useState<SupportTicket[]>([]);
     const [loadingTickets, setLoadingTickets] = useState(false);
     const [submitError, setSubmitError] = useState<string>("");
-    const [selectedTicketId, setSelectedTicketId] = useState<string>("");
-    const [followupText, setFollowupText] = useState<string>("");
-    const [followupSending, setFollowupSending] = useState(false);
     const [form, setForm] = useState({
         subject: "",
         category: "",
@@ -270,449 +267,236 @@ export default function SupportPage() {
         };
     }, [user, router]);
 
-    useEffect(() => {
-        setFollowupText("");
-    }, [selectedTicketId]);
+const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user) return;
 
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!user) return;
+    setSubmitError("");
 
-        setSubmitError("");
+    try {
+        const insertRes = await supabase
+            .from("support_tickets")
+            .insert({
+                from_user: user.username,
+                from_email: user.email,
+                subject: form.subject,
+                category: form.category,
+                message: form.message,
+                status: "open",
+            })
+            .select("id, from_user, from_email, subject, category, message, status, created_at, reply, replied_at")
+            .maybeSingle();
 
-        try {
-            const insertRes = await supabase
-                .from("support_tickets")
-                .insert({
-                    from_user: user.username,
-                    from_email: user.email,
-                    subject: form.subject,
-                    category: form.category,
-                    message: form.message,
-                    status: "open",
-                })
-                .select("id, from_user, from_email, subject, category, message, status, created_at, reply, replied_at")
-                .maybeSingle();
+        if (insertRes.error) throw insertRes.error;
+        const t: any = insertRes.data;
 
-            if (insertRes.error) throw insertRes.error;
-            const t: any = insertRes.data;
+        const nextTicket: SupportTicket = {
+            id: String(t?.id || `TKT-${Date.now()}`),
+            fromUser: String(t?.from_user || user.username),
+            fromEmail: String(t?.from_email || user.email || ""),
+            subject: String(t?.subject || form.subject),
+            category: String(t?.category || form.category),
+            message: String(t?.message || form.message),
+            status: (String(t?.status || "open") as any) as SupportTicket["status"],
+            createdAt: String(t?.created_at || new Date().toISOString()),
+            reply: t?.reply ? String(t.reply) : undefined,
+            repliedAt: t?.replied_at ? String(t.replied_at) : undefined,
+        };
 
-            const nextTicket: SupportTicket = {
-                id: String(t?.id || `TKT-${Date.now()}`),
-                fromUser: String(t?.from_user || user.username),
-                fromEmail: String(t?.from_email || user.email || ""),
-                subject: String(t?.subject || form.subject),
-                category: String(t?.category || form.category),
-                message: String(t?.message || form.message),
-                status: (String(t?.status || "open") as any) as SupportTicket["status"],
-                createdAt: String(t?.created_at || new Date().toISOString()),
-                reply: t?.reply ? String(t.reply) : undefined,
-                repliedAt: t?.replied_at ? String(t.replied_at) : undefined,
-            };
+        setSubmitted(true);
+        setMyTickets((prev) => [nextTicket, ...prev]);
+        setForm({ subject: "", category: "", message: "" });
+        setTimeout(() => setSubmitted(false), 5000);
+    } catch (e: any) {
+        console.error("Support ticket insert error:", e);
+        setSubmitError(e?.message ? String(e.message) : "Destek talebi gönderilemedi.");
+    }
+};
 
-            setSubmitted(true);
-            setMyTickets((prev) => [nextTicket, ...prev]);
-            setForm({ subject: "", category: "", message: "" });
-            setTimeout(() => setSubmitted(false), 5000);
-        } catch (e: any) {
-            console.error("Support ticket insert error:", e);
-            setSubmitError(e?.message ? String(e.message) : "Destek talebi gönderilemedi.");
-        }
-    };
+if (!user) return null;
 
-    if (!user) return null;
-
-    const selectedTicket = myTickets.find((t) => String(t.id) === String(selectedTicketId));
-
-    useEffect(() => {
-        if (!user) return;
-        if (!selectedTicket) return;
-
-        const seenKey = `isgucu_support_reply_seen_${usernameKey(user.username)}`;
-        try {
-            const raw = localStorage.getItem(seenKey);
-            const seen = raw ? (JSON.parse(raw) as Record<string, string>) : {};
-            const id = String(selectedTicket.id);
-
-            const latestAdmin = (selectedTicket.replies || [])
-                .filter((r) => r.authorRole === "admin")
-                .slice(-1)[0]?.createdAt;
-            const marker = String(latestAdmin || selectedTicket.repliedAt || "");
-            if (!marker) return;
-
-            if (seen[id] !== marker) {
-                seen[id] = marker;
-                localStorage.setItem(seenKey, JSON.stringify(seen));
-                window.dispatchEvent(new Event("support_seen_updated"));
-            }
-        } catch (e) {
-            console.error("Support seen mark error:", e);
-        }
-    }, [selectedTicket, user]);
-
-    return (
-        <div className="min-h-screen bg-slate-50 pb-24">
-            {/* Premium Header */}
-            <div className="bg-slate-900 py-20 relative overflow-hidden">
-                <div className="absolute top-0 left-0 w-full h-full opacity-10">
-                    <div className="absolute top-1/2 left-1/4 w-96 h-96 bg-blue-500 rounded-full blur-[100px]"></div>
-                </div>
-                <div className="container mx-auto px-4 relative z-10 text-center">
-                    <div className="inline-flex items-center justify-center p-4 rounded-[2rem] bg-blue-600/20 text-blue-400 mb-6 border border-blue-500/20">
-                        <Headphones className="h-10 w-10" />
-                    </div>
-                    <h1 className="text-4xl md:text-6xl font-black font-heading text-white mb-4 uppercase tracking-tight">Resmi <span className="text-blue-500 italic">Destek</span></h1>
-                    <p className="text-slate-400 text-lg md:text-xl max-w-2xl mx-auto font-medium">
-                        Tüm sorunlarınız için kurumsal çözüm kanalımız. Talebiniz doğrudan uzman ekibimize iletilir.
-                    </p>
-                </div>
+return (
+    <div className="min-h-screen bg-slate-50 pb-24">
+        {/* Premium Header */}
+        <div className="bg-slate-900 py-20 relative overflow-hidden">
+            <div className="absolute top-0 left-0 w-full h-full opacity-10">
+                <div className="absolute top-1/2 left-1/4 w-96 h-96 bg-blue-500 rounded-full blur-[100px]"></div>
             </div>
-
-            <div className="container mx-auto px-4 -mt-10 relative z-20 max-w-6xl">
-                {/* Stats / Info Cards */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
-                    <div className="bg-white rounded-[2.5rem] p-8 shadow-sm border border-slate-100 flex items-center space-x-6">
-                        <div className="w-14 h-14 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
-                            <Clock className="w-7 h-7" />
-                        </div>
-                        <div>
-                            <h3 className="font-black text-slate-900 uppercase text-sm tracking-widest">Yanıt Süresi</h3>
-                            <p className="text-slate-500 font-bold text-lg">~2 Saat</p>
-                        </div>
-                    </div>
-                    <div className="bg-white rounded-[2.5rem] p-8 shadow-sm border border-slate-100 flex items-center space-x-6">
-                        <div className="w-14 h-14 rounded-2xl bg-green-50 text-green-600 flex items-center justify-center shrink-0">
-                            <ShieldCheck className="w-7 h-7" />
-                        </div>
-                        <div>
-                            <h3 className="font-black text-slate-900 uppercase text-sm tracking-widest">Güvenlik</h3>
-                            <p className="text-slate-500 font-bold text-lg">SSL Korumalı</p>
-                        </div>
-                    </div>
-                    <div className="bg-white rounded-[2.5rem] p-8 shadow-sm border border-slate-100 flex items-center space-x-6">
-                        <div className="w-14 h-14 rounded-2xl bg-purple-50 text-purple-600 flex items-center justify-center shrink-0">
-                            <MessageCircle className="w-7 h-7" />
-                        </div>
-                        <div>
-                            <h3 className="font-black text-slate-900 uppercase text-sm tracking-widest">Aktiflik</h3>
-                            <p className="text-slate-500 font-bold text-lg">7/24 Destek</p>
-                        </div>
-                    </div>
+            <div className="container mx-auto px-4 relative z-10 text-center">
+                <div className="inline-flex items-center justify-center p-4 rounded-[2rem] bg-blue-600/20 text-blue-400 mb-6 border border-blue-500/20">
+                    <Headphones className="h-10 w-10" />
                 </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
-                    {/* Form Area */}
-                    <div className="lg:col-span-7">
-                        <div className="bg-white rounded-[3.5rem] p-10 md:p-16 shadow-xl shadow-slate-200/50 border border-slate-100">
-                            <div className="flex items-center justify-between mb-10">
-                                <div>
-                                    <h2 className="text-3xl font-black text-slate-900 italic">Talep Formu</h2>
-                                    <p className="text-slate-500 font-medium mt-1 uppercase tracking-widest text-xs">Ayrıntılar çözüm hızını artırır.</p>
-                                </div>
-                                <div className="hidden sm:block">
-                                    <FileText className="w-12 h-12 text-slate-100" />
-                                </div>
+                <h1 className="text-4xl sm:text-5xl font-black text-white mb-4 uppercase tracking-tighter italic">
+                    Destek
+                </h1>
+                <p className="text-white/50 text-base sm:text-lg font-medium max-w-2xl mx-auto leading-relaxed">
+                    Bir sorunun mu var? Talep oluştur, durumunu takip et ve destek ekibiyle yazış.
+                </p>
+            </div>
+        </div>
+
+        <div className="container mx-auto px-4 -mt-16 relative z-10">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <div className="lg:col-span-2 bg-white rounded-[3rem] p-8 sm:p-10 shadow-xl shadow-slate-200 border border-slate-100">
+                    <div className="flex items-center justify-between gap-4 flex-wrap mb-8">
+                        <div>
+                            <h2 className="text-2xl font-black text-slate-900 uppercase tracking-tighter">Yeni Destek Talebi</h2>
+                            <p className="text-slate-500 text-sm font-medium">Konu ve mesajı yaz, ekibimiz dönüş yapsın.</p>
+                        </div>
+                        <div className="inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-400">
+                            <ShieldCheck className="h-4 w-4" /> Güvenli Destek
+                        </div>
+                    </div>
+
+                    {submitError ? (
+                        <div className="mb-6 rounded-2xl border border-red-100 bg-red-50 px-5 py-4">
+                            <div className="flex items-center gap-2 text-red-600 font-black text-sm">
+                                <AlertCircle className="h-5 w-5" /> {submitError}
                             </div>
-
-                            {submitted && (
-                                <div className="mb-8 p-6 bg-green-600 rounded-[2rem] text-white font-black flex items-center gap-4 animate-in zoom-in duration-300 shadow-xl shadow-green-200">
-                                    <CheckCircle2 className="h-8 w-8 shrink-0" />
-                                    <div className="text-sm">
-                                        Talebiniz Kaydedildi! <br />
-                                        <span className="opacity-80 font-medium">Bize ulaştığınız için teşekkürler.</span>
-                                    </div>
-                                </div>
-                            )}
-
-                            {submitError && (
-                                <div className="mb-8 p-6 bg-red-600 rounded-[2rem] text-white font-black flex items-center gap-4 animate-in zoom-in duration-300 shadow-xl shadow-red-200">
-                                    <AlertCircle className="h-8 w-8 shrink-0" />
-                                    <div className="text-sm">
-                                        Talep gönderilemedi. <br />
-                                        <span className="opacity-80 font-medium">{submitError}</span>
-                                    </div>
-                                </div>
-                            )}
-
-                            <form onSubmit={handleSubmit} className="space-y-8">
-                                <div className="grid grid-cols-1 gap-8">
-                                    <div className="space-y-3">
-                                        <Label className="font-black uppercase tracking-widest text-xs text-slate-400 pl-4">Konu Başlığı</Label>
-                                        <Input
-                                            required
-                                            placeholder="Neyle ilgili sorun yaşıyorsunuz?"
-                                            value={form.subject}
-                                            onChange={(e) => setForm({ ...form, subject: e.target.value })}
-                                            className="h-16 rounded-2xl bg-slate-50 border-transparent focus:bg-white focus:ring-4 focus:ring-blue-500/10 transition-all font-medium text-lg px-6"
-                                        />
-                                    </div>
-
-                                    <div className="space-y-3">
-                                        <Label className="font-black uppercase tracking-widest text-xs text-slate-400 pl-4">Kategori Seçimi</Label>
-                                        <Select required onValueChange={(val) => setForm({ ...form, category: val })}>
-                                            <SelectTrigger className="h-16 rounded-2xl bg-slate-50 border-transparent focus:bg-white focus:ring-4 focus:ring-blue-500/10 transition-all font-medium text-lg px-6">
-                                                <SelectValue placeholder="Bir kategori seçin..." />
-                                            </SelectTrigger>
-                                            <SelectContent className="rounded-2xl border-slate-100">
-                                                {SUPPORT_CATEGORIES.map(cat => (
-                                                    <SelectItem key={cat} value={cat} className="rounded-xl py-3 font-medium">{cat}</SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-
-                                    <div className="space-y-3">
-                                        <Label className="font-black uppercase tracking-widest text-xs text-slate-400 pl-4">Detaylı Açıklama</Label>
-                                        <Textarea
-                                            required
-                                            placeholder="Lütfen sorununuzu tüm detaylarıyla açıklayın..."
-                                            className="min-h-[200px] rounded-[2rem] bg-slate-50 border-transparent focus:bg-white focus:ring-4 focus:ring-blue-500/10 transition-all font-medium text-lg p-8 leading-relaxed"
-                                            value={form.message}
-                                            onChange={(e) => setForm({ ...form, message: e.target.value })}
-                                        />
-                                    </div>
-                                </div>
-
-                                <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white h-20 rounded-[2rem] text-xl font-black uppercase tracking-widest shadow-2xl shadow-blue-500/30 transition-all hover:scale-[1.02] active:scale-95">
-                                    <Send className="h-6 w-6 mr-3" /> Talebi Gönder
-                                </Button>
-                            </form>
                         </div>
-                    </div>
+                    ) : null}
 
-                    {/* Dashboard Sidebar */}
-                    <div className="lg:col-span-5 space-y-8">
-                        <div className="bg-slate-900 rounded-[3.5rem] p-10 text-white shadow-2xl shadow-slate-300">
-                            <h3 className="text-2xl font-black mb-6 italic border-b border-white/10 pb-4">Önceki Taleplerim</h3>
+                    {submitted ? (
+                        <div className="mb-6 rounded-2xl border border-emerald-100 bg-emerald-50 px-5 py-4">
+                            <div className="flex items-center gap-2 text-emerald-700 font-black text-sm">
+                                <CheckCircle2 className="h-5 w-5" /> Talebiniz alındı.
+                            </div>
+                        </div>
+                    ) : null}
 
-                            {loadingTickets ? (
-                                <div className="text-center py-12">
-                                    <div className="w-20 h-20 bg-white/5 rounded-full flex items-center justify-center mx-auto mb-6">
-                                        <AlertCircle className="w-10 h-10 text-white/20" />
-                                    </div>
-                                    <p className="text-slate-400 font-medium">Yükleniyor...</p>
-                                </div>
-                            ) : myTickets.length === 0 ? (
-                                <div className="text-center py-12">
-                                    <div className="w-20 h-20 bg-white/5 rounded-full flex items-center justify-center mx-auto mb-6">
-                                        <AlertCircle className="w-10 h-10 text-white/20" />
-                                    </div>
-                                    <p className="text-slate-400 font-medium">Henüz bir talebiniz bulunmuyor.</p>
-                                </div>
-                            ) : (
-                                <div className="space-y-4 max-h-[600px] overflow-y-auto pr-2 custom-scrollbar">
-                                    {myTickets.map(ticket => (
-                                        <button
-                                            key={ticket.id}
-                                            type="button"
-                                            onClick={() => setSelectedTicketId(String(ticket.id))}
-                                            className="w-full text-left bg-white/5 rounded-[2rem] p-6 border border-white/5 hover:bg-white/10 transition-all group"
-                                        >
-                                            <div className="flex items-start justify-between mb-4">
-                                                <span className={`px-4 py-1 rounded-full text-[10px] font-black uppercase tracking-tighter ${ticket.status === "open" ? "bg-amber-500/20 text-amber-500" :
-                                                    ticket.status === "replied" ? "bg-blue-500/20 text-blue-500" :
-                                                        "bg-white/10 text-white/40"
-                                                    }`}>
-                                                    {ticket.status === "open" ? "Bekliyor" : ticket.status === "replied" ? "Cevaplandı" : "Kapalı"}
-                                                </span>
-                                                <span className="text-[10px] text-white/20 font-bold">{ticket.id}</span>
-                                            </div>
-                                            <h4 className="font-bold text-white mb-2 line-clamp-1 group-hover:text-blue-400 transition-colors uppercase tracking-tight">{ticket.subject}</h4>
-                                            <p className="text-xs text-white/40 line-clamp-2 leading-relaxed mb-4">{ticket.message}</p>
+                    <form onSubmit={handleSubmit} className="space-y-6">
+                        <div className="space-y-2">
+                            <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Konu</Label>
+                            <Input
+                                value={form.subject}
+                                onChange={(e) => setForm((p) => ({ ...p, subject: e.target.value }))}
+                                className="h-14 rounded-[2rem] border-slate-200 font-semibold px-6"
+                                placeholder="Örn: Ödeme sorunu"
+                            />
+                        </div>
 
-                                            {ticket.reply && (
-                                                <div className="p-4 bg-blue-600/10 rounded-2xl border border-blue-600/20 mb-4">
-                                                    <p className="text-[10px] font-black text-blue-400 uppercase tracking-widest mb-2 italic">Destek Yanıtı:</p>
-                                                    <p className="text-xs text-blue-100/80 leading-relaxed italic">"{ticket.reply}"</p>
-                                                </div>
-                                            )}
-
-                                            <div className="text-[10px] text-white/20 font-bold flex items-center justify-between">
-                                                <span>{new Date(ticket.createdAt).toLocaleDateString("tr-TR")}</span>
-                                                <span className="text-white/40">{ticket.category}</span>
-                                            </div>
-                                        </button>
+                        <div className="space-y-2">
+                            <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Kategori</Label>
+                            <Select value={form.category} onValueChange={(v) => setForm((p) => ({ ...p, category: v }))}>
+                                <SelectTrigger className="h-14 rounded-[2rem] border-slate-200 font-semibold px-6">
+                                    <SelectValue placeholder="Kategori seç" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {SUPPORT_CATEGORIES.map((c) => (
+                                        <SelectItem key={c} value={c}>
+                                            {c}
+                                        </SelectItem>
                                     ))}
-                                </div>
-                            )}
+                                </SelectContent>
+                            </Select>
                         </div>
 
-                        <div className="bg-blue-600 rounded-[3rem] p-10 text-white shadow-xl shadow-blue-200">
-                            <h4 className="text-xl font-black mb-4 uppercase tracking-tighter italic">Acil Durum mu?</h4>
-                            <p className="text-blue-100 text-sm font-medium leading-relaxed mb-6">
-                                Çok acil ödeme veya hesap güvenliği sorunları için 0850 555 0101 numaralı telefonumuzdan hafta içi 09:00 - 18:00 arası arama yapabilirsiniz.
-                            </p>
-                            <div className="w-full py-4 bg-white/20 rounded-2xl text-center font-black text-lg tracking-widest">0850 555 0101</div>
+                        <div className="space-y-2">
+                            <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Mesaj</Label>
+                            <Textarea
+                                value={form.message}
+                                onChange={(e) => setForm((p) => ({ ...p, message: e.target.value }))}
+                                className="min-h-[160px] rounded-[2rem] border-slate-200 font-medium px-6 py-5 leading-relaxed"
+                                placeholder="Detayları yaz..."
+                            />
                         </div>
-                    </div>
+
+                        <Button
+                            type="submit"
+                            disabled={!form.subject.trim() || !form.category.trim() || !form.message.trim()}
+                            className="w-full bg-slate-900 hover:bg-black text-white h-14 rounded-[2rem] text-sm font-black uppercase tracking-widest"
+                        >
+                            <Send className="h-5 w-5 mr-3" /> Gönder
+                        </Button>
+                    </form>
                 </div>
-            </div>
 
-            {selectedTicket ? (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-                    <button
-                        type="button"
-                        className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
-                        onClick={() => setSelectedTicketId("")}
-                        aria-label="Kapat"
-                    />
-                    <div className="relative w-full max-w-2xl max-h-[90vh] sm:max-h-[85vh] rounded-[2.5rem] bg-white shadow-2xl border border-slate-100 overflow-hidden flex flex-col">
-                        <div className="p-6 sm:p-8 border-b border-slate-100 bg-gradient-to-br from-slate-50 to-white">
-                            <div className="flex items-start justify-between gap-4">
-                                <div className="min-w-0">
-                                    <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">Destek Talebi Detayı</div>
-                                    <div className="mt-2 text-xl sm:text-2xl font-black text-slate-900 truncate">{selectedTicket.subject}</div>
-                                    <div className="mt-2 flex flex-wrap gap-2">
-                                        <span className="inline-flex items-center rounded-full bg-slate-100 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-slate-700">
-                                            {selectedTicket.category}
-                                        </span>
-                                        <span className={`inline-flex items-center rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-widest ${
-                                            selectedTicket.status === "open"
+                <div className="bg-white rounded-[3rem] p-8 sm:p-10 shadow-xl shadow-slate-200 border border-slate-100">
+                    <div className="flex items-start justify-between gap-4 mb-8">
+                        <div>
+                            <h3 className="text-xl font-black text-slate-900 uppercase tracking-tighter mb-1">Taleplerim</h3>
+                            <p className="text-slate-500 text-sm font-medium">Taleplerine tıklayıp konuşmayı açabilirsin.</p>
+                        </div>
+                        <Button
+                            type="button"
+                            variant="outline"
+                            className="rounded-2xl border-slate-200 text-slate-700 hover:bg-slate-50 font-black uppercase tracking-widest text-[10px] h-11 px-6"
+                            onClick={() => reloadTickets()}
+                            disabled={loadingTickets}
+                        >
+                            {loadingTickets ? "Yükleniyor" : "Yenile"}
+                        </Button>
+                    </div>
+
+                    {loadingTickets ? (
+                        <div className="rounded-2xl border border-slate-100 bg-slate-50 p-6 text-center">
+                            <div className="inline-flex items-center gap-2 text-slate-500 font-black text-[10px] uppercase tracking-widest">
+                                <Clock className="h-4 w-4" /> Yükleniyor...
+                            </div>
+                        </div>
+                    ) : myTickets.length === 0 ? (
+                        <div className="rounded-2xl border border-slate-100 bg-slate-50 p-6 text-center">
+                            <div className="inline-flex items-center gap-2 text-slate-500 font-black text-[10px] uppercase tracking-widest">
+                                <MessageCircle className="h-4 w-4" /> Henüz talep yok
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="space-y-4 max-h-[520px] overflow-y-auto pr-2 custom-scrollbar">
+                            {myTickets.map((ticket) => (
+                                <button
+                                    key={ticket.id}
+                                    type="button"
+                                    onClick={() => router.push(`/support/${String(ticket.id)}`)}
+                                    className="w-full text-left rounded-[2rem] p-6 border border-slate-100 hover:bg-slate-50 transition-all"
+                                >
+                                    <div className="flex items-start justify-between gap-3 mb-3">
+                                        <span className={`px-4 py-1 rounded-full text-[10px] font-black uppercase tracking-tighter ${
+                                            ticket.status === "open"
                                                 ? "bg-amber-50 text-amber-700"
-                                                : selectedTicket.status === "replied"
+                                                : ticket.status === "replied"
                                                     ? "bg-blue-50 text-blue-700"
                                                     : "bg-slate-50 text-slate-500"
                                         }`}>
-                                            {selectedTicket.status === "open" ? "Bekliyor" : selectedTicket.status === "replied" ? "Cevaplandı" : "Kapalı"}
+                                            {ticket.status === "open" ? "Bekliyor" : ticket.status === "replied" ? "Cevaplandı" : "Kapalı"}
                                         </span>
-                                        <span className="inline-flex items-center rounded-full bg-slate-50 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-slate-500">
-                                            {new Date(selectedTicket.createdAt).toLocaleString("tr-TR")}
-                                        </span>
+                                        <span className="text-[10px] text-slate-300 font-black">#{ticket.id}</span>
                                     </div>
-                                </div>
-                                <Button
-                                    type="button"
-                                    variant="outline"
-                                    className="h-11 rounded-2xl font-black uppercase tracking-widest text-[10px]"
-                                    onClick={() => setSelectedTicketId("")}
-                                >
-                                    Kapat
-                                </Button>
-                            </div>
-                        </div>
-
-                        <div className="flex-1 overflow-y-auto p-6 sm:p-8 space-y-6">
-                            <div className="rounded-[2rem] border border-slate-100 bg-white p-6">
-                                <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">Mesajın</div>
-                                <div className="mt-3 text-slate-700 font-medium leading-relaxed whitespace-pre-wrap">{selectedTicket.message}</div>
-                            </div>
-
-                            {selectedTicket.replies && selectedTicket.replies.length > 0 ? (
-                                <div className="rounded-[2rem] border border-blue-100 bg-blue-50/60 p-6">
-                                    <div className="flex items-center justify-between gap-3 flex-wrap">
-                                        <div className="text-[10px] font-black uppercase tracking-widest text-blue-700">Destek Yanıtları</div>
-                                    </div>
-                                    <div className="mt-4 space-y-4">
-                                        {selectedTicket.replies.map((r) => (
-                                            <div key={r.id} className={`rounded-2xl border p-4 ${
-                                                r.authorRole === "admin"
-                                                    ? "bg-slate-900 border-slate-700"
-                                                    : "bg-white border-slate-200"
-                                            }`}>
-                                                <div className="flex items-center justify-between gap-3 flex-wrap">
-                                                    <div className={`text-[10px] font-black uppercase tracking-widest ${
-                                                        r.authorRole === "admin" ? "text-white" : "text-slate-700"
-                                                    }`}>{r.authorRole === "user" ? "Sen" : "Destek"}</div>
-                                                    <div className={`text-[10px] font-black uppercase tracking-widest ${
-                                                        r.authorRole === "admin" ? "text-white" : "text-slate-600"
-                                                    }`}>
-                                                        {r.createdAt ? new Date(r.createdAt).toLocaleString("tr-TR") : ""}
-                                                    </div>
-                                                </div>
-                                                <div className={`mt-2 font-medium leading-relaxed whitespace-pre-wrap ${
-                                                    r.authorRole === "admin" ? "text-white" : "text-slate-900"
-                                                }`}>{r.message}</div>
+                                    <div className="font-black text-slate-900 uppercase tracking-tight line-clamp-1">{ticket.subject}</div>
+                                    <div className="mt-2 text-xs text-slate-500 font-medium line-clamp-2 leading-relaxed">{ticket.message}</div>
+                                    {ticket.reply ? (
+                                        <div className="mt-4 rounded-2xl border border-blue-100 bg-blue-50 p-4">
+                                            <div className="flex items-center gap-2 text-blue-700 text-[10px] font-black uppercase tracking-widest mb-2">
+                                                <FileText className="h-4 w-4" /> Son Yanıt
                                             </div>
-                                        ))}
+                                            <div className="text-xs text-blue-900 font-medium line-clamp-2">{ticket.reply}</div>
+                                        </div>
+                                    ) : null}
+                                    <div className="mt-4 text-[10px] text-slate-400 font-black uppercase tracking-widest flex items-center justify-between">
+                                        <span>{new Date(ticket.createdAt).toLocaleDateString("tr-TR")}</span>
+                                        <span className="text-slate-500">{ticket.category}</span>
                                     </div>
-                                </div>
-                            ) : selectedTicket.reply ? (
-                                <div className="rounded-[2rem] border border-blue-100 bg-blue-50/60 p-6">
-                                    <div className="flex items-center justify-between gap-3 flex-wrap">
-                                        <div className="text-[10px] font-black uppercase tracking-widest text-blue-700">Destek Yanıtı</div>
-                                        {selectedTicket.repliedAt ? (
-                                            <div className="text-[10px] font-black uppercase tracking-widest text-blue-600">
-                                                {new Date(selectedTicket.repliedAt).toLocaleString("tr-TR")}
-                                            </div>
-                                        ) : null}
-                                    </div>
-                                    <div className="mt-3 text-blue-900 font-medium leading-relaxed whitespace-pre-wrap">{selectedTicket.reply}</div>
-                                </div>
-                            ) : (
-                                <div className="rounded-[2rem] border border-slate-100 bg-slate-50 p-6">
-                                    <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">Yanıt</div>
-                                    <div className="mt-3 text-slate-600 font-medium">Bu talep için henüz yanıt yok.</div>
-                                </div>
-                            )}
-
-                            {selectedTicket.status !== "closed" && (
-                                <div className="sticky bottom-0 -mx-6 sm:-mx-8 px-6 sm:px-8 py-6 bg-white border-t border-slate-100">
-                                    <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">Mesaj Yaz</div>
-                                    <div className="mt-3 space-y-3">
-                                        <Textarea
-                                            placeholder="Destek ekibine ek bilgi/cevap yaz..."
-                                            className="min-h-[120px] rounded-[2rem] bg-slate-50 border-transparent focus:bg-white focus:ring-4 focus:ring-blue-500/10 transition-all font-medium text-lg p-6 leading-relaxed"
-                                            value={followupText}
-                                            onChange={(e) => setFollowupText(e.target.value)}
-                                        />
-                                        <Button
-                                            type="button"
-                                            disabled={followupSending || !followupText.trim()}
-                                            className="w-full bg-slate-900 hover:bg-black text-white h-14 rounded-[2rem] text-sm font-black uppercase tracking-widest"
-                                            onClick={async () => {
-                                                if (!user) return;
-                                                if (!selectedTicket) return;
-                                                const ticketIdNum = Number(selectedTicket.id);
-                                                if (!Number.isFinite(ticketIdNum)) return;
-                                                setFollowupSending(true);
-                                                try {
-                                                    const ins = await supabase
-                                                        .from("support_ticket_replies")
-                                                        .insert({
-                                                            ticket_id: ticketIdNum,
-                                                            author_role: "user",
-                                                            message: followupText,
-                                                        });
-                                                    if (ins.error) throw ins.error;
-
-                                                    const touch = await supabase
-                                                        .from("support_tickets")
-                                                        .update({ status: "open" })
-                                                        .eq("id", ticketIdNum);
-                                                    if (touch.error) console.error("Support ticket status touch error:", touch.error);
-
-                                                    setFollowupText("");
-                                                    await reloadTickets();
-                                                } catch (e: any) {
-                                                    console.error("Support followup insert error:", e);
-                                                    alert(e?.message ? String(e.message) : "Mesaj gönderilemedi.");
-                                                } finally {
-                                                    setFollowupSending(false);
-                                                }
-                                            }}
-                                        >
-                                            Mesajı Gönder
-                                        </Button>
-                                    </div>
-                                </div>
-                            )}
+                                </button>
+                            ))}
                         </div>
-                    </div>
+                    )}
                 </div>
-            ) : null}
-
-            <style jsx>{`
-                .custom-scrollbar::-webkit-scrollbar {
-                    width: 4px;
-                }
-                .custom-scrollbar::-webkit-scrollbar-track {
-                    background: transparent;
-                }
-                .custom-scrollbar::-webkit-scrollbar-thumb {
-                    background: rgba(255, 255, 255, 0.1);
-                    border-radius: 20px;
-                }
-            `}</style>
+            </div>
         </div>
-    );
+
+        <style jsx>{`
+            .custom-scrollbar::-webkit-scrollbar {
+                width: 4px;
+            }
+            .custom-scrollbar::-webkit-scrollbar-track {
+                background: transparent;
+            }
+            .custom-scrollbar::-webkit-scrollbar-thumb {
+                background: rgba(15, 23, 42, 0.18);
+                border-radius: 20px;
+            }
+        `}</style>
+    </div>
+);
+
 }
