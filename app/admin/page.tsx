@@ -366,7 +366,8 @@ function AdminPageContent() {
         const merged = new Map<string, DeletedUserRow>();
         for (const arr of groups) {
             for (const r of arr || []) {
-                const k = `${String(r.original_user_id || "")}-${String(r.deleted_at || "")}-${String(r.email || "")}`;
+                const k = String(r.original_user_id || "");
+                if (!k) continue;
                 if (!merged.has(k)) merged.set(k, r);
             }
         }
@@ -704,7 +705,6 @@ function AdminPageContent() {
         const nextDeleted = [newRow, ...deletedUsers];
         setDeletedUsers(nextDeleted);
         writeDeletedUsersCache(nextDeleted);
-        loadData({ fetchUsers: true });
     };
 
     const handleUpdate = async (u: PlatformUser, field: "email" | "password" | "username") => {
