@@ -556,7 +556,7 @@ export default function SupportPage() {
                         onClick={() => setSelectedTicketId("")}
                         aria-label="Kapat"
                     />
-                    <div className="relative w-full max-w-2xl rounded-[2.5rem] bg-white shadow-2xl border border-slate-100 overflow-hidden">
+                    <div className="relative w-full max-w-2xl max-h-[90vh] sm:max-h-[85vh] rounded-[2.5rem] bg-white shadow-2xl border border-slate-100 overflow-hidden flex flex-col">
                         <div className="p-6 sm:p-8 border-b border-slate-100 bg-gradient-to-br from-slate-50 to-white">
                             <div className="flex items-start justify-between gap-4">
                                 <div className="min-w-0">
@@ -591,7 +591,7 @@ export default function SupportPage() {
                             </div>
                         </div>
 
-                        <div className="p-6 sm:p-8 space-y-6">
+                        <div className="flex-1 overflow-y-auto p-6 sm:p-8 space-y-6">
                             <div className="rounded-[2rem] border border-slate-100 bg-white p-6">
                                 <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">Mesajın</div>
                                 <div className="mt-3 text-slate-700 font-medium leading-relaxed whitespace-pre-wrap">{selectedTicket.message}</div>
@@ -646,7 +646,7 @@ export default function SupportPage() {
                             )}
 
                             {selectedTicket.status !== "closed" && (
-                                <div className="rounded-[2rem] border border-slate-100 bg-white p-6">
+                                <div className="sticky bottom-0 -mx-6 sm:-mx-8 px-6 sm:px-8 py-6 bg-white border-t border-slate-100">
                                     <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">Mesaj Yaz</div>
                                     <div className="mt-3 space-y-3">
                                         <Textarea
