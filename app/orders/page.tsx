@@ -134,6 +134,94 @@ export default function OrdersPage() {
         })();
     }, [user, router]);
 
+    useEffect(() => {
+        if (!user || (user.role !== "employer" && user.role !== "freelancer")) return;
+        let cancelled = false;
+
+        const runReminderScan = async () => {
+            const rawUsername = String(user.username || "").trim();
+            if (!rawUsername) return;
+
+            const seenKey = `isgucu_order_reminder_seen_${norm(rawUsername)}`;
+            let seen: Record<string, string> = {};
+            try {
+                const raw = localStorage.getItem(seenKey);
+                seen = raw ? (JSON.parse(raw) as Record<string, string>) : {};
+            } catch {
+                seen = {};
+            }
+
+            const filter =
+                user.role === "employer"
+                    ? `buyer_id.eq.${user.id},buyer_username.ilike.${rawUsername}`
+                    : `seller_id.eq.${user.id},seller_username.ilike.${rawUsername}`;
+
+            const res = await supabase
+                .from("orders")
+                .select("id, status, created_at, buyer_username, seller_username")
+                .or(filter)
+                .order("created_at", { ascending: false })
+                .limit(200);
+
+            if (cancelled || res.error) return;
+
+            const rows = (res.data || []) as Array<{
+                id?: string | number;
+                status?: string;
+                created_at?: string;
+                buyer_username?: string;
+                seller_username?: string;
+            }>;
+
+            const now = Date.now();
+            const nextSeen = { ...seen };
+
+            for (const row of rows) {
+                const id = String(row.id || "");
+                const status = String(row.status || "").toLowerCase();
+                const created = new Date(String(row.created_at || "")).getTime();
+                if (!id || !Number.isFinite(created)) continue;
+
+                if (user.role === "employer" && status === "delivered" && now - created >= 48 * 60 * 60 * 1000) {
+                    const marker = `${id}:delivered`;
+                    if (nextSeen[marker]) continue;
+                    pushLocalNotification(rawUsername, {
+                        id: `order-reminder-employer-${id}`,
+                        type: "order",
+                        title: "Teslim Bekleyen Sipariş",
+                        description: `#${id} numaralı sipariş teslim edildi. Onaylayabilir veya revizyon isteyebilirsiniz.`,
+                        actionUrl: "/orders",
+                        actionLabel: "Siparişe Git",
+                    });
+                    nextSeen[marker] = new Date().toISOString();
+                }
+
+                if (user.role === "freelancer" && (status === "pending" || status === "active") && now - created >= 72 * 60 * 60 * 1000) {
+                    const marker = `${id}:active`;
+                    if (nextSeen[marker]) continue;
+                    pushLocalNotification(rawUsername, {
+                        id: `order-reminder-freelancer-${id}`,
+                        type: "order",
+                        title: "Devam Eden Sipariş Hatırlatması",
+                        description: `#${id} numaralı siparişiniz uzun süredir açık. Teslim adımını kontrol edin.`,
+                        actionUrl: "/orders",
+                        actionLabel: "Siparişe Git",
+                    });
+                    nextSeen[marker] = new Date().toISOString();
+                }
+            }
+
+            localStorage.setItem(seenKey, JSON.stringify(nextSeen));
+        };
+
+        runReminderScan();
+        const interval = window.setInterval(runReminderScan, 10 * 60 * 1000);
+        return () => {
+            cancelled = true;
+            window.clearInterval(interval);
+        };
+    }, [user]);
+
     const refresh = async () => {
         if (!user) return;
         const rows = await getUserOrders(user.username, user.role as "employer" | "freelancer" | "admin", user.id);

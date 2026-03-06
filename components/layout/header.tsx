@@ -466,7 +466,7 @@ export function Header() {
                             className="h-14 sm:h-12 md:h-20 w-auto object-contain transition-all"
                             unoptimized
                         />
-                        <span className="font-heading text-xl sm:text-2xl md:text-3xl font-bold bg-gradient-to-r from-blue-700 to-indigo-700 bg-clip-text text-transparent block leading-none truncate">
+                        <span className="font-heading text-xl sm:text-2xl md:text-3xl font-bold bg-gradient-to-r from-blue-700 to-indigo-700 bg-clip-text text-transparent block leading-none">
                             {siteConfig.siteName || "İŞGÜCÜ"}
                         </span>
                     </Link>

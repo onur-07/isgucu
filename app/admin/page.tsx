@@ -91,7 +91,7 @@ function AdminPageContent() {
     const [stats, setStats] = useState<PlatformStats | null>(null);
     const [loading, setLoading] = useState(true);
     const [totalUsersCount, setTotalUsersCount] = useState(0);
-    const [activeTab, setActiveTab] = useState<"overview" | "users" | "support" | "payouts" | "categories" | "deletions" | "site_settings">("overview");
+    const [activeTab, setActiveTab] = useState<"overview" | "reports" | "users" | "support" | "payouts" | "categories" | "deletions" | "site_settings">("overview");
     const [tickets, setTickets] = useState<SupportTicket[]>([]);
     const [ticketReplies, setTicketReplies] = useState<Record<string, SupportTicketReply[]>>({});
 
@@ -102,11 +102,124 @@ function AdminPageContent() {
     const [deletedUsers, setDeletedUsers] = useState<DeletedUserRow[]>([]);
     const [siteConfig, setSiteConfig] = useState<SiteConfig>(getSiteConfig());
     const [overviewSupportOpen, setOverviewSupportOpen] = useState(false);
+    const [reportBusy, setReportBusy] = useState<string>("");
 
     const parseTabFromUrl = (raw: string | null) => {
         const v = String(raw || "").trim();
-        if (v === "overview" || v === "users" || v === "support" || v === "payouts" || v === "deletions" || v === "site_settings") return v;
+        if (v === "overview" || v === "reports" || v === "users" || v === "support" || v === "payouts" || v === "deletions" || v === "site_settings") return v;
         return null;
+    };
+
+    const toCsv = (rows: Record<string, unknown>[]) => {
+        if (!rows.length) return "";
+        const headers = Array.from(
+            rows.reduce((set, row) => {
+                Object.keys(row || {}).forEach((k) => set.add(k));
+                return set;
+            }, new Set<string>())
+        );
+        const esc = (v: unknown) => {
+            const s = String(v ?? "");
+            if (/[",\n;]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
+            return s;
+        };
+        const lines = [
+            headers.join(";"),
+            ...rows.map((r) => headers.map((h) => esc((r as any)?.[h])).join(";")),
+        ];
+        return lines.join("\n");
+    };
+
+    const downloadCsvFile = (filename: string, rows: Record<string, unknown>[]) => {
+        const csv = toCsv(rows);
+        if (!csv) {
+            alert("Rapor için veri bulunamadı.");
+            return;
+        }
+        const blob = new Blob(["\ufeff" + csv], { type: "text/csv;charset=utf-8;" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+    };
+
+    const exportOrdersReport = async () => {
+        if (reportBusy) return;
+        setReportBusy("orders");
+        try {
+            const res = await supabase
+                .from("orders")
+                .select("id, status, total_price, total_days, buyer_username, seller_username, paid_to_seller, created_at")
+                .order("created_at", { ascending: false })
+                .limit(5000);
+            if (res.error) throw res.error;
+            const rows = ((res.data || []) as any[]).map((r) => ({
+                id: r.id,
+                durum: r.status,
+                tutar: r.total_price,
+                sure_gun: r.total_days,
+                isveren: r.buyer_username,
+                freelancer: r.seller_username,
+                odeme_aktarildi: r.paid_to_seller ? "evet" : "hayir",
+                tarih: r.created_at,
+            }));
+            downloadCsvFile(`siparis-raporu-${Date.now()}.csv`, rows);
+        } catch (e: any) {
+            alert("Sipariş raporu alınamadı: " + String(e?.message || e));
+        } finally {
+            setReportBusy("");
+        }
+    };
+
+    const exportPayoutsReport = async () => {
+        if (reportBusy) return;
+        setReportBusy("payouts");
+        try {
+            const res = await supabase
+                .from("payout_requests")
+                .select("id, user_id, amount, status, created_at, processed_at")
+                .order("created_at", { ascending: false })
+                .limit(5000);
+            if (res.error) throw res.error;
+            const rows = ((res.data || []) as any[]).map((r) => ({
+                id: r.id,
+                user_id: r.user_id,
+                tutar: r.amount,
+                durum: r.status,
+                olusturma: r.created_at,
+                isleme_alinma: r.processed_at,
+            }));
+            downloadCsvFile(`odeme-talep-raporu-${Date.now()}.csv`, rows);
+        } catch (e: any) {
+            alert("Ödeme raporu alınamadı: " + String(e?.message || e));
+        } finally {
+            setReportBusy("");
+        }
+    };
+
+    const exportUsersReport = async () => {
+        if (reportBusy) return;
+        setReportBusy("users");
+        try {
+            const sourceUsers = (users && users.length > 0) ? users : await getAllUsers();
+            const rows = (sourceUsers || []).map((u) => ({
+                id: u.id || "",
+                kullanici: u.username,
+                email: u.email,
+                rol: u.role,
+                engelli: u.isBanned ? "evet" : "hayir",
+                kayit_tarihi: u.createdAt,
+            }));
+            downloadCsvFile(`kullanici-raporu-${Date.now()}.csv`, rows);
+        } catch (e: any) {
+            alert("Kullanıcı raporu alınamadı: " + String(e?.message || e));
+        } finally {
+            setReportBusy("");
+        }
     };
 
     const withTimeout = async <T,>(p: PromiseLike<T>, ms: number, label: string): Promise<T> => {
@@ -797,6 +910,7 @@ function AdminPageContent() {
                 <div className="flex w-max min-w-full gap-1 sm:gap-2">
                     {[
                     { key: "overview" as const, label: "📊 Genel Bakış", count: null },
+                    { key: "reports" as const, label: "📈 Raporlar", count: null },
                     { key: "users" as const, label: "👥 Üyeler", count: totalUsersCount },
                     { key: "support" as const, label: "🎧 Destek", count: openTicketsCount > 0 ? openTicketsCount : null },
                     { key: "payouts" as const, label: "💸 Ödeme Talepleri", count: null },
@@ -1016,6 +1130,53 @@ function AdminPageContent() {
                         )}
                     </div>
                 </>
+            )}
+
+            {/* USERS TAB */}
+            {activeTab === "reports" && (
+                <div className="space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div className="bg-white border rounded-2xl p-6 shadow-sm">
+                            <div className="text-[10px] font-black text-gray-400 uppercase mb-2">Toplam İşlem Hacmi</div>
+                            <div className="text-3xl font-black text-slate-900">₺{Number(stats?.totalPayments || 0).toLocaleString("tr-TR")}</div>
+                        </div>
+                        <div className="bg-white border rounded-2xl p-6 shadow-sm">
+                            <div className="text-[10px] font-black text-gray-400 uppercase mb-2">Memnuniyet</div>
+                            <div className="text-3xl font-black text-emerald-700">%{Number(stats?.satisfactionRate || 0)}</div>
+                        </div>
+                        <div className="bg-white border rounded-2xl p-6 shadow-sm">
+                            <div className="text-[10px] font-black text-gray-400 uppercase mb-2">Toplam Proje</div>
+                            <div className="text-3xl font-black text-blue-700">{Number(stats?.totalProjects || 0)}</div>
+                        </div>
+                    </div>
+
+                    <div className="bg-white border rounded-[2rem] p-5 sm:p-8 shadow-sm">
+                        <h3 className="font-black text-gray-900 text-lg uppercase mb-5 tracking-tight">CSV Dışa Aktarma</h3>
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                            <Button
+                                className="h-12 bg-slate-900 hover:bg-black text-white font-black uppercase tracking-widest text-[10px]"
+                                onClick={exportOrdersReport}
+                                disabled={reportBusy !== ""}
+                            >
+                                {reportBusy === "orders" ? "Hazırlanıyor..." : "Sipariş Raporu"}
+                            </Button>
+                            <Button
+                                className="h-12 bg-blue-600 hover:bg-blue-700 text-white font-black uppercase tracking-widest text-[10px]"
+                                onClick={exportPayoutsReport}
+                                disabled={reportBusy !== ""}
+                            >
+                                {reportBusy === "payouts" ? "Hazırlanıyor..." : "Ödeme Raporu"}
+                            </Button>
+                            <Button
+                                className="h-12 bg-emerald-600 hover:bg-emerald-700 text-white font-black uppercase tracking-widest text-[10px]"
+                                onClick={exportUsersReport}
+                                disabled={reportBusy !== ""}
+                            >
+                                {reportBusy === "users" ? "Hazırlanıyor..." : "Kullanıcı Raporu"}
+                            </Button>
+                        </div>
+                    </div>
+                </div>
             )}
 
             {/* USERS TAB */}

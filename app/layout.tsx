@@ -1,5 +1,5 @@
-import type { Metadata } from "next";
-import { Inter, Outfit } from "next/font/google"; // Corrected import
+﻿import type { Metadata } from "next";
+import { Inter, Outfit } from "next/font/google";
 import "./globals.css";
 import { cn } from "@/lib/utils";
 import { AuthProvider } from "@/components/auth/auth-context";
@@ -12,8 +12,32 @@ const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 const outfit = Outfit({ subsets: ["latin"], variable: "--font-outfit" });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "https://isgucu-s7i1.vercel.app"),
   title: "İşgücü | Premium Freelance Platformu",
-  description: "Türkiye'nin en gelişmiş freelancer platformu.",
+  description: "Türkiye'nin gelişmiş freelancer platformu. Freelancer bul, iş ilanı ver, güvenli ödeme ile çalış.",
+  applicationName: "İşgücü",
+  alternates: {
+    canonical: "/",
+  },
+  openGraph: {
+    type: "website",
+    locale: "tr_TR",
+    url: "/",
+    siteName: "İşgücü",
+    title: "İşgücü | Premium Freelance Platformu",
+    description: "Freelancer hizmetleri, iş ilanları, güvenli ödeme ve hızlı eşleşme.",
+    images: [{ url: "/logo.png", width: 512, height: 512, alt: "İşgücü" }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "İşgücü | Premium Freelance Platformu",
+    description: "Freelancer bul, iş ilanı ver, güvenli ödeme ile çalış.",
+    images: ["/logo.png"],
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
   icons: {
     icon: [{ url: "/logo.png", type: "image/png" }],
     apple: [{ url: "/logo.png", type: "image/png" }],
