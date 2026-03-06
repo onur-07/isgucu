@@ -153,12 +153,15 @@ function AdminPageContent() {
                                             >
                                                 Engel Kaldır
                                             </Button>
+                                        ) : (u as DeletedUserRow).restore_status !== "deleted" ? (
+                                            <span className="text-[10px] font-black text-emerald-600 bg-emerald-100 px-3 py-1.5 rounded-lg uppercase">Geri Alındı</span>
+                                        ) : (u as DeletedUserRow).source === "legacy_approved_request" ? (
+                                            <span className="text-[10px] font-black text-orange-600 bg-orange-100 px-3 py-1.5 rounded-lg uppercase">Eski Kayıt</span>
                                         ) : (
                                             <Button
                                                 variant="outline"
                                                 size="sm"
-                                                disabled={(u as DeletedUserRow).source === "legacy_approved_request" || (u as DeletedUserRow).restore_status !== "deleted"}
-                                                className="h-9 px-4 text-[10px] font-black rounded-lg bg-blue-600 text-white border-blue-600 hover:bg-blue-700 disabled:bg-gray-200 disabled:text-gray-500 disabled:border-gray-200"
+                                                className="h-9 px-4 text-[10px] font-black rounded-lg bg-blue-600 text-white border-blue-600 hover:bg-blue-700"
                                                 onClick={() => handleRestoreDeletedUser(u as DeletedUserRow)}
                                             >
                                                 Geri Al
@@ -1363,6 +1366,10 @@ function AdminPageContent() {
                                             </p>
                                         )}
                                     </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
 
                     <div className="overflow-x-auto">
                         <table className="w-full text-left border-collapse">
