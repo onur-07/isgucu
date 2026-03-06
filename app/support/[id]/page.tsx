@@ -188,9 +188,10 @@ export default function SupportTicketDetailPage() {
 
         setUploading(true);
         try {
-            const up = await supabase.storage.from(BUCKET).upload(path, file, {
+            const bytes = new Uint8Array(await file.arrayBuffer());
+            const up = await supabase.storage.from(BUCKET).upload(path, bytes, {
                 upsert: false,
-                contentType: file.type || undefined,
+                contentType: file.type || "application/octet-stream",
                 cacheControl: "3600",
             });
             if (up.error) throw up.error;
@@ -333,10 +334,7 @@ export default function SupportTicketDetailPage() {
                                                             {displayNameFromUrl(u)}
                                                         </a>
                                                     </div>
-                                                    {isImageUrl(u) ? (
-                                                        // eslint-disable-next-line @next/next/no-img-element
-                                                        <img src={u} alt="Ek" className="mt-3 rounded-xl max-h-64 w-auto" />
-                                                    ) : null}
+                                                    {isImageUrl(u) ? <img src={u} alt="Ek" className="mt-3 rounded-xl max-h-64 w-auto" /> : null}
                                                 </div>
                                             ))}
                                         </div>
@@ -400,10 +398,7 @@ export default function SupportTicketDetailPage() {
                                                                                 {displayNameFromUrl(u)}
                                                                             </a>
                                                                         </div>
-                                                                        {isImageUrl(u) ? (
-                                                                            // eslint-disable-next-line @next/next/no-img-element
-                                                                            <img src={u} alt="Ek" className="mt-3 rounded-xl max-h-64 w-auto" />
-                                                                        ) : null}
+                                                                        {isImageUrl(u) ? <img src={u} alt="Ek" className="mt-3 rounded-xl max-h-64 w-auto" /> : null}
                                                                     </div>
                                                                 ))}
                                                             </div>

@@ -1403,10 +1403,7 @@ function AdminPageContent() {
                                                                     </p>
                                                                 </div>
                                                             </a>
-                                                            {isImageUrl(u) ? (
-                                                                // eslint-disable-next-line @next/next/no-img-element
-                                                                <img src={u} alt="Ek görsel" className="mt-3 rounded-xl max-h-72 w-auto border border-slate-200 bg-white" />
-                                                            ) : null}
+                                                            {isImageUrl(u) ? <img src={u} alt="Ek görsel" className="mt-3 rounded-xl max-h-72 w-auto border border-slate-200 bg-white" /> : null}
                                                         </div>
                                                     ))}
                                                 </div>
@@ -1462,10 +1459,7 @@ function AdminPageContent() {
                                                                                     {displayNameFromUrl(u)}
                                                                                 </a>
                                                                             </div>
-                                                                            {isImageUrl(u) ? (
-                                                                                // eslint-disable-next-line @next/next/no-img-element
-                                                                                <img src={u} alt="Ek" className="mt-3 rounded-xl max-h-72 w-auto" />
-                                                                            ) : null}
+                                                                            {isImageUrl(u) ? <img src={u} alt="Ek" className="mt-3 rounded-xl max-h-72 w-auto" /> : null}
                                                                         </div>
                                                                     ))}
                                                                 </div>

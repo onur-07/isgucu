@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useAuth } from "@/components/auth/auth-context";
 import { useRouter } from "next/navigation";
@@ -80,9 +80,10 @@ export default function SupportPage() {
 
         setUploading(true);
         try {
-            const up = await supabase.storage.from(SUPPORT_ATTACHMENTS_BUCKET).upload(path, file, {
+            const bytes = new Uint8Array(await file.arrayBuffer());
+            const up = await supabase.storage.from(SUPPORT_ATTACHMENTS_BUCKET).upload(path, bytes, {
                 upsert: false,
-                contentType: file.type || undefined,
+                contentType: file.type || "application/octet-stream",
                 cacheControl: "3600",
             });
             if (up.error) throw up.error;
