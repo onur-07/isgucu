@@ -133,6 +133,25 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: true });
     }
 
+    if (action === "delete_support_ticket") {
+      const ticketId = Number(body?.ticketId);
+      if (!Number.isFinite(ticketId) || ticketId <= 0) return NextResponse.json({ error: "invalid_ticket_id" }, { status: 400 });
+
+      const { error: repliesErr } = await supabaseAdmin
+        .from("support_ticket_replies")
+        .delete()
+        .eq("ticket_id", ticketId);
+      if (repliesErr) return NextResponse.json({ error: "ticket_replies_delete_failed", details: repliesErr.message }, { status: 500 });
+
+      const { error: ticketErr } = await supabaseAdmin
+        .from("support_tickets")
+        .delete()
+        .eq("id", ticketId);
+      if (ticketErr) return NextResponse.json({ error: "ticket_delete_failed", details: ticketErr.message }, { status: 500 });
+
+      return NextResponse.json({ ok: true });
+    }
+
     return NextResponse.json({ error: "unknown_action" }, { status: 400 });
   } catch (e: any) {
     return NextResponse.json({ error: "server_error", details: e?.message || String(e) }, { status: 500 });

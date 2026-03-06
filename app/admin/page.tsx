@@ -717,19 +717,10 @@ function AdminPageContent() {
 
         try {
             const ticketIdNum = Number(ticketId);
-            if (Number.isFinite(ticketIdNum)) {
-                const repliesDeleteRes = await supabase
-                    .from("support_ticket_replies")
-                    .delete()
-                    .eq("ticket_id", ticketIdNum);
-                if (repliesDeleteRes.error) throw repliesDeleteRes.error;
+            if (!Number.isFinite(ticketIdNum) || ticketIdNum <= 0) {
+                throw new Error("Geçersiz ticket id");
             }
-
-            const ticketDeleteRes = await supabase
-                .from("support_tickets")
-                .delete()
-                .eq("id", ticketId);
-            if (ticketDeleteRes.error) throw ticketDeleteRes.error;
+            await callModeration({ action: "delete_support_ticket", ticketId: ticketIdNum });
 
             setTickets((prev) => prev.filter((t) => String(t.id) !== String(ticketId)));
             setTicketReplies((prev) => {
