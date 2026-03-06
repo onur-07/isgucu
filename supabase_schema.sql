@@ -154,6 +154,18 @@ CREATE TABLE IF NOT EXISTS support_tickets (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
 );
 
+-- SUPPORT TICKET REPLIES (multi-reply history)
+CREATE TABLE IF NOT EXISTS support_ticket_replies (
+  id BIGSERIAL PRIMARY KEY,
+  ticket_id BIGINT REFERENCES support_tickets(id) ON DELETE CASCADE NOT NULL,
+  author_role TEXT CHECK (author_role IN ('admin', 'user')) NOT NULL,
+  message TEXT NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS support_ticket_replies_ticket_id_created_at_idx
+  ON support_ticket_replies(ticket_id, created_at);
+
 -- JOBS TABLE (Projects posted by Employers)
 CREATE TABLE IF NOT EXISTS jobs (
   id BIGSERIAL PRIMARY KEY,
@@ -173,6 +185,7 @@ ALTER TABLE messages ENABLE ROW LEVEL SECURITY;
 ALTER TABLE offers ENABLE ROW LEVEL SECURITY;
 ALTER TABLE orders ENABLE ROW LEVEL SECURITY;
 ALTER TABLE support_tickets ENABLE ROW LEVEL SECURITY;
+ALTER TABLE support_ticket_replies ENABLE ROW LEVEL SECURITY;
 ALTER TABLE account_deletion_requests ENABLE ROW LEVEL SECURITY;
 ALTER TABLE order_deliveries ENABLE ROW LEVEL SECURITY;
 ALTER TABLE wallet_ledger ENABLE ROW LEVEL SECURITY;
@@ -312,6 +325,16 @@ CREATE POLICY "Users can create review for completed order" ON reviews
 
 DROP POLICY IF EXISTS "Public tickets" ON support_tickets;
 CREATE POLICY "Public tickets" ON support_tickets FOR ALL USING (true);
+
+DROP POLICY IF EXISTS "Public ticket replies" ON support_ticket_replies;
+CREATE POLICY "Public ticket replies" ON support_ticket_replies FOR SELECT USING (true);
+
+DROP POLICY IF EXISTS "Admins can write ticket replies" ON support_ticket_replies;
+CREATE POLICY "Admins can write ticket replies" ON support_ticket_replies
+  FOR INSERT
+  WITH CHECK (
+    EXISTS (SELECT 1 FROM profiles p WHERE p.id = auth.uid() AND p.role = 'admin')
+  );
 
 DROP POLICY IF EXISTS "Users can create deletion requests" ON account_deletion_requests;
 CREATE POLICY "Users can create deletion requests" ON account_deletion_requests FOR INSERT WITH CHECK (auth.uid() = user_id);

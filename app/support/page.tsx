@@ -30,6 +30,7 @@ interface SupportTicket {
     createdAt: string;
     reply?: string;
     repliedAt?: string;
+    replies?: Array<{ id: string; message: string; createdAt: string; authorRole: "admin" | "user" }>;
 }
 
 const SUPPORT_CATEGORIES = [
@@ -101,6 +102,43 @@ export default function SupportPage() {
                     reply: t.reply ? String(t.reply) : undefined,
                     repliedAt: t.replied_at ? String(t.replied_at) : undefined,
                 }));
+
+                const ids = normalized.map((x) => String(x.id)).filter(Boolean);
+                if (ids.length > 0) {
+                    const idsNum = ids.map((v) => Number(v)).filter((n) => Number.isFinite(n));
+                    const repliesRes = await supabase
+                        .from("support_ticket_replies")
+                        .select("id, ticket_id, author_role, message, created_at")
+                        .in("ticket_id", idsNum)
+                        .order("created_at", { ascending: true });
+
+                    if (repliesRes.error) {
+                        console.error("Support ticket replies load error:", repliesRes.error);
+                    } else {
+                        const grouped: Record<string, SupportTicket["replies"]> = {};
+                        for (const r of (repliesRes.data || []) as any[]) {
+                            const k = String((r as any)?.ticket_id || "");
+                            if (!k) continue;
+                            if (!grouped[k]) grouped[k] = [];
+                            (grouped[k] as any[]).push({
+                                id: String((r as any)?.id || ""),
+                                message: String((r as any)?.message || ""),
+                                createdAt: String((r as any)?.created_at || ""),
+                                authorRole: String((r as any)?.author_role || "admin") as any,
+                            });
+                        }
+
+                        for (const t of normalized) {
+                            const k = String(t.id);
+                            const rows = grouped[k] || [];
+                            if (rows && rows.length > 0) {
+                                t.replies = rows as any;
+                                const last = (rows as any[])[(rows as any[]).length - 1];
+                                if (!t.reply && last?.message) t.reply = String(last.message);
+                            }
+                        }
+                    }
+                }
 
                 if (!cancelled) setMyTickets(normalized);
             } catch (e) {
@@ -437,7 +475,26 @@ export default function SupportPage() {
                                 <div className="mt-3 text-slate-700 font-medium leading-relaxed whitespace-pre-wrap">{selectedTicket.message}</div>
                             </div>
 
-                            {selectedTicket.reply ? (
+                            {selectedTicket.replies && selectedTicket.replies.length > 0 ? (
+                                <div className="rounded-[2rem] border border-blue-100 bg-blue-50/60 p-6">
+                                    <div className="flex items-center justify-between gap-3 flex-wrap">
+                                        <div className="text-[10px] font-black uppercase tracking-widest text-blue-700">Destek Yanıtları</div>
+                                    </div>
+                                    <div className="mt-4 space-y-4">
+                                        {selectedTicket.replies.map((r) => (
+                                            <div key={r.id} className="rounded-2xl bg-white/70 border border-blue-100 p-4">
+                                                <div className="flex items-center justify-between gap-3 flex-wrap">
+                                                    <div className="text-[10px] font-black uppercase tracking-widest text-blue-700">Yanıt</div>
+                                                    <div className="text-[10px] font-black uppercase tracking-widest text-blue-600">
+                                                        {r.createdAt ? new Date(r.createdAt).toLocaleString("tr-TR") : ""}
+                                                    </div>
+                                                </div>
+                                                <div className="mt-2 text-blue-900 font-medium leading-relaxed whitespace-pre-wrap">{r.message}</div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            ) : selectedTicket.reply ? (
                                 <div className="rounded-[2rem] border border-blue-100 bg-blue-50/60 p-6">
                                     <div className="flex items-center justify-between gap-3 flex-wrap">
                                         <div className="text-[10px] font-black uppercase tracking-widest text-blue-700">Destek Yanıtı</div>

@@ -26,6 +26,14 @@ interface SupportTicket {
     replied_at?: string;
 }
 
+interface SupportTicketReply {
+    id: string;
+    ticket_id: string;
+    author_role: "admin" | "user";
+    message: string;
+    created_at: string;
+}
+
 function AdminPageContent() {
     const { user, loading: authLoading } = useAuth();
     const router = useRouter();
@@ -37,6 +45,8 @@ function AdminPageContent() {
     const [totalUsersCount, setTotalUsersCount] = useState(0);
     const [activeTab, setActiveTab] = useState<"overview" | "users" | "support" | "payouts" | "categories" | "deletions" | "site_settings">("overview");
     const [tickets, setTickets] = useState<SupportTicket[]>([]);
+    const [ticketReplies, setTicketReplies] = useState<Record<string, SupportTicketReply[]>>({});
+
     const [usernameToId, setUsernameToId] = useState<Record<string, string>>({});
     const [replyInputs, setReplyInputs] = useState<Record<string, string>>({});
     const [replySuccess, setReplySuccess] = useState<string | null>(null);
@@ -175,6 +185,39 @@ function AdminPageContent() {
                 if (t?.error) console.error("AdminPage: Destek talebi çekme hatası:", t.error);
                 const ticketRows: SupportTicket[] = t?.data || [];
                 setTickets(ticketRows);
+
+                const ids = ticketRows.map((x) => String(x.id)).filter(Boolean);
+                if (ids.length > 0) {
+                    const idsNum = ids.map((v) => Number(v)).filter((n) => Number.isFinite(n));
+                    const repliesRes = await supabase
+                        .from("support_ticket_replies")
+                        .select("id, ticket_id, author_role, message, created_at")
+                        .in("ticket_id", idsNum)
+                        .order("created_at", { ascending: true });
+
+                    if (repliesRes.error) {
+                        console.error("AdminPage: Ticket replies load error:", repliesRes.error);
+                        setTicketReplies({});
+                    } else {
+                        const grouped: Record<string, SupportTicketReply[]> = {};
+                        for (const r of (repliesRes.data || []) as any[]) {
+                            const k = String((r as any)?.ticket_id || "");
+                            if (!k) continue;
+                            if (!grouped[k]) grouped[k] = [];
+                            grouped[k].push({
+                                id: String((r as any)?.id),
+                                ticket_id: k,
+                                author_role: String((r as any)?.author_role) as any,
+                                message: String((r as any)?.message || ""),
+                                created_at: String((r as any)?.created_at || ""),
+                            });
+                        }
+                        setTicketReplies(grouped);
+                    }
+                } else {
+                    setTicketReplies({});
+                }
+
                 const usernames = Array.from(new Set(ticketRows.map((x) => String(x.from_user || "").trim()).filter(Boolean)));
                 if (usernames.length > 0) {
                     const { data: profileRows } = await supabase.from("profiles").select("id, username").in("username", usernames);
@@ -409,26 +452,50 @@ function AdminPageContent() {
         }
     };
 
-
     const replyToTicket = async (ticketId: string) => {
         const replyText = replyInputs[ticketId];
         if (!replyText?.trim()) return;
 
-        const { error } = await supabase
-            .from('support_tickets')
-            .update({
-                reply: replyText,
-                status: 'replied',
-                replied_at: new Date().toISOString()
-            })
-            .eq('id', ticketId);
-
-        if (!error) {
-            setReplyInputs(prev => ({ ...prev, [ticketId]: "" }));
-            setReplySuccess(ticketId);
-            setTimeout(() => setReplySuccess(null), 3000);
-            loadData();
+        const nowIso = new Date().toISOString();
+        const ticketIdNum = Number(ticketId);
+        if (!Number.isFinite(ticketIdNum)) {
+            alert("Hata: Geçersiz ticket id");
+            return;
         }
+
+        const insertReplyRes = await supabase
+            .from("support_ticket_replies")
+            .insert({
+                ticket_id: ticketIdNum,
+                author_role: "admin",
+                message: replyText,
+            })
+            .select("id")
+            .maybeSingle();
+
+        if (insertReplyRes.error) {
+            alert("Hata: " + insertReplyRes.error.message);
+            return;
+        }
+
+        const { error: touchErr } = await supabase
+            .from("support_tickets")
+            .update({
+                status: "replied",
+                replied_at: nowIso,
+                reply: replyText,
+            })
+            .eq("id", ticketId);
+
+        if (touchErr) {
+            alert("Hata: " + touchErr.message);
+            return;
+        }
+
+        setReplyInputs((prev) => ({ ...prev, [ticketId]: "" }));
+        setReplySuccess(ticketId);
+        setTimeout(() => setReplySuccess(null), 3000);
+        loadData();
     };
 
     const closeTicket = async (ticketId: string) => {
