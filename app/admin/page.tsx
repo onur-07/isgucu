@@ -103,11 +103,16 @@ function AdminPageContent() {
     const [siteConfig, setSiteConfig] = useState<SiteConfig>(getSiteConfig());
     const [overviewSupportOpen, setOverviewSupportOpen] = useState(false);
     const [reportBusy, setReportBusy] = useState<string>("");
+    const [openSupportTickets, setOpenSupportTickets] = useState<Record<string, boolean>>({});
 
     const parseTabFromUrl = (raw: string | null) => {
         const v = String(raw || "").trim();
         if (v === "overview" || v === "reports" || v === "users" || v === "support" || v === "payouts" || v === "deletions" || v === "site_settings") return v;
         return null;
+    };
+
+    const toggleSupportTicket = (ticketId: string) => {
+        setOpenSupportTickets((prev) => ({ ...prev, [ticketId]: !prev[ticketId] }));
     };
 
     const toCsv = (rows: Record<string, unknown>[]) => {
@@ -1339,10 +1344,16 @@ function AdminPageContent() {
                             const employerId = sec.callerRole === "employer" ? sec.callerId : sec.otherRole === "employer" ? sec.otherId : "";
                             const ticketMessageUrls = extractUrls(ticket.message);
                             const ticketMessageBody = stripUrls(ticket.message);
+                            const isOpen = !!openSupportTickets[String(ticket.id)];
                             return (
                             <div key={ticket.id} className={`bg-white border rounded-[2rem] overflow-hidden shadow-sm transition-all ${ticket.status === 'open' ? 'border-l-8 border-l-orange-500' : 'border-l-8 border-l-emerald-500'}`}>
                                 <div className="p-5 sm:p-8">
-                                    <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-6">
+                                    <button
+                                        type="button"
+                                        className="w-full text-left"
+                                        onClick={() => toggleSupportTicket(String(ticket.id))}
+                                    >
+                                        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
                                         <div className="flex items-center gap-4 min-w-0">
                                             <div className="h-14 w-14 rounded-full bg-black text-white flex items-center justify-center text-xl font-black uppercase">
                                                 {ticket.from_user.charAt(0)}
@@ -1373,10 +1384,15 @@ function AdminPageContent() {
                                             <span className={`text-[9px] font-black px-4 py-1.5 rounded-full uppercase tracking-widest ${ticket.status === 'open' ? 'bg-orange-100 text-orange-600' : 'bg-emerald-100 text-emerald-600'}`}>
                                                 {ticket.status === 'open' ? '⏳ Açık' : '✅ Yanıtlandı'}
                                             </span>
+                                            <span className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500">
+                                                {isOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                                            </span>
                                         </div>
                                     </div>
+                                    </button>
 
-                                    <div className="mb-6">
+                                    {isOpen && (
+                                    <div className="mb-6 mt-6">
                                         <h4 className="font-black text-gray-900 text-lg uppercase mb-3 tracking-tight">{ticket.subject}</h4>
                                         <div className="bg-gray-50 border border-gray-100 p-6 rounded-2xl text-sm font-bold text-gray-600 leading-relaxed shadow-inner">
                                             {ticketMessageBody || (ticketMessageUrls.length > 0 ? "" : ticket.message)}
@@ -1410,8 +1426,9 @@ function AdminPageContent() {
                                             </div>
                                         ) : null}
                                     </div>
+                                    )}
 
-                                    {Array.isArray(ticketReplies[String(ticket.id)]) && ticketReplies[String(ticket.id)].length > 0 && (
+                                    {isOpen && Array.isArray(ticketReplies[String(ticket.id)]) && ticketReplies[String(ticket.id)].length > 0 && (
                                         <div className="mt-6 p-6 bg-slate-50 border border-slate-100 rounded-2xl">
                                             <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-4">Konuşma Geçmişi</p>
                                             <div className="space-y-3">
@@ -1471,7 +1488,7 @@ function AdminPageContent() {
                                         </div>
                                     )}
 
-                                    {(freelancerId || employerId) && (
+                                    {isOpen && (freelancerId || employerId) && (
                                         <div className="mt-6 flex flex-wrap items-center gap-3">
                                             {freelancerId && (
                                                 <Button
@@ -1494,7 +1511,7 @@ function AdminPageContent() {
                                         </div>
                                     )}
 
-                                    {ticket.reply && (
+                                    {isOpen && ticket.reply && (
                                         <div className="mt-6 p-6 bg-emerald-50/50 border border-emerald-100 rounded-2xl">
                                             <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest mb-3">📩 Gönderilen Yanıt:</p>
                                             <p className="text-sm font-bold text-emerald-800 leading-relaxed">{ticket.reply}</p>
@@ -1502,7 +1519,7 @@ function AdminPageContent() {
                                         </div>
                                     )}
 
-                                    {ticket.status !== 'closed' && (
+                                    {isOpen && ticket.status !== 'closed' && (
                                     <div className="mt-8 space-y-4">
                                             <Textarea
                                                 placeholder="Resmi yanıtınızı buraya yazın..."
