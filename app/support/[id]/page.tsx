@@ -87,6 +87,8 @@ export default function SupportTicketDetailPage() {
 
     const [uploading, setUploading] = useState(false);
     const fileInputRef = useRef<HTMLInputElement | null>(null);
+    const ticketMessageUrls = useMemo(() => extractUrls(ticket?.message || ""), [ticket?.message]);
+    const ticketMessageBody = useMemo(() => stripUrls(ticket?.message || ""), [ticket?.message]);
 
     const ticketIdNum = useMemo(() => {
         const n = Number(ticketId);
@@ -312,7 +314,33 @@ export default function SupportTicketDetailPage() {
                             <div className="p-8 sm:p-10 space-y-6">
                                 <div className="rounded-[2rem] border border-slate-100 bg-white p-6">
                                     <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">Mesajın</div>
-                                    <div className="mt-3 text-slate-700 font-medium leading-relaxed whitespace-pre-wrap">{ticket.message}</div>
+                                    <div className="mt-3 text-slate-700 font-medium leading-relaxed whitespace-pre-wrap">
+                                        {ticketMessageBody || (ticketMessageUrls.length > 0 ? "" : ticket.message)}
+                                    </div>
+                                    {ticketMessageUrls.length > 0 ? (
+                                        <div className="mt-4 space-y-2">
+                                            <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">Ek Dosyalar</div>
+                                            {ticketMessageUrls.map((u) => (
+                                                <div key={u} className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                                                    <div className="flex items-center gap-2">
+                                                        <FileText className="h-4 w-4 text-slate-500" />
+                                                        <a
+                                                            href={u}
+                                                            target="_blank"
+                                                            rel="noreferrer"
+                                                            className="text-sm font-bold text-blue-700 hover:underline break-all"
+                                                        >
+                                                            {displayNameFromUrl(u)}
+                                                        </a>
+                                                    </div>
+                                                    {isImageUrl(u) ? (
+                                                        // eslint-disable-next-line @next/next/no-img-element
+                                                        <img src={u} alt="Ek" className="mt-3 rounded-xl max-h-64 w-auto" />
+                                                    ) : null}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    ) : null}
                                 </div>
 
                                 <div className="rounded-[2rem] border border-blue-100 bg-blue-50/60 p-6">
