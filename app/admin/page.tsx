@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useState, Suspense } from "react";
 import { getAllUsers, getPlatformStats, updateUserInfo, type PlatformUser, type PlatformStats } from "@/lib/data-service";
-import { Users, Briefcase, TrendingUp, Shield, Trash2, Headphones, MessageCircle, CheckCircle2, Clock, Send, Settings, Globe, Layout, Palette, Plus, Save } from "lucide-react";
+import { Users, Briefcase, TrendingUp, Shield, Trash2, Headphones, MessageCircle, CheckCircle2, Clock, Send, Settings, Globe, Layout, Palette, Plus, Save, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/lib/supabase";
@@ -1117,6 +1117,8 @@ function AdminPageContent() {
                             const fromUserId = sec.callerId || usernameToId[ticket.from_user] || "";
                             const freelancerId = sec.callerRole === "freelancer" ? sec.callerId : sec.otherRole === "freelancer" ? sec.otherId : "";
                             const employerId = sec.callerRole === "employer" ? sec.callerId : sec.otherRole === "employer" ? sec.otherId : "";
+                            const ticketMessageUrls = extractUrls(ticket.message);
+                            const ticketMessageBody = stripUrls(ticket.message);
                             return (
                             <div key={ticket.id} className={`bg-white border rounded-[2rem] overflow-hidden shadow-sm transition-all ${ticket.status === 'open' ? 'border-l-8 border-l-orange-500' : 'border-l-8 border-l-emerald-500'}`}>
                                 <div className="p-5 sm:p-8">
@@ -1157,8 +1159,39 @@ function AdminPageContent() {
                                     <div className="mb-6">
                                         <h4 className="font-black text-gray-900 text-lg uppercase mb-3 tracking-tight">{ticket.subject}</h4>
                                         <div className="bg-gray-50 border border-gray-100 p-6 rounded-2xl text-sm font-bold text-gray-600 leading-relaxed shadow-inner">
-                                            {ticket.message}
+                                            {ticketMessageBody || (ticketMessageUrls.length > 0 ? "" : ticket.message)}
                                         </div>
+                                        {ticketMessageUrls.length > 0 ? (
+                                            <div className="mt-4">
+                                                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Ek Dosyalar</p>
+                                                <div className="space-y-2">
+                                                    {ticketMessageUrls.map((u) => (
+                                                        <div key={u} className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
+                                                            <a
+                                                                href={u}
+                                                                target="_blank"
+                                                                rel="noreferrer"
+                                                                className="flex items-center gap-3 hover:opacity-90"
+                                                            >
+                                                                <div className="h-10 w-10 rounded-xl bg-white border border-slate-200 flex items-center justify-center">
+                                                                    <FileText className="h-5 w-5 text-blue-600" />
+                                                                </div>
+                                                                <div className="min-w-0">
+                                                                    <p className="text-sm font-black text-slate-900 truncate">{displayNameFromUrl(u)}</p>
+                                                                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                                                                        {isImageUrl(u) ? "Görsel" : "Dosya"}
+                                                                    </p>
+                                                                </div>
+                                                            </a>
+                                                            {isImageUrl(u) ? (
+                                                                // eslint-disable-next-line @next/next/no-img-element
+                                                                <img src={u} alt="Ek görsel" className="mt-3 rounded-xl max-h-72 w-auto border border-slate-200 bg-white" />
+                                                            ) : null}
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        ) : null}
                                     </div>
 
                                     {Array.isArray(ticketReplies[String(ticket.id)]) && ticketReplies[String(ticket.id)].length > 0 && (
