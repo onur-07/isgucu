@@ -711,6 +711,39 @@ function AdminPageContent() {
         loadData();
     };
 
+    const deleteTicket = async (ticketId: string) => {
+        if (!ticketId) return;
+        if (!confirm("Bu destek talebini kalıcı olarak silmek istediğinize emin misiniz?")) return;
+
+        try {
+            const ticketIdNum = Number(ticketId);
+            if (Number.isFinite(ticketIdNum)) {
+                const repliesDeleteRes = await supabase
+                    .from("support_ticket_replies")
+                    .delete()
+                    .eq("ticket_id", ticketIdNum);
+                if (repliesDeleteRes.error) throw repliesDeleteRes.error;
+            }
+
+            const ticketDeleteRes = await supabase
+                .from("support_tickets")
+                .delete()
+                .eq("id", ticketId);
+            if (ticketDeleteRes.error) throw ticketDeleteRes.error;
+
+            setTickets((prev) => prev.filter((t) => String(t.id) !== String(ticketId)));
+            setTicketReplies((prev) => {
+                const next = { ...prev };
+                delete next[String(ticketId)];
+                return next;
+            });
+            alert("Destek talebi silindi.");
+            loadData();
+        } catch (e: any) {
+            alert("Ticket silinemedi: " + String(e?.message || e));
+        }
+    };
+
     const handleDeactivateFreelancerGigs = async (freelancerId: string) => {
         if (!freelancerId) return;
         if (!confirm("Freelancer kullanicisinin tum aktif ilanlarini pasife almak istediginize emin misiniz?")) return;
@@ -895,23 +928,33 @@ function AdminPageContent() {
                     {/* Recent Activity */}
                     <div className="bg-white border rounded-[2rem] p-5 sm:p-8 shadow-sm">
                         <h3 className="font-black text-gray-900 text-lg uppercase mb-6 tracking-tight">Son Destek Talepleri</h3>
-                        <div className="space-y-4">
+                        <div className="space-y-3 max-h-[420px] overflow-y-auto pr-1">
                             {tickets.slice(0, 5).map(ticket => (
-                                <div key={ticket.id} className="flex flex-col sm:flex-row sm:items-center gap-4 p-4 rounded-2xl hover:bg-gray-50 border border-transparent hover:border-gray-100 transition-all">
+                                <div key={ticket.id} className="flex flex-col sm:flex-row sm:items-center gap-3 p-4 rounded-2xl hover:bg-gray-50 border border-transparent hover:border-gray-100 transition-all">
                                     <div className={`h-12 w-12 rounded-full flex items-center justify-center text-xs font-black text-white ${ticket.status === "open" ? "bg-orange-500" : ticket.status === "replied" ? "bg-emerald-500" : "bg-gray-400"
                                         }`}>
                                         {ticket.from_user.charAt(0).toUpperCase()}
                                     </div>
                                     <div className="flex-1 min-w-0">
                                         <p className="text-sm font-black text-gray-900 uppercase truncate">{ticket.subject}</p>
-                                        <p className="text-[10px] text-gray-400 font-bold uppercase">{ticket.from_user} • {ticket.category}</p>
+                                        <p className="text-[10px] text-gray-400 font-bold uppercase truncate">{ticket.from_user} • {ticket.category}</p>
                                     </div>
-                                    <span className={`text-[9px] font-black px-3 py-1 rounded-lg uppercase tracking-widest w-fit ${ticket.status === "open" ? "bg-orange-50 text-orange-600" :
-                                        ticket.status === "replied" ? "bg-emerald-50 text-emerald-600" :
-                                            "bg-gray-50 text-gray-400"
-                                        }`}>
-                                        {ticket.status === "open" ? "Açık" : ticket.status === "replied" ? "Yanıtlandı" : "Kapandı"}
-                                    </span>
+                                    <div className="flex items-center gap-2 sm:ml-2">
+                                        <span className={`text-[9px] font-black px-3 py-1 rounded-lg uppercase tracking-widest w-fit ${ticket.status === "open" ? "bg-orange-50 text-orange-600" :
+                                            ticket.status === "replied" ? "bg-emerald-50 text-emerald-600" :
+                                                "bg-gray-50 text-gray-400"
+                                            }`}>
+                                            {ticket.status === "open" ? "Açık" : ticket.status === "replied" ? "Yanıtlandı" : "Kapandı"}
+                                        </span>
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            className="h-8 px-3 rounded-lg border-red-100 text-red-600 hover:bg-red-600 hover:text-white font-black text-[10px] uppercase tracking-widest"
+                                            onClick={() => deleteTicket(ticket.id)}
+                                        >
+                                            <Trash2 className="h-3.5 w-3.5 mr-1" /> Sil
+                                        </Button>
+                                    </div>
                                 </div>
                             ))}
                             {tickets.length === 0 && (
