@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Eye, EyeOff, Lock, User } from "lucide-react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
@@ -12,6 +13,7 @@ import { usernameFold } from "@/lib/utils";
 export function LoginForm() {
     const [identifier, setIdentifier] = useState(""); // email or username
     const [password, setPassword] = useState("");
+    const [showPassword, setShowPassword] = useState(false);
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
     const router = useRouter();
@@ -228,32 +230,47 @@ export function LoginForm() {
                     <Label htmlFor="identifier" className="text-[10px] font-black uppercase text-gray-400">
                         Kullanıcı Adı / E-posta
                     </Label>
-                    <Input
-                        id="identifier"
-                        type="text"
-                        required
-                        className="h-14 rounded-2xl bg-gray-50 border-gray-100 font-bold text-sm"
-                        value={identifier}
-                        onChange={(e) => setIdentifier(e.target.value)}
-                        onKeyDown={onEnter}
-                        placeholder="Kullanıcı adı veya e-posta"
-                    />
+                    <div className="relative">
+                        <User className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                        <Input
+                            id="identifier"
+                            type="text"
+                            required
+                            className="h-14 rounded-2xl bg-gray-50 border-gray-100 pl-11 font-bold text-sm"
+                            value={identifier}
+                            onChange={(e) => setIdentifier(e.target.value)}
+                            onKeyDown={onEnter}
+                            placeholder="Kullanıcı adı veya e-posta"
+                        />
+                    </div>
                 </div>
 
                 <div className="space-y-2">
                     <Label htmlFor="password" className="font-black text-xs uppercase tracking-widest text-gray-600">
                         Şifre
                     </Label>
-                    <Input
-                        id="password"
-                        type="password"
-                        required
-                        className="h-14 rounded-2xl bg-gray-50 border-gray-100 font-bold text-sm"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        onKeyDown={onEnter}
-                        placeholder="••••••••"
-                    />
+                    <div className="relative">
+                        <Lock className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                        <Input
+                            id="password"
+                            type={showPassword ? "text" : "password"}
+                            required
+                            className="h-14 rounded-2xl bg-gray-50 border-gray-100 pl-11 pr-11 font-bold text-sm"
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            onKeyDown={onEnter}
+                            placeholder="••••••••"
+                        />
+                        <button
+                            type="button"
+                            aria-label={showPassword ? "Şifreyi gizle" : "Şifreyi göster"}
+                            className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                            onClick={() => setShowPassword((v) => !v)}
+                            disabled={loading}
+                        >
+                            {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        </button>
+                    </div>
                 </div>
             </div>
 

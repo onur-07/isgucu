@@ -4,6 +4,7 @@ import { useState, type FormEvent } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Eye, EyeOff, Lock, Mail, User } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
@@ -12,6 +13,7 @@ export function RegisterForm() {
     const [username, setUsername] = useState("");
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
+    const [showPassword, setShowPassword] = useState(false);
     const [role, setRole] = useState<"employer" | "freelancer">("employer");
     const [error, setError] = useState("");
     const [success, setSuccess] = useState(false);
@@ -173,39 +175,57 @@ export function RegisterForm() {
             <div className="space-y-4">
                 <div className="space-y-2">
                     <Label htmlFor="username" className="text-[10px] font-black uppercase text-gray-400">Kullanıcı Adı</Label>
-                    <Input
-                        id="username"
-                        type="text"
-                        required
-                        className="h-14 rounded-2xl bg-gray-50 border-gray-100 font-bold text-sm"
-                        value={username}
-                        onChange={(e) => setUsername(e.target.value)}
-                        placeholder="orn: onur123"
-                    />
+                    <div className="relative">
+                        <User className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                        <Input
+                            id="username"
+                            type="text"
+                            required
+                            className="h-14 rounded-2xl bg-gray-50 border-gray-100 pl-11 font-bold text-sm"
+                            value={username}
+                            onChange={(e) => setUsername(e.target.value)}
+                            placeholder="orn: onur123"
+                        />
+                    </div>
                 </div>
                 <div className="space-y-2">
                     <Label htmlFor="email" className="text-[10px] font-black uppercase text-gray-400">E-posta</Label>
-                    <Input
-                        id="email"
-                        type="email"
-                        required
-                        className="h-14 rounded-2xl bg-gray-50 border-gray-100 font-bold text-sm"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        placeholder="ornegin@mail.com"
-                    />
+                    <div className="relative">
+                        <Mail className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                        <Input
+                            id="email"
+                            type="email"
+                            required
+                            className="h-14 rounded-2xl bg-gray-50 border-gray-100 pl-11 font-bold text-sm"
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
+                            placeholder="ornegin@mail.com"
+                        />
+                    </div>
                 </div>
                 <div className="space-y-2">
                     <Label htmlFor="password" id="password-label" className="text-[10px] font-black uppercase text-gray-400">Şifre</Label>
-                    <Input
-                        id="password"
-                        type="password"
-                        required
-                        className="h-14 rounded-2xl bg-gray-50 border-gray-100 font-bold text-sm"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        placeholder="••••••••"
-                    />
+                    <div className="relative">
+                        <Lock className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                        <Input
+                            id="password"
+                            type={showPassword ? "text" : "password"}
+                            required
+                            className="h-14 rounded-2xl bg-gray-50 border-gray-100 pl-11 pr-11 font-bold text-sm"
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            placeholder="••••••••"
+                        />
+                        <button
+                            type="button"
+                            aria-label={showPassword ? "Şifreyi gizle" : "Şifreyi göster"}
+                            className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                            onClick={() => setShowPassword((v) => !v)}
+                            disabled={loading}
+                        >
+                            {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        </button>
+                    </div>
                 </div>
             </div>
 
@@ -216,27 +236,6 @@ export function RegisterForm() {
             >
                 {loading ? "Hesap Oluşturuluyor..." : "Hesap Oluştur"}
             </Button>
-
-            <div className="pt-4 border-t-2 border-dashed border-gray-100 mt-4">
-                <Button
-                    type="button"
-                    variant="ghost"
-                    className="w-full text-[10px] font-black uppercase text-gray-400 hover:text-blue-600"
-                    onClick={async () => {
-                        const start = Date.now();
-                        try {
-                            const { data, error } = await supabase.from('profiles').select('count');
-                            const duration = Date.now() - start;
-                            if (error) alert("BAĞLANTI HATASI: " + error.message);
-                            else alert("BAĞLANTI BAŞARILI! (Hız: " + duration + "ms) - Sistem seni duyuyor Onur, kaydolabilirsin.");
-                        } catch (err: any) {
-                            alert("KRİTİK HATA: Supabase'e hiç ulaşılamıyor. İnternetini veya .env.local dosyasını kontrol et! \n\nDetay: " + err.message);
-                        }
-                    }}
-                >
-                    🔍 SİSTEM BAĞLANTISINI TEST ET (DEBUG)
-                </Button>
-            </div>
         </form>
     );
 }
