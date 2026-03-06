@@ -16,7 +16,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
-import { Headphones, Send, CheckCircle2, MessageCircle, ShieldCheck, Clock, AlertCircle, FileText } from "lucide-react";
+import { Headphones, Send, CheckCircle2, MessageCircle, ShieldCheck, Clock, AlertCircle, FileText, ChevronRight } from "lucide-react";
 import Link from "next/link";
 
 interface SupportTicket {
@@ -460,7 +460,13 @@ return (
                                         }`}>
                                             {ticket.status === "open" ? "Bekliyor" : ticket.status === "replied" ? "Cevaplandı" : "Kapalı"}
                                         </span>
-                                        <span className="text-[10px] text-slate-300 font-black">#{ticket.id}</span>
+
+                                        <div className="flex items-center gap-3">
+                                            <span className="text-[10px] text-slate-300 font-black">#{ticket.id}</span>
+                                            <span className="inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-widest text-blue-700">
+                                                Aç <ChevronRight className="h-4 w-4" />
+                                            </span>
+                                        </div>
                                     </div>
                                     <div className="font-black text-slate-900 uppercase tracking-tight line-clamp-1">{ticket.subject}</div>
                                     <div className="mt-2 text-xs text-slate-500 font-medium line-clamp-2 leading-relaxed">{ticket.message}</div>
