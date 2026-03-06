@@ -155,7 +155,7 @@ function AdminPageContent() {
                                                 Engel Kaldır
                                             </Button>
                                         ) : (u as DeletedUserRow).restore_status !== "deleted" ? (
-                                            <span className="text-[10px] font-black text-emerald-600 bg-emerald-100 px-3 py-1.5 rounded-lg uppercase">Geri Alındı</span>
+                                            <span className="text-[10px] font-black text-emerald-600 bg-emerald-100 px-3 py-1.5 rounded-lg uppercase">Geri Alındı✓</span>
                                         ) : (u as DeletedUserRow).source === "legacy_approved_request" ? (
                                             <span className="text-[10px] font-black text-orange-600 bg-orange-100 px-3 py-1.5 rounded-lg uppercase">Eski Kayıt</span>
                                         ) : (
@@ -1399,7 +1399,7 @@ function AdminPageContent() {
                                                     )}
                                                 </div>
                                                 {d.restore_status !== "deleted" ? (
-                                                    <span className="text-[10px] font-black text-emerald-600 bg-emerald-100 px-3 py-1.5 rounded-lg uppercase">Geri Alındı</span>
+                                                    <span className="text-[10px] font-black text-emerald-600 bg-emerald-100 px-3 py-1.5 rounded-lg uppercase">Geri Alındı✓</span>
                                                 ) : d.source === "legacy_approved_request" ? (
                                                     <span className="text-[10px] font-black text-orange-600 bg-orange-100 px-3 py-1.5 rounded-lg uppercase">Eski Kayıt</span>
                                                 ) : (
