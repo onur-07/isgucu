@@ -53,7 +53,6 @@ function AdminPageContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const [users, setUsers] = useState<PlatformUser[]>([]);
-    const [usersSource, setUsersSource] = useState<"api" | "fallback" | "">("");
     const [stats, setStats] = useState<PlatformStats | null>(null);
     const [loading, setLoading] = useState(true);
     const [totalUsersCount, setTotalUsersCount] = useState(0);
@@ -284,21 +283,49 @@ function AdminPageContent() {
             if (fetchUsers) {
                 console.log("AdminPage: Kullanıcılar listesi isteniyor...");
                 try {
-                    const [uData, dData] = await Promise.all([
-                        withTimeout(fetchUsersFromAdminApi(), 10000, "usersListApi"),
-                        withTimeout(fetchDeletedUsersFromAdminApi(), 10000, "deletedUsersApi"),
-                    ]);
+                    const uData = await withTimeout(fetchUsersFromAdminApi(), 10000, "usersListApi");
                     console.log("AdminPage: Kullanıcılar (api):", uData?.length || 0);
                     setUsers(uData || []);
-                    setDeletedUsers(dData || []);
-                    setUsersSource("api");
                 } catch (e) {
                     console.warn("AdminPage: users api failed, falling back to profiles:", e);
                     const uData = await withTimeout(getAllUsers(), 10000, "usersList");
                     console.log("AdminPage: Kullanıcılar (fallback):", uData?.length || 0);
                     setUsers(uData || []);
-                    setDeletedUsers([]);
-                    setUsersSource("fallback");
+                }
+
+                try {
+                    const dData = await withTimeout(fetchDeletedUsersFromAdminApi(), 10000, "deletedUsersApi");
+                    setDeletedUsers(dData || []);
+                } catch (e) {
+                    console.warn("AdminPage: deleted users api failed, trying approved deletion requests fallback:", e);
+                    const approvedRes = await withTimeout(
+                        supabase
+                            .from("account_deletion_requests")
+                            .select("id, user_id, username, email, reason, created_at")
+                            .eq("status", "approved")
+                            .order("created_at", { ascending: false }),
+                        10000,
+                        "approvedDeletionRequests"
+                    );
+
+                    if ((approvedRes as any)?.error) {
+                        setDeletedUsers([]);
+                    } else {
+                        const rows = ((approvedRes as any)?.data || []) as Array<any>;
+                        setDeletedUsers(
+                            rows.map((r) => ({
+                                id: Number(r.id || 0),
+                                original_user_id: String(r.user_id || ""),
+                                username: String(r.username || ""),
+                                email: String(r.email || ""),
+                                role: "",
+                                delete_reason: String(r.reason || ""),
+                                source: "legacy_approved_request",
+                                deleted_at: String(r.created_at || ""),
+                                restore_status: "unknown",
+                            }))
+                        );
+                    }
                 }
             }
 
@@ -816,11 +843,6 @@ function AdminPageContent() {
                         <div>
                             <h3 className="font-black text-gray-900 text-lg uppercase tracking-tight">Kayıtlı Üyeler ({users.length})</h3>
                             <p className="text-[10px] text-gray-400 font-bold uppercase mt-1">Platformdaki tüm kullanıcıları yönetin</p>
-                            {usersSource === "fallback" && (
-                                <p className="text-[10px] text-orange-600 font-black uppercase mt-2">
-                                    Uyarı: Kullanıcı listesi Auth API yerine sadece profiles tablosundan geldiği için e-posta/kullanıcı adı yanlış görünebilir.
-                                </p>
-                            )}
                         </div>
                     </div>
 
@@ -867,11 +889,15 @@ function AdminPageContent() {
                                                 <div className="min-w-0">
                                                     <p className="text-xs font-black text-gray-900 truncate">{d.username}</p>
                                                     <p className="text-[10px] text-gray-500 truncate">{d.email}</p>
+                                                    {d.source === "legacy_approved_request" && (
+                                                        <p className="text-[10px] text-orange-600 font-black">Eski kayıt (arşiv yok)</p>
+                                                    )}
                                                 </div>
                                                 <Button
                                                     variant="outline"
                                                     size="sm"
-                                                    className="h-8 px-3 text-[10px] font-black rounded-lg bg-blue-600 text-white border-blue-600 hover:bg-blue-700"
+                                                    disabled={d.source === "legacy_approved_request" || d.restore_status !== "deleted"}
+                                                    className="h-8 px-3 text-[10px] font-black rounded-lg bg-blue-600 text-white border-blue-600 hover:bg-blue-700 disabled:bg-gray-200 disabled:text-gray-500 disabled:border-gray-200"
                                                     onClick={() => handleRestoreDeletedUser(d)}
                                                 >
                                                     Geri Al
