@@ -189,6 +189,47 @@ function AdminPageContent() {
         } catch { }
     };
 
+    const fetchApprovedDeletionRequestsAsDeleted = async (): Promise<DeletedUserRow[]> => {
+        const approvedRes = await withTimeout(
+            supabase
+                .from("account_deletion_requests")
+                .select("id, user_id, username, email, reason, created_at")
+                .eq("status", "approved")
+                .order("created_at", { ascending: false }),
+            10000,
+            "approvedDeletionRequests"
+        );
+
+        if ((approvedRes as any)?.error) return [];
+        const rows = ((approvedRes as any)?.data || []) as Array<any>;
+        return rows.map((r) => ({
+            id: Number(r.id || 0),
+            original_user_id: String(r.user_id || ""),
+            username: String(r.username || ""),
+            email: String(r.email || ""),
+            role: "",
+            delete_reason: String(r.reason || ""),
+            source: "legacy_approved_request",
+            deleted_at: String(r.created_at || ""),
+            restore_status: "unknown",
+        }));
+    };
+
+    const mergeDeletedRows = (...groups: DeletedUserRow[][]) => {
+        const merged = new Map<string, DeletedUserRow>();
+        for (const arr of groups) {
+            for (const r of arr || []) {
+                const k = `${String(r.original_user_id || "")}-${String(r.deleted_at || "")}-${String(r.email || "")}`;
+                if (!merged.has(k)) merged.set(k, r);
+            }
+        }
+        return Array.from(merged.values()).sort((a, b) => {
+            const ta = new Date(String(a.deleted_at || 0)).getTime();
+            const tb = new Date(String(b.deleted_at || 0)).getTime();
+            return tb - ta;
+        });
+    };
+
     const loadData = async (opts?: { fetchUsers?: boolean }) => {
         console.log("AdminPage: Veri çekme işlemi başladı...");
         try {
@@ -314,62 +355,18 @@ function AdminPageContent() {
 
                 try {
                     const dData = await withTimeout(fetchDeletedUsersFromAdminApi(), 10000, "deletedUsersApi");
+                    const approvedRows = await fetchApprovedDeletionRequestsAsDeleted();
                     const cache = readDeletedUsersCache();
-                    const merged = new Map<string, DeletedUserRow>();
-                    for (const r of [...(dData || []), ...cache]) {
-                        const k = `${String(r.original_user_id || "")}-${String(r.deleted_at || "")}-${String(r.email || "")}`;
-                        if (!merged.has(k)) merged.set(k, r);
-                    }
-                    const mergedRows = Array.from(merged.values()).sort((a, b) => {
-                        const ta = new Date(String(a.deleted_at || 0)).getTime();
-                        const tb = new Date(String(b.deleted_at || 0)).getTime();
-                        return tb - ta;
-                    });
+                    const mergedRows = mergeDeletedRows(dData || [], approvedRows, cache);
                     setDeletedUsers(mergedRows);
                     writeDeletedUsersCache(mergedRows);
                 } catch (e) {
                     console.warn("AdminPage: deleted users api failed, trying approved deletion requests fallback:", e);
-                    const approvedRes = await withTimeout(
-                        supabase
-                            .from("account_deletion_requests")
-                            .select("id, user_id, username, email, reason, created_at")
-                            .eq("status", "approved")
-                            .order("created_at", { ascending: false }),
-                        10000,
-                        "approvedDeletionRequests"
-                    );
-
-                    if ((approvedRes as any)?.error) {
-                        setDeletedUsers([]);
-                    } else {
-                        const rows = ((approvedRes as any)?.data || []) as Array<any>;
-                        const fallbackRows = (
-                            rows.map((r) => ({
-                                id: Number(r.id || 0),
-                                original_user_id: String(r.user_id || ""),
-                                username: String(r.username || ""),
-                                email: String(r.email || ""),
-                                role: "",
-                                delete_reason: String(r.reason || ""),
-                                source: "legacy_approved_request",
-                                deleted_at: String(r.created_at || ""),
-                                restore_status: "unknown",
-                            }))
-                        );
-                        const cache = readDeletedUsersCache();
-                        const merged = new Map<string, DeletedUserRow>();
-                        for (const r of [...fallbackRows, ...cache]) {
-                            const k = `${String(r.original_user_id || "")}-${String(r.deleted_at || "")}-${String(r.email || "")}`;
-                            if (!merged.has(k)) merged.set(k, r);
-                        }
-                        const mergedRows = Array.from(merged.values()).sort((a, b) => {
-                            const ta = new Date(String(a.deleted_at || 0)).getTime();
-                            const tb = new Date(String(b.deleted_at || 0)).getTime();
-                            return tb - ta;
-                        });
-                        setDeletedUsers(mergedRows);
-                        writeDeletedUsersCache(mergedRows);
-                    }
+                    const approvedRows = await fetchApprovedDeletionRequestsAsDeleted();
+                    const cache = readDeletedUsersCache();
+                    const mergedRows = mergeDeletedRows(approvedRows, cache);
+                    setDeletedUsers(mergedRows);
+                    writeDeletedUsersCache(mergedRows);
                 }
             }
 
@@ -1104,17 +1101,27 @@ function AdminPageContent() {
                                                 {ticketReplies[String(ticket.id)].map((r) => (
                                                     <div
                                                         key={r.id}
-                                                        className={`rounded-2xl p-4 border ${r.author_role === "user" ? "bg-white border-gray-100" : "bg-emerald-50/40 border-emerald-100"}`}
+                                                        className={`rounded-2xl p-4 border ${
+                                                            r.author_role === "user"
+                                                                ? "bg-white border-gray-100"
+                                                                : "bg-slate-900 border-slate-700"
+                                                        }`}
                                                     >
                                                         <div className="flex items-center justify-between gap-3 flex-wrap">
-                                                            <div className={`text-[10px] font-black uppercase tracking-widest ${r.author_role === "user" ? "text-gray-500" : "text-emerald-700"}`}>
+                                                            <div className={`text-[10px] font-black uppercase tracking-widest ${
+                                                                r.author_role === "user" ? "text-gray-500" : "text-white"
+                                                            }`}>
                                                                 {r.author_role === "user" ? "Kullanıcı" : "Admin"}
                                                             </div>
-                                                            <div className="text-[10px] font-black uppercase tracking-widest text-gray-300">
+                                                            <div className={`text-[10px] font-black uppercase tracking-widest ${
+                                                                r.author_role === "user" ? "text-gray-300" : "text-white"
+                                                            }`}>
                                                                 {r.created_at ? new Date(r.created_at).toLocaleString("tr-TR") : ""}
                                                             </div>
                                                         </div>
-                                                        <div className="mt-2 text-sm font-bold text-gray-700 whitespace-pre-wrap leading-relaxed">{r.message}</div>
+                                                        <div className={`mt-2 text-sm font-bold whitespace-pre-wrap leading-relaxed ${
+                                                            r.author_role === "user" ? "text-gray-700" : "text-white"
+                                                        }`}>{r.message}</div>
                                                     </div>
                                                 ))}
                                             </div>
