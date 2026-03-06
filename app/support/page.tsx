@@ -604,14 +604,24 @@ export default function SupportPage() {
                                     </div>
                                     <div className="mt-4 space-y-4">
                                         {selectedTicket.replies.map((r) => (
-                                            <div key={r.id} className="rounded-2xl bg-white/70 border border-blue-100 p-4">
+                                            <div key={r.id} className={`rounded-2xl border p-4 ${
+                                                r.authorRole === "admin"
+                                                    ? "bg-slate-900 border-slate-700"
+                                                    : "bg-white border-slate-200"
+                                            }`}>
                                                 <div className="flex items-center justify-between gap-3 flex-wrap">
-                                                    <div className="text-[10px] font-black uppercase tracking-widest text-blue-700">{r.authorRole === "user" ? "Sen" : "Destek"}</div>
-                                                    <div className="text-[10px] font-black uppercase tracking-widest text-blue-600">
+                                                    <div className={`text-[10px] font-black uppercase tracking-widest ${
+                                                        r.authorRole === "admin" ? "text-white" : "text-slate-700"
+                                                    }`}>{r.authorRole === "user" ? "Sen" : "Destek"}</div>
+                                                    <div className={`text-[10px] font-black uppercase tracking-widest ${
+                                                        r.authorRole === "admin" ? "text-white" : "text-slate-600"
+                                                    }`}>
                                                         {r.createdAt ? new Date(r.createdAt).toLocaleString("tr-TR") : ""}
                                                     </div>
                                                 </div>
-                                                <div className="mt-2 text-blue-900 font-medium leading-relaxed whitespace-pre-wrap">{r.message}</div>
+                                                <div className={`mt-2 font-medium leading-relaxed whitespace-pre-wrap ${
+                                                    r.authorRole === "admin" ? "text-white" : "text-slate-900"
+                                                }`}>{r.message}</div>
                                             </div>
                                         ))}
                                     </div>
