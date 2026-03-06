@@ -1030,17 +1030,17 @@ function AdminPageContent() {
                         <div className="bg-orange-50 border border-orange-100 rounded-2xl p-6 text-center shadow-sm">
                             <Clock className="h-8 w-8 text-orange-600 mx-auto mb-2" />
                             <div className="text-3xl font-black text-orange-700">{openTicketsCount}</div>
-                            <div className="text-[10px] text-orange-600 font-black uppercase tracking-widest">Açık Talepler</div>
+                            <div className="text-[10px] font-black uppercase tracking-widest">Açık Talepler</div>
                         </div>
                         <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-6 text-center shadow-sm">
                             <CheckCircle2 className="h-8 w-8 text-emerald-600 mx-auto mb-2" />
                             <div className="text-3xl font-black text-emerald-700">{tickets.filter(t => t.status === 'replied').length}</div>
-                            <div className="text-[10px] text-emerald-600 font-black uppercase tracking-widest">Yanıtlanan</div>
+                            <div className="text-[10px] font-black uppercase tracking-widest">Yanıtlanan</div>
                         </div>
                         <div className="bg-blue-50 border border-blue-100 rounded-2xl p-6 text-center shadow-sm">
                             <MessageCircle className="h-8 w-8 text-blue-600 mx-auto mb-2" />
                             <div className="text-3xl font-black text-blue-700">{tickets.length}</div>
-                            <div className="text-[10px] text-blue-600 font-black uppercase tracking-widest">Toplam</div>
+                            <div className="text-[10px] font-black uppercase tracking-widest">Toplam</div>
                         </div>
                     </div>
 
@@ -1098,32 +1098,61 @@ function AdminPageContent() {
                                         <div className="mt-6 p-6 bg-slate-50 border border-slate-100 rounded-2xl">
                                             <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-4">Konuşma Geçmişi</p>
                                             <div className="space-y-3">
-                                                {ticketReplies[String(ticket.id)].map((r) => (
-                                                    <div
-                                                        key={r.id}
-                                                        className={`rounded-2xl p-4 border ${
-                                                            r.author_role === "user"
-                                                                ? "bg-white border-gray-100"
-                                                                : "bg-slate-900 border-slate-700"
-                                                        }`}
-                                                    >
-                                                        <div className="flex items-center justify-between gap-3 flex-wrap">
-                                                            <div className={`text-[10px] font-black uppercase tracking-widest ${
-                                                                r.author_role === "user" ? "text-gray-500" : "text-white"
-                                                            }`}>
-                                                                {r.author_role === "user" ? "Kullanıcı" : "Admin"}
+                                                {ticketReplies[String(ticket.id)].map((r) => {
+                                                    const urls = extractUrls(r.message);
+                                                    const body = stripUrls(r.message);
+                                                    return (
+                                                        <div
+                                                            key={r.id}
+                                                            className={`rounded-2xl p-4 border ${
+                                                                r.author_role === "user"
+                                                                    ? "bg-white border-gray-100"
+                                                                    : "bg-slate-900 border-slate-700"
+                                                            }`}
+                                                        >
+                                                            <div className="flex items-center justify-between gap-3 flex-wrap">
+                                                                <div className={`text-[10px] font-black uppercase tracking-widest ${
+                                                                    r.author_role === "user" ? "text-gray-500" : "text-white"
+                                                                }`}>
+                                                                    {r.author_role === "user" ? "Kullanıcı" : "Admin"}
+                                                                </div>
+                                                                <div className={`text-[10px] font-black uppercase tracking-widest ${
+                                                                    r.author_role === "user" ? "text-gray-300" : "text-white"
+                                                                }`}>
+                                                                    {r.created_at ? new Date(r.created_at).toLocaleString("tr-TR") : ""}
+                                                                </div>
                                                             </div>
-                                                            <div className={`text-[10px] font-black uppercase tracking-widest ${
-                                                                r.author_role === "user" ? "text-gray-300" : "text-white"
-                                                            }`}>
-                                                                {r.created_at ? new Date(r.created_at).toLocaleString("tr-TR") : ""}
-                                                            </div>
+
+                                                            <div className={`mt-2 text-sm font-bold whitespace-pre-wrap leading-relaxed ${
+                                                                r.author_role === "user" ? "text-gray-700" : "text-white"
+                                                            }`}>{body || (urls.length > 0 ? "" : r.message)}</div>
+
+                                                            {urls.length > 0 ? (
+                                                                <div className="mt-3 space-y-2">
+                                                                    {urls.map((u) => (
+                                                                        <div key={u} className="rounded-xl border border-slate-200 bg-white/80 p-3">
+                                                                            <div className="flex items-center gap-2">
+                                                                                <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Ek</span>
+                                                                                <a
+                                                                                    href={u}
+                                                                                    target="_blank"
+                                                                                    rel="noreferrer"
+                                                                                    className="text-sm font-black text-blue-700 hover:underline break-all"
+                                                                                >
+                                                                                    {displayNameFromUrl(u)}
+                                                                                </a>
+                                                                            </div>
+                                                                            {isImageUrl(u) ? (
+                                                                                // eslint-disable-next-line @next/next/no-img-element
+                                                                                <img src={u} alt="Ek" className="mt-3 rounded-xl max-h-72 w-auto" />
+                                                                            ) : null}
+                                                                        </div>
+                                                                    ))}
+                                                                </div>
+                                                            ) : null}
                                                         </div>
-                                                        <div className={`mt-2 text-sm font-bold whitespace-pre-wrap leading-relaxed ${
-                                                            r.author_role === "user" ? "text-gray-700" : "text-white"
-                                                        }`}>{r.message}</div>
-                                                    </div>
-                                                ))}
+                                                    );
+                                                })}
                                             </div>
                                         </div>
                                     )}

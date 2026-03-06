@@ -44,9 +44,31 @@ const extractUrls = (text: string) => {
     return Array.isArray(matches) ? matches : [];
 };
 
+const stripUrls = (text: string) => {
+    const s = String(text || "");
+    return s.replace(/https?:\/\/[^\s)\]]+/g, "").replace(/\n{3,}/g, "\n\n").trim();
+};
+
 const isImageUrl = (url: string) => {
-    const u = String(url || "").toLowerCase();
-    return u.endsWith(".png") || u.endsWith(".jpg") || u.endsWith(".jpeg") || u.endsWith(".webp") || u.endsWith(".gif");
+    try {
+        const parsed = new URL(String(url || ""));
+        const p = decodeURIComponent(parsed.pathname || "").toLowerCase();
+        return p.endsWith(".png") || p.endsWith(".jpg") || p.endsWith(".jpeg") || p.endsWith(".webp") || p.endsWith(".gif");
+    } catch {
+        const u = String(url || "").toLowerCase();
+        return u.endsWith(".png") || u.endsWith(".jpg") || u.endsWith(".jpeg") || u.endsWith(".webp") || u.endsWith(".gif");
+    }
+};
+
+const displayNameFromUrl = (url: string) => {
+    try {
+        const parsed = new URL(String(url || ""));
+        const parts = decodeURIComponent(parsed.pathname || "").split("/").filter(Boolean);
+        const last = parts[parts.length - 1] || url;
+        return last.length > 60 ? `${last.slice(0, 20)}...${last.slice(-25)}` : last;
+    } catch {
+        return url;
+    }
 };
 
 export default function SupportTicketDetailPage() {
@@ -300,6 +322,7 @@ export default function SupportTicketDetailPage() {
                                         ) : (
                                             replies.map((r) => {
                                                 const urls = extractUrls(r.message);
+                                                const body = stripUrls(r.message);
                                                 return (
                                                     <div
                                                         key={r.id}
@@ -330,7 +353,7 @@ export default function SupportTicketDetailPage() {
                                                                 r.authorRole === "admin" ? "text-white" : "text-slate-900"
                                                             }`}
                                                         >
-                                                            {r.message}
+                                                            {body || (urls.length > 0 ? "" : r.message)}
                                                         </div>
 
                                                         {urls.length > 0 ? (
@@ -345,7 +368,7 @@ export default function SupportTicketDetailPage() {
                                                                                 rel="noreferrer"
                                                                                 className="text-sm font-bold text-blue-700 hover:underline break-all"
                                                                             >
-                                                                                {u}
+                                                                                {displayNameFromUrl(u)}
                                                                             </a>
                                                                         </div>
                                                                         {isImageUrl(u) ? (
