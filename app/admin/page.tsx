@@ -4,7 +4,7 @@ import { useAuth } from "@/components/auth/auth-context";
 import { useRouter } from "next/navigation";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useState, Suspense } from "react";
-import { getAllUsers, getPlatformStats, toggleBanUser, deleteUserAccount, updateUserInfo, type PlatformUser, type PlatformStats } from "@/lib/data-service";
+import { getAllUsers, getPlatformStats, updateUserInfo, type PlatformUser, type PlatformStats } from "@/lib/data-service";
 import { Users, Briefcase, TrendingUp, Shield, Trash2, Headphones, MessageCircle, CheckCircle2, Clock, Send, Settings, Globe, Layout, Palette, Plus, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -300,14 +300,46 @@ function AdminPageContent() {
 
     const handleBan = async (u: PlatformUser) => {
         if (!u.id) return;
-        await toggleBanUser(u.id, !!u.isBanned);
-        loadData();
+        const { data: sessionData, error: sessionErr } = await supabase.auth.getSession();
+        if (sessionErr || !sessionData?.session?.access_token) {
+            alert("Oturum alınamadı. Lütfen tekrar giriş yapın.");
+            return;
+        }
+        const resp = await fetch(`/api/admin/users/${u.id}?t=${Date.now()}`, {
+            method: "PATCH",
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${sessionData.session.access_token}`,
+            },
+            body: JSON.stringify({ isBanned: !u.isBanned }),
+        });
+        const json = await resp.json().catch(() => ({}));
+        if (!resp.ok) {
+            alert("Engelleme işlemi başarısız: " + String((json as any)?.details || (json as any)?.error || resp.status));
+            return;
+        }
+        loadData({ fetchUsers: true });
     };
 
     const handleDelete = async (u: PlatformUser) => {
         if (!u.id || !confirm(`${u.username} kullanıcısını silmek istediğinize emin misiniz?`)) return;
-        await deleteUserAccount(u.id);
-        loadData();
+        const { data: sessionData, error: sessionErr } = await supabase.auth.getSession();
+        if (sessionErr || !sessionData?.session?.access_token) {
+            alert("Oturum alınamadı. Lütfen tekrar giriş yapın.");
+            return;
+        }
+        const resp = await fetch(`/api/admin/users/${u.id}?t=${Date.now()}`, {
+            method: "DELETE",
+            headers: {
+                Authorization: `Bearer ${sessionData.session.access_token}`,
+            },
+        });
+        const json = await resp.json().catch(() => ({}));
+        if (!resp.ok) {
+            alert("Kullanıcı silme işlemi başarısız: " + String((json as any)?.details || (json as any)?.error || resp.status));
+            return;
+        }
+        loadData({ fetchUsers: true });
     };
 
     const handleUpdate = async (u: PlatformUser, field: "email" | "password" | "username") => {

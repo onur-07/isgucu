@@ -161,8 +161,10 @@ export async function PATCH(
     const password = typeof body?.password === "string" ? body.password : "";
     const email = typeof body?.email === "string" ? body.email : "";
     const username = typeof body?.username === "string" ? body.username.trim() : "";
+    const hasBanField = typeof body?.isBanned === "boolean";
+    const isBanned = hasBanField ? Boolean(body.isBanned) : null;
 
-    if (!password && !email && !username) {
+    if (!password && !email && !username && !hasBanField) {
       return NextResponse.json({ error: "missing_fields" }, { status: 400 });
     }
 
@@ -189,14 +191,45 @@ export async function PATCH(
         );
       }
 
-      await supabaseAdmin.from("profiles").update({ email }).eq("id", targetUserId);
+      const { error: profileEmailErr } = await supabaseAdmin.from("profiles").update({ email }).eq("id", targetUserId);
+      if (profileEmailErr) {
+        return NextResponse.json(
+          { error: "profile_email_update_failed", details: profileEmailErr.message },
+          { status: 400 }
+        );
+      }
     }
 
     if (username) {
-      await supabaseAdmin.from("profiles").update({ username }).eq("id", targetUserId);
-      await supabaseAdmin.auth.admin.updateUserById(targetUserId, {
+      const { error: profileUsernameErr } = await supabaseAdmin.from("profiles").update({ username }).eq("id", targetUserId);
+      if (profileUsernameErr) {
+        return NextResponse.json(
+          { error: "profile_username_update_failed", details: profileUsernameErr.message },
+          { status: 400 }
+        );
+      }
+      const { error: metadataErr } = await supabaseAdmin.auth.admin.updateUserById(targetUserId, {
         user_metadata: { username },
       });
+      if (metadataErr) {
+        return NextResponse.json(
+          { error: "auth_username_update_failed", details: metadataErr.message },
+          { status: 400 }
+        );
+      }
+    }
+
+    if (hasBanField) {
+      const { error: banErr } = await supabaseAdmin
+        .from("profiles")
+        .update({ is_banned: isBanned })
+        .eq("id", targetUserId);
+      if (banErr) {
+        return NextResponse.json(
+          { error: "ban_update_failed", details: banErr.message },
+          { status: 400 }
+        );
+      }
     }
 
     const { data: updatedAuthUser, error: getUserErr } =
@@ -219,6 +252,88 @@ export async function PATCH(
       userId: updatedAuthUser?.user?.id,
       email: authEmail,
     });
+  } catch (e: any) {
+    return NextResponse.json({ error: "server_error", details: e?.message || String(e) }, { status: 500 });
+  }
+}
+
+export async function DELETE(
+  req: Request,
+  ctx: { params: Promise<{ id: string }> }
+) {
+  try {
+    const supabaseAdmin = getSupabaseAdmin();
+    if (!supabaseAdmin) {
+      return NextResponse.json({ error: "missing_service_role" }, { status: 500 });
+    }
+
+    const params = await ctx.params;
+    const targetUserId = String(params?.id ?? "").trim();
+    const uuidRegex =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(targetUserId)) {
+      return NextResponse.json(
+        { error: "invalid_user_id", details: "Expected UUID user id", received: targetUserId },
+        { status: 400 }
+      );
+    }
+
+    const authHeader = req.headers.get("authorization") || "";
+    const token = authHeader.toLowerCase().startsWith("bearer ")
+      ? authHeader.slice(7).trim()
+      : "";
+    if (!token) return NextResponse.json({ error: "missing_token" }, { status: 401 });
+
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
+    const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
+    if (!url || !anon) {
+      return NextResponse.json({ error: "missing_supabase_public_env" }, { status: 500 });
+    }
+    const supabase = createClient(url, anon, {
+      auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+    });
+
+    const { data: authData, error: authErr } = await supabase.auth.getUser(token);
+    if (authErr || !authData?.user) {
+      return NextResponse.json({ error: "invalid_token" }, { status: 401 });
+    }
+
+    const { data: callerProfile, error: callerProfileErr } = await supabaseAdmin
+      .from("profiles")
+      .select("role")
+      .eq("id", authData.user.id)
+      .maybeSingle();
+    if (callerProfileErr) {
+      return NextResponse.json(
+        { error: "caller_profile_error", details: callerProfileErr.message },
+        { status: 500 }
+      );
+    }
+    if (!callerProfile || callerProfile.role !== "admin") {
+      return NextResponse.json({ error: "forbidden" }, { status: 403 });
+    }
+
+    const [profileDeleteRes, authDeleteRes] = await Promise.allSettled([
+      supabaseAdmin.from("profiles").delete().eq("id", targetUserId),
+      supabaseAdmin.auth.admin.deleteUser(targetUserId),
+    ]);
+
+    const profileErr =
+      profileDeleteRes.status === "fulfilled" ? profileDeleteRes.value.error : profileDeleteRes.reason;
+    const authErrDelete =
+      authDeleteRes.status === "fulfilled" ? authDeleteRes.value.error : authDeleteRes.reason;
+
+    if (profileErr && authErrDelete) {
+      return NextResponse.json(
+        {
+          error: "delete_failed",
+          details: `profile: ${String((profileErr as any)?.message || profileErr)}; auth: ${String((authErrDelete as any)?.message || authErrDelete)}`,
+        },
+        { status: 400 }
+      );
+    }
+
+    return NextResponse.json({ ok: true, userId: targetUserId });
   } catch (e: any) {
     return NextResponse.json({ error: "server_error", details: e?.message || String(e) }, { status: 500 });
   }
