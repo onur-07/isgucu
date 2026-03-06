@@ -336,6 +336,18 @@ CREATE POLICY "Admins can write ticket replies" ON support_ticket_replies
     EXISTS (SELECT 1 FROM profiles p WHERE p.id = auth.uid() AND p.role = 'admin')
   );
 
+DROP POLICY IF EXISTS "Users can write own ticket replies" ON support_ticket_replies;
+CREATE POLICY "Users can write own ticket replies" ON support_ticket_replies
+  FOR INSERT
+  WITH CHECK (
+    EXISTS (
+      SELECT 1
+      FROM support_tickets t
+      WHERE t.id = support_ticket_replies.ticket_id
+        AND t.from_email = (auth.jwt() ->> 'email')
+    )
+  );
+
 DROP POLICY IF EXISTS "Users can create deletion requests" ON account_deletion_requests;
 CREATE POLICY "Users can create deletion requests" ON account_deletion_requests FOR INSERT WITH CHECK (auth.uid() = user_id);
 DROP POLICY IF EXISTS "Admins can view deletion requests" ON account_deletion_requests;

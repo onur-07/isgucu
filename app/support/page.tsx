@@ -51,11 +51,95 @@ export default function SupportPage() {
     const [loadingTickets, setLoadingTickets] = useState(false);
     const [submitError, setSubmitError] = useState<string>("");
     const [selectedTicketId, setSelectedTicketId] = useState<string>("");
+    const [followupText, setFollowupText] = useState<string>("");
+    const [followupSending, setFollowupSending] = useState(false);
     const [form, setForm] = useState({
         subject: "",
         category: "",
         message: "",
     });
+
+    const reloadTickets = async () => {
+        if (!user) return;
+        setLoadingTickets(true);
+        try {
+            const meU = String(user.username || "").trim();
+            const meE = String(user.email || "").trim();
+            const q = (v: string) => `"${String(v).replace(/\\/g, "\\\\").replace(/\"/g, "\\\"")}"`;
+            const orParts = [
+                meU ? `from_user.eq.${q(meU)}` : "",
+                meE ? `from_email.eq.${q(meE)}` : "",
+            ].filter(Boolean);
+            const orFilter = orParts.join(",");
+            if (!orFilter) {
+                setMyTickets([]);
+                return;
+            }
+
+            const res = await supabase
+                .from("support_tickets")
+                .select("id, from_user, from_email, subject, category, message, status, created_at, reply, replied_at")
+                .or(orFilter)
+                .order("created_at", { ascending: false })
+                .limit(50);
+            if (res.error) throw res.error;
+
+            const normalized: SupportTicket[] = (res.data || []).map((t: any) => ({
+                id: String(t.id),
+                fromUser: String(t.from_user || ""),
+                fromEmail: String(t.from_email || ""),
+                subject: String(t.subject || ""),
+                category: String(t.category || ""),
+                message: String(t.message || ""),
+                status: (String(t.status || "open") as any) as SupportTicket["status"],
+                createdAt: String(t.created_at || new Date().toISOString()),
+                reply: t.reply ? String(t.reply) : undefined,
+                repliedAt: t.replied_at ? String(t.replied_at) : undefined,
+            }));
+
+            const ids = normalized.map((x) => String(x.id)).filter(Boolean);
+            if (ids.length > 0) {
+                const idsNum = ids.map((v) => Number(v)).filter((n) => Number.isFinite(n));
+                const repliesRes = await supabase
+                    .from("support_ticket_replies")
+                    .select("id, ticket_id, author_role, message, created_at")
+                    .in("ticket_id", idsNum)
+                    .order("created_at", { ascending: true });
+                if (repliesRes.error) {
+                    console.error("Support ticket replies load error:", repliesRes.error);
+                } else {
+                    const grouped: Record<string, SupportTicket["replies"]> = {};
+                    for (const r of (repliesRes.data || []) as any[]) {
+                        const k = String((r as any)?.ticket_id || "");
+                        if (!k) continue;
+                        if (!grouped[k]) grouped[k] = [];
+                        (grouped[k] as any[]).push({
+                            id: String((r as any)?.id || ""),
+                            message: String((r as any)?.message || ""),
+                            createdAt: String((r as any)?.created_at || ""),
+                            authorRole: String((r as any)?.author_role || "admin") as any,
+                        });
+                    }
+                    for (const t of normalized) {
+                        const k = String(t.id);
+                        const rows = grouped[k] || [];
+                        if (rows && rows.length > 0) {
+                            t.replies = rows as any;
+                            const last = (rows as any[])[(rows as any[]).length - 1];
+                            if (!t.reply && last?.message) t.reply = String(last.message);
+                        }
+                    }
+                }
+            }
+
+            setMyTickets(normalized);
+        } catch (e) {
+            console.error("Support tickets reload error:", e);
+            setMyTickets([]);
+        } finally {
+            setLoadingTickets(false);
+        }
+    };
 
     useEffect(() => {
         if (!user) {
@@ -154,6 +238,10 @@ export default function SupportPage() {
             cancelled = true;
         };
     }, [user, router]);
+
+    useEffect(() => {
+        setFollowupText("");
+    }, [selectedTicketId]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -484,7 +572,7 @@ export default function SupportPage() {
                                         {selectedTicket.replies.map((r) => (
                                             <div key={r.id} className="rounded-2xl bg-white/70 border border-blue-100 p-4">
                                                 <div className="flex items-center justify-between gap-3 flex-wrap">
-                                                    <div className="text-[10px] font-black uppercase tracking-widest text-blue-700">Yanıt</div>
+                                                    <div className="text-[10px] font-black uppercase tracking-widest text-blue-700">{r.authorRole === "user" ? "Sen" : "Destek"}</div>
                                                     <div className="text-[10px] font-black uppercase tracking-widest text-blue-600">
                                                         {r.createdAt ? new Date(r.createdAt).toLocaleString("tr-TR") : ""}
                                                     </div>
@@ -510,6 +598,58 @@ export default function SupportPage() {
                                 <div className="rounded-[2rem] border border-slate-100 bg-slate-50 p-6">
                                     <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">Yanıt</div>
                                     <div className="mt-3 text-slate-600 font-medium">Bu talep için henüz yanıt yok.</div>
+                                </div>
+                            )}
+
+                            {selectedTicket.status !== "closed" && (
+                                <div className="rounded-[2rem] border border-slate-100 bg-white p-6">
+                                    <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">Mesaj Yaz</div>
+                                    <div className="mt-3 space-y-3">
+                                        <Textarea
+                                            placeholder="Destek ekibine ek bilgi/cevap yaz..."
+                                            className="min-h-[120px] rounded-[2rem] bg-slate-50 border-transparent focus:bg-white focus:ring-4 focus:ring-blue-500/10 transition-all font-medium text-lg p-6 leading-relaxed"
+                                            value={followupText}
+                                            onChange={(e) => setFollowupText(e.target.value)}
+                                        />
+                                        <Button
+                                            type="button"
+                                            disabled={followupSending || !followupText.trim()}
+                                            className="w-full bg-slate-900 hover:bg-black text-white h-14 rounded-[2rem] text-sm font-black uppercase tracking-widest"
+                                            onClick={async () => {
+                                                if (!user) return;
+                                                if (!selectedTicket) return;
+                                                const ticketIdNum = Number(selectedTicket.id);
+                                                if (!Number.isFinite(ticketIdNum)) return;
+                                                setFollowupSending(true);
+                                                try {
+                                                    const ins = await supabase
+                                                        .from("support_ticket_replies")
+                                                        .insert({
+                                                            ticket_id: ticketIdNum,
+                                                            author_role: "user",
+                                                            message: followupText,
+                                                        });
+                                                    if (ins.error) throw ins.error;
+
+                                                    const touch = await supabase
+                                                        .from("support_tickets")
+                                                        .update({ status: "open" })
+                                                        .eq("id", ticketIdNum);
+                                                    if (touch.error) console.error("Support ticket status touch error:", touch.error);
+
+                                                    setFollowupText("");
+                                                    await reloadTickets();
+                                                } catch (e: any) {
+                                                    console.error("Support followup insert error:", e);
+                                                    alert(e?.message ? String(e.message) : "Mesaj gönderilemedi.");
+                                                } finally {
+                                                    setFollowupSending(false);
+                                                }
+                                            }}
+                                        >
+                                            Mesajı Gönder
+                                        </Button>
+                                    </div>
                                 </div>
                             )}
                         </div>

@@ -857,29 +857,54 @@ function AdminPageContent() {
                                         <div className="bg-gray-50 border border-gray-100 p-6 rounded-2xl text-sm font-bold text-gray-600 leading-relaxed shadow-inner">
                                             {ticket.message}
                                         </div>
-                                        {(freelancerId || employerId) && (
-                                            <div className="mt-4 flex flex-wrap gap-2">
-                                                {freelancerId && (
-                                                    <Button
-                                                        variant="outline"
-                                                        className="h-10 px-4 text-[10px] font-black uppercase rounded-xl bg-orange-50 text-orange-700 border-orange-200 hover:bg-orange-100"
-                                                        onClick={() => handleDeactivateFreelancerGigs(freelancerId)}
-                                                    >
-                                                        Freelancer ilanlarini pasife al
-                                                    </Button>
-                                                )}
-                                                {employerId && (
-                                                    <Button
-                                                        variant="outline"
-                                                        className="h-10 px-4 text-[10px] font-black uppercase rounded-xl bg-red-50 text-red-700 border-red-200 hover:bg-red-100"
-                                                        onClick={() => handleBanEmployer(employerId)}
-                                                    >
-                                                        Musteriyi engelle
-                                                    </Button>
-                                                )}
-                                            </div>
-                                        )}
                                     </div>
+
+                                    {Array.isArray(ticketReplies[String(ticket.id)]) && ticketReplies[String(ticket.id)].length > 0 && (
+                                        <div className="mt-6 p-6 bg-slate-50 border border-slate-100 rounded-2xl">
+                                            <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-4">Konuşma Geçmişi</p>
+                                            <div className="space-y-3">
+                                                {ticketReplies[String(ticket.id)].map((r) => (
+                                                    <div
+                                                        key={r.id}
+                                                        className={`rounded-2xl p-4 border ${r.author_role === "user" ? "bg-white border-gray-100" : "bg-emerald-50/40 border-emerald-100"}`}
+                                                    >
+                                                        <div className="flex items-center justify-between gap-3 flex-wrap">
+                                                            <div className={`text-[10px] font-black uppercase tracking-widest ${r.author_role === "user" ? "text-gray-500" : "text-emerald-700"}`}>
+                                                                {r.author_role === "user" ? "Kullanıcı" : "Admin"}
+                                                            </div>
+                                                            <div className="text-[10px] font-black uppercase tracking-widest text-gray-300">
+                                                                {r.created_at ? new Date(r.created_at).toLocaleString("tr-TR") : ""}
+                                                            </div>
+                                                        </div>
+                                                        <div className="mt-2 text-sm font-bold text-gray-700 whitespace-pre-wrap leading-relaxed">{r.message}</div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {(freelancerId || employerId) && (
+                                        <div className="mt-6 flex flex-wrap items-center gap-3">
+                                            {freelancerId && (
+                                                <Button
+                                                    variant="outline"
+                                                    className="h-10 px-4 text-[10px] font-black uppercase rounded-xl bg-orange-50 text-orange-700 border-orange-200 hover:bg-orange-100"
+                                                    onClick={() => handleDeactivateFreelancerGigs(freelancerId)}
+                                                >
+                                                    Freelancer ilanlarini pasife al
+                                                </Button>
+                                            )}
+                                            {employerId && (
+                                                <Button
+                                                    variant="outline"
+                                                    className="h-10 px-4 text-[10px] font-black uppercase rounded-xl bg-red-50 text-red-700 border-red-200 hover:bg-red-100"
+                                                    onClick={() => handleBanEmployer(employerId)}
+                                                >
+                                                    Musteriyi engelle
+                                                </Button>
+                                            )}
+                                        </div>
+                                    )}
 
                                     {ticket.reply && (
                                         <div className="mt-6 p-6 bg-emerald-50/50 border border-emerald-100 rounded-2xl">
