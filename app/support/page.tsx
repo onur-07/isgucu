@@ -2,7 +2,7 @@
 
 import { useAuth } from "@/components/auth/auth-context";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { usernameKey } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -16,7 +16,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
-import { Headphones, Send, CheckCircle2, MessageCircle, ShieldCheck, Clock, AlertCircle, FileText, ChevronRight } from "lucide-react";
+import { Headphones, Send, CheckCircle2, MessageCircle, ShieldCheck, Clock, AlertCircle, FileText, ChevronRight, Paperclip, X } from "lucide-react";
 import Link from "next/link";
 
 interface SupportTicket {
@@ -49,6 +49,7 @@ const SUPPORT_CATEGORIES = [
     "Hesap Sorunu",
     "Öneri & Geri Bildirim",
 ];
+const SUPPORT_ATTACHMENTS_BUCKET = "support_attachments";
 
 export default function SupportPage() {
     const { user } = useAuth();
@@ -62,6 +63,53 @@ export default function SupportPage() {
         category: "",
         message: "",
     });
+    const [uploading, setUploading] = useState(false);
+    const [attachmentUrls, setAttachmentUrls] = useState<string[]>([]);
+    const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+    const uploadSupportAttachment = async (file: File) => {
+        if (!user) throw new Error("Giriş yapmanız gerekiyor.");
+        const type = String(file.type || "");
+        const isPdf = type === "application/pdf";
+        const isImg = type.startsWith("image/");
+        if (!isPdf && !isImg) throw new Error("Sadece resim veya PDF yükleyebilirsiniz.");
+        if (file.size > 10 * 1024 * 1024) throw new Error("Dosya boyutu 10MB'dan küçük olmalı.");
+
+        const safeName = String(file.name || "file").replace(/[^a-zA-Z0-9._-]/g, "_");
+        const path = `${String(user.id)}/new-ticket/${Date.now()}-${safeName}`;
+
+        setUploading(true);
+        try {
+            const up = await supabase.storage.from(SUPPORT_ATTACHMENTS_BUCKET).upload(path, file, {
+                upsert: false,
+                contentType: file.type || undefined,
+                cacheControl: "3600",
+            });
+            if (up.error) throw up.error;
+
+            const pub = supabase.storage.from(SUPPORT_ATTACHMENTS_BUCKET).getPublicUrl(path);
+            const url = String(pub?.data?.publicUrl || "");
+            if (!url) throw new Error("Dosya linki alınamadı.");
+            return url;
+        } finally {
+            setUploading(false);
+        }
+    };
+
+    const onPickAttachment = () => fileInputRef.current?.click();
+
+    const onAttachmentChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        try {
+            const url = await uploadSupportAttachment(file);
+            setAttachmentUrls((prev) => (prev.includes(url) ? prev : [...prev, url]));
+        } catch (err: any) {
+            alert(err?.message ? String(err.message) : "Dosya yüklenemedi.");
+        } finally {
+            e.target.value = "";
+        }
+    };
 
     const reloadTickets = async () => {
         if (!user) return;
@@ -274,6 +322,11 @@ const handleSubmit = async (e: React.FormEvent) => {
     setSubmitError("");
 
     try {
+        const composedMessage = [
+            String(form.message || "").trim(),
+            ...attachmentUrls,
+        ].filter(Boolean).join("\n");
+
         const insertRes = await supabase
             .from("support_tickets")
             .insert({
@@ -281,7 +334,7 @@ const handleSubmit = async (e: React.FormEvent) => {
                 from_email: user.email,
                 subject: form.subject,
                 category: form.category,
-                message: form.message,
+                message: composedMessage,
                 status: "open",
             })
             .select("id, from_user, from_email, subject, category, message, status, created_at, reply, replied_at")
@@ -296,7 +349,7 @@ const handleSubmit = async (e: React.FormEvent) => {
             fromEmail: String(t?.from_email || user.email || ""),
             subject: String(t?.subject || form.subject),
             category: String(t?.category || form.category),
-            message: String(t?.message || form.message),
+            message: String(t?.message || composedMessage),
             status: (String(t?.status || "open") as any) as SupportTicket["status"],
             createdAt: String(t?.created_at || new Date().toISOString()),
             reply: t?.reply ? String(t.reply) : undefined,
@@ -306,6 +359,7 @@ const handleSubmit = async (e: React.FormEvent) => {
         setSubmitted(true);
         setMyTickets((prev) => [nextTicket, ...prev]);
         setForm({ subject: "", category: "", message: "" });
+        setAttachmentUrls([]);
         setTimeout(() => setSubmitted(false), 5000);
     } catch (e: any) {
         console.error("Support ticket insert error:", e);
@@ -393,18 +447,57 @@ return (
                         </div>
 
                         <div className="space-y-2">
-                            <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Mesaj</Label>
+                            <div className="flex items-center justify-between gap-3 flex-wrap">
+                                <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Mesaj</Label>
+                                <div className="flex items-center gap-2">
+                                    <input
+                                        ref={fileInputRef}
+                                        type="file"
+                                        accept="image/*,application/pdf"
+                                        className="hidden"
+                                        onChange={onAttachmentChange}
+                                    />
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        className="h-9 px-3 rounded-xl border-slate-200 text-slate-700 font-black uppercase tracking-widest text-[10px]"
+                                        onClick={onPickAttachment}
+                                        disabled={uploading}
+                                    >
+                                        <Paperclip className="h-4 w-4 mr-2" /> {uploading ? "Yükleniyor" : "Dosya Ekle"}
+                                    </Button>
+                                </div>
+                            </div>
                             <Textarea
                                 value={form.message}
                                 onChange={(e) => setForm((p) => ({ ...p, message: e.target.value }))}
                                 className="min-h-[160px] rounded-[2rem] border-slate-200 font-medium px-6 py-5 leading-relaxed"
                                 placeholder="Detayları yaz..."
                             />
+                            {attachmentUrls.length > 0 ? (
+                                <div className="space-y-2">
+                                    {attachmentUrls.map((url) => (
+                                        <div key={url} className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
+                                            <a href={url} target="_blank" rel="noreferrer" className="text-xs font-bold text-blue-700 truncate hover:underline">
+                                                {url}
+                                            </a>
+                                            <Button
+                                                type="button"
+                                                variant="ghost"
+                                                className="h-8 w-8 p-0 text-red-500 hover:text-red-600"
+                                                onClick={() => setAttachmentUrls((prev) => prev.filter((x) => x !== url))}
+                                            >
+                                                <X className="h-4 w-4" />
+                                            </Button>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : null}
                         </div>
 
                         <Button
                             type="submit"
-                            disabled={!form.subject.trim() || !form.category.trim() || !form.message.trim()}
+                            disabled={!form.subject.trim() || !form.category.trim() || !form.message.trim() || uploading}
                             className="w-full bg-slate-900 hover:bg-black text-white h-14 rounded-[2rem] text-sm font-black uppercase tracking-widest"
                         >
                             <Send className="h-5 w-5 mr-3" /> Gönder
