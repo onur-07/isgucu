@@ -44,8 +44,18 @@ export function maskFullName(name: string | null | undefined): string {
 export function displayUsername(value: string | null | undefined): string {
   const raw = String(value || "").trim();
   if (!raw) return "";
-  // If username contains whitespace, treat it as a full name for display purposes.
   if (/\s/.test(raw)) return maskFullName(raw);
+
+  const tokens = raw.split(/[\s_-]+/).filter(Boolean);
+  if (tokens.length >= 2) {
+    const first = tokens[0];
+    const second = tokens[1];
+    const isLettersOnly = (s: string) => /^\p{L}+$/u.test(s);
+    if (isLettersOnly(first) && isLettersOnly(second)) {
+      return maskFullName(`${first} ${second}`);
+    }
+  }
+
   return raw;
 }
 
