@@ -441,7 +441,17 @@ function AdminPageContent() {
             for (const r of arr || []) {
                 const k = String(r.original_user_id || "");
                 if (!k) continue;
-                if (!merged.has(k)) merged.set(k, r);
+                // Aynı kullanıcı için daha yeni kayıt varsa güncelle
+                const existing = merged.get(k);
+                if (!existing) {
+                    merged.set(k, r);
+                } else {
+                    const existingTime = new Date(String(existing.deleted_at || 0)).getTime();
+                    const newTime = new Date(String(r.deleted_at || 0)).getTime();
+                    if (newTime > existingTime) {
+                        merged.set(k, r);
+                    }
+                }
             }
         }
         return Array.from(merged.values()).sort((a, b) => {
@@ -775,7 +785,9 @@ function AdminPageContent() {
             deleted_at: nowIso,
             restore_status: "deleted",
         };
-        const nextDeleted = [newRow, ...deletedUsers];
+        // Aynı kullanıcı için eski kayıtları temizle, yenisini ekle
+        const filteredDeleted = deletedUsers.filter(d => d.original_user_id !== u.id);
+        const nextDeleted = [newRow, ...filteredDeleted];
         setDeletedUsers(nextDeleted);
         writeDeletedUsersCache(nextDeleted);
     };
