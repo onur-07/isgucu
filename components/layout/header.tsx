@@ -190,25 +190,53 @@ export function Header() {
             seen = {};
         }
 
-        const res = await supabase
+        const ticketsRes = await supabase
             .from("support_tickets")
-            .select("id, replied_at")
+            .select("id, reply, replied_at")
             .or(orFilter)
-            .not("reply", "is", null)
-            .order("replied_at", { ascending: false })
+            .order("created_at", { ascending: false })
             .limit(100);
 
-        if (res.error) {
+        if (ticketsRes.error) {
             setSupportReplyCount(0);
             return;
         }
 
-        const rows = (res.data || []) as Array<{ id: any; replied_at: any }>;
-        const unread = rows.filter((r) => {
-            const id = String(r.id);
-            const repliedAt = r.replied_at ? String(r.replied_at) : "";
-            if (!repliedAt) return false;
-            return String(seen[id] || "") !== repliedAt;
+        const tickets = (ticketsRes.data || []) as Array<{ id: any; reply?: any; replied_at?: any }>;
+        const idsNum = tickets
+            .map((t) => Number(t.id))
+            .filter((n) => Number.isFinite(n));
+
+        let latestAdminByTicket: Record<string, string> = {};
+        if (idsNum.length > 0) {
+            const repliesRes = await supabase
+                .from("support_ticket_replies")
+                .select("ticket_id, author_role, created_at")
+                .in("ticket_id", idsNum)
+                .eq("author_role", "admin")
+                .order("created_at", { ascending: false })
+                .limit(500);
+
+            if (!repliesRes.error) {
+                for (const r of (repliesRes.data || []) as any[]) {
+                    const k = String((r as any)?.ticket_id || "");
+                    if (!k) continue;
+                    if (!latestAdminByTicket[k]) {
+                        latestAdminByTicket[k] = String((r as any)?.created_at || "");
+                    }
+                }
+            }
+        }
+
+        const unread = tickets.filter((t) => {
+            const id = String(t.id);
+            const latestAdmin = String(latestAdminByTicket[id] || "");
+            const legacy = t.replied_at ? String(t.replied_at) : "";
+            const marker = latestAdmin || legacy;
+            if (!marker) return false;
+            const hasAnyReply = Boolean(latestAdmin || (t.reply && legacy));
+            if (!hasAnyReply) return false;
+            return String(seen[id] || "") !== marker;
         }).length;
 
         setSupportReplyCount(unread);
@@ -226,11 +254,17 @@ export function Header() {
         const lastPayout = String(localStorage.getItem(lastPayoutKey) || "");
         const lastDeletion = String(localStorage.getItem(lastDeletionKey) || "");
 
-        const [supportRes, payoutRes, deletionRes] = await Promise.all([
+        const [supportRes, supportRepliesRes, payoutRes, deletionRes] = await Promise.all([
             supabase
                 .from("support_tickets")
                 .select("id, subject, created_at")
                 .eq("status", "open")
+                .order("created_at", { ascending: false })
+                .limit(5),
+            supabase
+                .from("support_ticket_replies")
+                .select("id, ticket_id, author_role, message, created_at")
+                .eq("author_role", "user")
                 .order("created_at", { ascending: false })
                 .limit(5),
             supabase
@@ -247,13 +281,18 @@ export function Header() {
                 .limit(5),
         ]);
 
-        if (!supportRes.error) {
-            const rows = (supportRes.data || []) as Array<{ id: any; subject: any; created_at: any }>;
-            const newest = rows[0]?.created_at ? String(rows[0].created_at) : "";
+        if (!supportRes.error && !supportRepliesRes.error) {
+            const ticketRows = (supportRes.data || []) as Array<{ id: any; subject: any; created_at: any }>;
+            const replyRows = (supportRepliesRes.data || []) as Array<{ id: any; ticket_id: any; message: any; created_at: any }>;
+
+            const newestTicket = ticketRows[0]?.created_at ? String(ticketRows[0].created_at) : "";
+            const newestReply = replyRows[0]?.created_at ? String(replyRows[0].created_at) : "";
+            const newest = [newestTicket, newestReply].filter(Boolean).sort().slice(-1)[0] || "";
+
             if (!lastSupport) {
                 if (newest) localStorage.setItem(lastSupportKey, newest);
             } else {
-                for (const r of rows) {
+                for (const r of ticketRows) {
                     const createdAt = r.created_at ? String(r.created_at) : "";
                     if (!createdAt || createdAt <= lastSupport) continue;
                     upsertLocalNotification({
@@ -265,6 +304,20 @@ export function Header() {
                         actionLabel: "Panele Git",
                     });
                 }
+
+                for (const r of replyRows) {
+                    const createdAt = r.created_at ? String(r.created_at) : "";
+                    if (!createdAt || createdAt <= lastSupport) continue;
+                    upsertLocalNotification({
+                        id: `admin-support-reply-${String(r.id)}`,
+                        type: "system",
+                        title: "💬 Destek Mesajı (Kullanıcı)",
+                        description: String(r.message || "Kullanıcı yeni mesaj gönderdi."),
+                        actionUrl: "/admin?tab=support",
+                        actionLabel: "İncele",
+                    });
+                }
+
                 if (newest) localStorage.setItem(lastSupportKey, newest);
             }
         }

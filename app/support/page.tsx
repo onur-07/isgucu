@@ -30,7 +30,14 @@ interface SupportTicket {
     createdAt: string;
     reply?: string;
     repliedAt?: string;
-    replies?: Array<{ id: string; message: string; createdAt: string; authorRole: "admin" | "user" }>;
+    replies?: Array<SupportTicketReply>;
+}
+
+interface SupportTicketReply {
+    id: string;
+    message: string;
+    createdAt: string;
+    authorRole: "admin" | "user";
 }
 
 const SUPPORT_CATEGORIES = [
@@ -124,9 +131,21 @@ export default function SupportPage() {
                         const k = String(t.id);
                         const rows = grouped[k] || [];
                         if (rows && rows.length > 0) {
-                            t.replies = rows as any;
-                            const last = (rows as any[])[(rows as any[]).length - 1];
+                            const normalizedRows = rows as any[];
+                            const hasAdmin = normalizedRows.some((rr) => rr?.authorRole === "admin");
+                            if (!hasAdmin && t.reply) {
+                                normalizedRows.push({
+                                    id: `legacy-${String(t.id)}`,
+                                    message: String(t.reply),
+                                    createdAt: t.repliedAt || t.createdAt,
+                                    authorRole: "admin",
+                                });
+                            }
+                            t.replies = normalizedRows as any;
+                            const last = normalizedRows[normalizedRows.length - 1];
                             if (!t.reply && last?.message) t.reply = String(last.message);
+                        } else if (t.reply) {
+                            t.replies = [{ id: String(t.id), message: t.reply, createdAt: t.repliedAt || t.createdAt, authorRole: "admin" }];
                         }
                     }
                 }
@@ -216,9 +235,21 @@ export default function SupportPage() {
                             const k = String(t.id);
                             const rows = grouped[k] || [];
                             if (rows && rows.length > 0) {
-                                t.replies = rows as any;
-                                const last = (rows as any[])[(rows as any[]).length - 1];
+                                const normalizedRows = rows as any[];
+                                const hasAdmin = normalizedRows.some((rr) => rr?.authorRole === "admin");
+                                if (!hasAdmin && t.reply) {
+                                    normalizedRows.push({
+                                        id: `legacy-${String(t.id)}`,
+                                        message: String(t.reply),
+                                        createdAt: t.repliedAt || t.createdAt,
+                                        authorRole: "admin",
+                                    });
+                                }
+                                t.replies = normalizedRows as any;
+                                const last = normalizedRows[normalizedRows.length - 1];
                                 if (!t.reply && last?.message) t.reply = String(last.message);
+                            } else if (t.reply) {
+                                t.replies = [{ id: String(t.id), message: t.reply, createdAt: t.repliedAt || t.createdAt, authorRole: "admin" }];
                             }
                         }
                     }
@@ -291,23 +322,26 @@ export default function SupportPage() {
 
     if (!user) return null;
 
-    const selectedTicket = selectedTicketId
-        ? myTickets.find((t) => String(t.id) === String(selectedTicketId)) || null
-        : null;
+    const selectedTicket = myTickets.find((t) => String(t.id) === String(selectedTicketId));
 
     useEffect(() => {
         if (!user) return;
         if (!selectedTicket) return;
-        if (!selectedTicket.repliedAt) return;
 
         const seenKey = `isgucu_support_reply_seen_${usernameKey(user.username)}`;
         try {
             const raw = localStorage.getItem(seenKey);
             const seen = raw ? (JSON.parse(raw) as Record<string, string>) : {};
             const id = String(selectedTicket.id);
-            const repliedAt = String(selectedTicket.repliedAt);
-            if (seen[id] !== repliedAt) {
-                seen[id] = repliedAt;
+
+            const latestAdmin = (selectedTicket.replies || [])
+                .filter((r) => r.authorRole === "admin")
+                .slice(-1)[0]?.createdAt;
+            const marker = String(latestAdmin || selectedTicket.repliedAt || "");
+            if (!marker) return;
+
+            if (seen[id] !== marker) {
+                seen[id] = marker;
                 localStorage.setItem(seenKey, JSON.stringify(seen));
                 window.dispatchEvent(new Event("support_seen_updated"));
             }
