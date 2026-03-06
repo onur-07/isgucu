@@ -20,6 +20,9 @@ export interface PlatformStats {
     totalProjects: number;
     totalPayments: number;
     satisfactionRate: number;
+    activeOrders: number;
+    completedOrders: number;
+    averageRating: number;
 }
 
 export interface UserStats {
@@ -67,16 +70,37 @@ export interface Order {
 
 // ===== PLATFORM-WIDE STATS =====
 export async function getPlatformStats(): Promise<PlatformStats> {
-    const { count: freelancerCount } = await supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('role', 'freelancer');
-    const { count: employerCount } = await supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('role', 'employer');
+    const [{ count: freelancerCount }, { count: employerCount }, ordersRes, reviewsRes] = await Promise.all([
+        supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('role', 'freelancer'),
+        supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('role', 'employer'),
+        supabase.from("orders").select("id, status, total_price"),
+        supabase.from("reviews").select("rating"),
+    ]);
 
-    // Default placeholders for now
+    const orders = Array.isArray((ordersRes as any)?.data) ? ((ordersRes as any).data as any[]) : [];
+    const reviews = Array.isArray((reviewsRes as any)?.data) ? ((reviewsRes as any).data as any[]) : [];
+
+    const activeOrders = orders.filter((o) => {
+        const s = String(o?.status || "").toLowerCase();
+        return s === "pending" || s === "active" || s === "delivered";
+    }).length;
+    const completedOrders = orders.filter((o) => String(o?.status || "").toLowerCase() === "completed").length;
+    const totalPayments = orders
+        .filter((o) => String(o?.status || "").toLowerCase() === "completed")
+        .reduce((sum, o) => sum + (Number.isFinite(Number(o?.total_price)) ? Number(o?.total_price) : 0), 0);
+    const averageRating = reviews.length > 0
+        ? reviews.reduce((sum, r) => sum + (Number.isFinite(Number(r?.rating)) ? Number(r?.rating) : 0), 0) / reviews.length
+        : 0;
+
     return {
         totalFreelancers: freelancerCount || 0,
         totalEmployers: employerCount || 0,
-        totalProjects: 0,
-        totalPayments: 0,
-        satisfactionRate: 100,
+        totalProjects: orders.length,
+        totalPayments: Math.round(totalPayments),
+        satisfactionRate: Math.round((averageRating / 5) * 100),
+        activeOrders,
+        completedOrders,
+        averageRating: Number.isFinite(averageRating) ? Math.round(averageRating * 10) / 10 : 0,
     };
 }
 

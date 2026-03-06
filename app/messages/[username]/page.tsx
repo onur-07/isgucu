@@ -10,6 +10,8 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Check, CheckCheck } from "lucide-react";
+import { pushLocalNotification } from "@/lib/notification-center";
+import { checkLocalRateLimit, humanizeMs } from "@/lib/anti-fraud";
 
 type ChatMessage = {
     id: string | number;
@@ -721,6 +723,12 @@ export default function MessageThreadPage() {
             }
         }
 
+        const guard = checkLocalRateLimit(String(user.id || meKey), "send_offer", `${meKey}->${otherKey}`, 5, 2 * 60 * 1000);
+        if (!guard.allowed) {
+            setError(`Çok hızlı teklif gönderimi algılandı. Lütfen ${humanizeMs(guard.retryAfterMs)} sonra tekrar deneyin.`);
+            return;
+        }
+
         setSending(true);
         setError("");
         try {
@@ -749,6 +757,15 @@ export default function MessageThreadPage() {
             setOfferDays("");
             setOfferNote("");
             await refreshOffers();
+            pushLocalNotification(otherKey, {
+                id: `offer-incoming-${Date.now()}-${meKey}-${otherKey}`,
+                type: "order",
+                title: "Yeni Teklif Geldi",
+                description: `${displayUsername(meKey)} size yeni bir teklif gönderdi.`,
+                actionUrl: `/messages/${encodeURIComponent(meKey)}?openOffer=1`,
+                actionLabel: "Teklifi Gör",
+            });
+            if (typeof window !== "undefined") window.dispatchEvent(new Event("storage_updated"));
         } catch (e: any) {
             setError(e?.message ? String(e.message) : "Teklif gönderilemedi");
         } finally {
@@ -760,9 +777,10 @@ export default function MessageThreadPage() {
         setSending(true);
         setError("");
         try {
+            const currentOffer = offers.find((o) => String(o.id) === String(offerId));
             let acceptedOffer: OfferRow | undefined;
             if (status === "accepted") {
-                acceptedOffer = offers.find((o) => String(o.id) === String(offerId));
+                acceptedOffer = currentOffer;
                 if (!acceptedOffer) throw new Error("Teklif bulunamadi");
 
                 const offerKey = `offer:${String(acceptedOffer.id)}`;
@@ -820,6 +838,21 @@ export default function MessageThreadPage() {
                 }
             }
             await refreshOffers();
+            const notifyTarget = String(currentOffer?.sender_username || "").trim();
+            if (notifyTarget) {
+                pushLocalNotification(notifyTarget, {
+                    id: `offer-response-${String(offerId)}-${status}-${Date.now()}`,
+                    type: "order",
+                    title: status === "accepted" ? "Teklifiniz Kabul Edildi" : "Teklifiniz Reddedildi",
+                    description:
+                        status === "accepted"
+                            ? `${displayUsername(otherKey)} teklifinizi kabul etti.`
+                            : `${displayUsername(otherKey)} teklifinizi reddetti.`,
+                    actionUrl: `/messages/${encodeURIComponent(otherKey)}`,
+                    actionLabel: "Sohbete Git",
+                });
+            }
+            if (typeof window !== "undefined") window.dispatchEvent(new Event("storage_updated"));
             if (status === "accepted") {
                 window.alert("Teklif kabul edildi. Devam akisina Siparislerim sayfasindan devam edebilirsin.");
                 router.push("/orders");

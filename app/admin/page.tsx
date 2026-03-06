@@ -897,6 +897,21 @@ function AdminPageContent() {
                         </div>
                     </div>
 
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                        <div className="bg-white border rounded-2xl p-6 shadow-sm">
+                            <div className="text-[10px] font-black text-gray-400 uppercase mb-2">Aktif Sipariş</div>
+                            <div className="text-3xl font-black text-blue-700">{stats?.activeOrders || 0}</div>
+                        </div>
+                        <div className="bg-white border rounded-2xl p-6 shadow-sm">
+                            <div className="text-[10px] font-black text-gray-400 uppercase mb-2">Tamamlanan Sipariş</div>
+                            <div className="text-3xl font-black text-emerald-700">{stats?.completedOrders || 0}</div>
+                        </div>
+                        <div className="bg-white border rounded-2xl p-6 shadow-sm">
+                            <div className="text-[10px] font-black text-gray-400 uppercase mb-2">Ortalama Puan</div>
+                            <div className="text-3xl font-black text-amber-600">{(stats?.averageRating || 0).toFixed(1)} / 5.0</div>
+                        </div>
+                    </div>
+
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8 text-black">
                         <div className="bg-gradient-to-br from-blue-600 to-indigo-700 rounded-[2rem] p-6 sm:p-8 text-white shadow-2xl flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6 group cursor-pointer hover:scale-[1.02] transition-all" onClick={() => router.push("/admin/categories")}>
                             <div>

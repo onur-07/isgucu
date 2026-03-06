@@ -9,6 +9,7 @@ import { getUserOrders, type Order } from "@/lib/data-service";
 import { supabase } from "@/lib/supabase";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { pushLocalNotification } from "@/lib/notification-center";
 
 type CancellationRequestRow = {
     id: string | number;
@@ -31,17 +32,6 @@ type OrderDeliveryRow = {
     kind: "delivery" | "revision_request" | "accept" | string;
     message: string | null;
     created_at: string;
-};
-
-type NotificationItem = {
-    id: string;
-    type: "message" | "order" | "review" | "system";
-    title: string;
-    description: string;
-    time: string;
-    read: boolean;
-    actionUrl?: string;
-    actionLabel?: string;
 };
 
 const statusConfig = {
@@ -83,17 +73,6 @@ export default function OrdersPage() {
     const [acceptOpen, setAcceptOpen] = useState(false);
     const [acceptOrder, setAcceptOrder] = useState<Order | null>(null);
     const [openedFromNotif, setOpenedFromNotif] = useState(false);
-
-    const notificationKey = (username: string) => `isgucu_notifications_${norm(username)}`;
-
-    const pushNotificationForUser = (username: string, notif: NotificationItem) => {
-        if (typeof window === "undefined") return;
-        const key = notificationKey(username);
-        const raw = localStorage.getItem(key);
-        const list = raw ? (JSON.parse(raw) as NotificationItem[]) : [];
-        list.unshift(notif);
-        localStorage.setItem(key, JSON.stringify(list.slice(0, 100)));
-    };
 
     const loadCancellationRequests = async (orderRows: Order[]) => {
         const ids = orderRows.map((o) => Number(o.id)).filter((n) => Number.isFinite(n) && n > 0);
@@ -318,24 +297,19 @@ export default function OrdersPage() {
 
             await refresh();
             const actionUrl = `/orders?reviewOrder=${encodeURIComponent(String(order.id))}`;
-            const now = new Date().toLocaleString("tr-TR");
-            pushNotificationForUser(order.client, {
+            pushLocalNotification(order.client, {
                 id: `review-employer-${Date.now()}-${String(order.id)}`,
                 type: "review",
                 title: "Siparişinizi Değerlendirin",
                 description: "Teslim alındıktan sonra süreci değerlendirmeniz iki taraf için de çok kıymetli.",
-                time: now,
-                read: false,
                 actionUrl,
                 actionLabel: "Değerlendir",
             });
-            pushNotificationForUser(order.freelancer, {
+            pushLocalNotification(order.freelancer, {
                 id: `review-freelancer-${Date.now()}-${String(order.id)}`,
                 type: "review",
                 title: "İşinizi Değerlendirin",
                 description: "Bu sipariş için kısa bir değerlendirme bırakabilirsiniz. Geri bildiriminiz önemlidir.",
-                time: now,
-                read: false,
                 actionUrl,
                 actionLabel: "Değerlendir",
             });

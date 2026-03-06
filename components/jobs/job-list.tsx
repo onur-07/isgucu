@@ -57,6 +57,16 @@ const CATEGORY_SEO_MAP: Record<string, string[]> = {
     "yapay zeka": ["ai", "yapay", "zeka", "prompt", "chatgpt", "otomasyon"],
 };
 
+const TOKEN_SYNONYMS: Record<string, string[]> = {
+    ai: ["yapay", "zeka", "yapayzeka"],
+    "yapay zeka": ["ai", "prompt", "otomasyon"],
+    web: ["site", "website", "landing", "wordpress", "shopify"],
+    logo: ["kurumsal", "kimlik", "brand", "marka"],
+    grafik: ["tasarim", "design"],
+    seo: ["arama", "optimizasyon"],
+    video: ["kurgu", "edit", "animasyon"],
+};
+
 const trMap: Record<string, string> = {
     ç: "c",
     ğ: "g",
@@ -75,12 +85,23 @@ const fold = (value: string) =>
         .replace(/[\u0300-\u036f]/g, "")
         .trim();
 
-const tokenize = (value: string) =>
-    fold(value)
+const tokenize = (value: string) => {
+    const base = fold(value)
         .replace(/[^\p{L}0-9]+/gu, " ")
         .split(/\s+/)
         .map((t) => t.trim())
         .filter((t) => t.length >= 2 && !STOPWORDS.has(t));
+
+    const expanded = new Set<string>(base);
+    for (const token of base) {
+        const syn = TOKEN_SYNONYMS[token] || [];
+        for (const s of syn) {
+            const f = fold(String(s || ""));
+            if (f.length >= 2) expanded.add(f);
+        }
+    }
+    return Array.from(expanded);
+};
 
 const extractTags = (value: string) => {
     const tags = new Set<string>();
@@ -125,6 +146,11 @@ const matchesQuery = (job: Job, query: string) => {
             const qRoot = qToken.slice(0, 3);
             const sRoot = sToken.slice(0, 3);
             if (qRoot === sRoot) return true;
+        }
+        if (qToken.length >= 4 && sToken.length >= 4) {
+            const qNoVowel = qToken.replace(/[aeiou]/g, "");
+            const sNoVowel = sToken.replace(/[aeiou]/g, "");
+            if (qNoVowel && sNoVowel && (sNoVowel.includes(qNoVowel) || qNoVowel.includes(sNoVowel))) return true;
         }
         return false;
     };
