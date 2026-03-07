@@ -530,7 +530,7 @@ export default function OrdersPage() {
                 actionUrl: "/orders",
                 actionLabel: "Siparişe Git",
             });
-            await supabase.from("support_tickets").insert([
+            const { error: supportTicketError } = await supabase.from("support_tickets").insert([
                 {
                     from_user: "SYSTEM",
                     from_email: "system@isgucu.local",
@@ -538,9 +538,9 @@ export default function OrdersPage() {
                     category: "Sipariş Sorunu",
                     message: `Sipariş #${String(order.id)} için anlaşmazlık açıldı.\nAçan: ${String(user.username)} (${openedByRole})\nTaraflar: ${String(order.client)} ↔ ${String(order.freelancer)}\nGerekçe: ${reason}`,
                     status: "open",
-                    priority: "high",
                 },
             ]);
+            if (supportTicketError) throw supportTicketError;
 
             await logAuditEvent(supabase, {
                 actorId: user.id,

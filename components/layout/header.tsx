@@ -348,6 +348,21 @@ export function Header() {
             const newest = [newestTicket, newestReply].filter(Boolean).sort().slice(-1)[0] || "";
 
             if (!lastSupport) {
+                const now = Date.now();
+                for (const r of ticketRows) {
+                    const createdAt = r.created_at ? String(r.created_at) : "";
+                    const createdMs = createdAt ? new Date(createdAt).getTime() : 0;
+                    if (!createdAt || !Number.isFinite(createdMs)) continue;
+                    if (now - createdMs > 30 * 60 * 1000) continue;
+                    upsertLocalNotification({
+                        id: `admin-support-${String(r.id)}`,
+                        type: "system",
+                        title: "🎧 Yeni Destek Talebi",
+                        description: String(r.subject || "Yeni destek talebi oluşturuldu."),
+                        actionUrl: "/admin?tab=support",
+                        actionLabel: "İncele",
+                    });
+                }
                 if (newest) localStorage.setItem(lastSupportKey, newest);
             } else {
                 for (const r of ticketRows) {
@@ -358,7 +373,7 @@ export function Header() {
                         type: "system",
                         title: "🎧 Yeni Destek Talebi",
                         description: String(r.subject || "Yeni destek talebi oluşturuldu."),
-                        actionUrl: "/admin",
+                        actionUrl: "/admin?tab=support",
                         actionLabel: "Panele Git",
                     });
                 }
