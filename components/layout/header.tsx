@@ -486,7 +486,7 @@ export function Header() {
                     {siteConfig.announcement.text}
                 </div>
             )}
-            <div className="container flex h-20 md:h-24 items-center justify-between">
+            <div className="container flex h-20 md:h-24 items-center justify-between px-4 md:px-6">
                 {/* Logo */}
                 <div className="flex items-center gap-3 md:gap-8">
                     <Link href="/" className="flex items-center gap-2 sm:gap-3 min-w-0">
@@ -504,7 +504,7 @@ export function Header() {
                     </Link>
 
                     {/* Desktop Nav */}
-                    <nav className="hidden md:flex items-center gap-6 text-sm font-medium">
+                    <nav className="hidden md:flex items-center justify-center flex-1 gap-6 text-sm font-medium">
                         {navLinks.map((link) => (
                             <Link key={link.href} href={link.href} className="transition-colors hover:text-foreground/80 text-foreground/60">
                                 {link.label}
@@ -519,7 +519,7 @@ export function Header() {
                 </div>
 
                 {/* Desktop Right Side */}
-                <div className="hidden md:flex items-center gap-3 min-w-[120px] justify-end">
+                <div className="hidden md:flex items-center gap-3 pr-2">
                     {loading ? (
                         <div className="h-8 w-8 animate-pulse bg-gray-100 rounded-full" />
                     ) : user ? (
