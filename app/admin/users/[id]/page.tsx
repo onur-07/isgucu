@@ -20,6 +20,7 @@ interface UserDetail {
     email: string;
     fullName: string;
     role: string;
+    staffRoles?: string[];
     bio: string;
     skills: string[];
     location: string;
@@ -73,6 +74,10 @@ export default function AdminUserDetailPage() {
     const [error, setError] = useState("");
     const [activeSection, setActiveSection] = useState<"overview" | "orders" | "gigs" | "tickets">("overview");
 
+    const [roleDraft, setRoleDraft] = useState<string>("");
+    const [staffDraft, setStaffDraft] = useState<Record<string, boolean>>({});
+    const [savingAccess, setSavingAccess] = useState(false);
+
     useEffect(() => {
         if (authLoading) return;
         if (!user || user.role !== "admin") {
@@ -102,6 +107,13 @@ export default function AdminUserDetailPage() {
                 }
 
                 setDetail(json.user);
+                setRoleDraft(String(json?.user?.role || ""));
+                const incoming = Array.isArray(json?.user?.staffRoles) ? (json.user.staffRoles as string[]) : [];
+                setStaffDraft({
+                    editor: incoming.includes("editor"),
+                    iletisimci: incoming.includes("iletisimci"),
+                    canli_destek: incoming.includes("canli_destek"),
+                });
                 setOrders(json.orders || []);
                 setGigs(json.gigs || []);
                 setJobs(json.jobs || []);
@@ -115,6 +127,44 @@ export default function AdminUserDetailPage() {
 
         fetchDetail();
     }, [authLoading, user, userId, router]);
+
+    const saveAccess = async () => {
+        if (!detail?.id) return;
+        if (savingAccess) return;
+        const nextRole = String(roleDraft || "").trim().toLowerCase();
+        if (nextRole !== "freelancer" && nextRole !== "employer") {
+            alert("Rol sadece freelancer veya iş veren olabilir.");
+            return;
+        }
+        const nextStaffRoles = ["editor", "iletisimci", "canli_destek"].filter((k) => !!staffDraft[k]);
+        setSavingAccess(true);
+        try {
+            const { data: sessionData, error: sessionErr } = await supabase.auth.getSession();
+            if (sessionErr || !sessionData?.session?.access_token) {
+                alert("Oturum alınamadı. Lütfen tekrar giriş yapın.");
+                return;
+            }
+            const resp = await fetch(`/api/admin/users/${detail.id}?t=${Date.now()}`, {
+                method: "PATCH",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${sessionData.session.access_token}`,
+                },
+                body: JSON.stringify({ role: nextRole, staffRoles: nextStaffRoles }),
+            });
+            const json = await resp.json().catch(() => ({}));
+            if (!resp.ok) {
+                alert("Güncelleme başarısız: " + String((json as any)?.details || (json as any)?.error || resp.status));
+                return;
+            }
+            setDetail((prev) => (prev ? { ...prev, role: nextRole, staffRoles: nextStaffRoles } : prev));
+            alert("Yetkiler güncellendi.");
+        } catch (e: any) {
+            alert("Güncelleme başarısız: " + String(e?.message || e));
+        } finally {
+            setSavingAccess(false);
+        }
+    };
 
     const handleToggleBan = async () => {
         if (!detail) return;
@@ -357,6 +407,58 @@ export default function AdminUserDetailPage() {
                         >
                             <Trash2 className="h-4 w-4 mr-2" /> Hesabı Sil
                         </Button>
+                    </div>
+                </div>
+            </div>
+
+            <div className="bg-white border rounded-[2rem] p-6 sm:p-8 shadow-sm mb-8">
+                <div className="flex items-center justify-between gap-4 flex-wrap">
+                    <div>
+                        <h3 className="text-sm font-black uppercase tracking-widest text-gray-900">Rol & Görev Atama</h3>
+                        <p className="text-[10px] text-gray-400 font-bold mt-1">Bu kullanıcıya görev verip, görevine göre yetkilendirme yapabilirsiniz.</p>
+                    </div>
+                    <Button
+                        variant="outline"
+                        className="h-11 px-6 rounded-xl font-black uppercase text-[10px]"
+                        onClick={saveAccess}
+                        disabled={savingAccess}
+                    >
+                        {savingAccess ? "Kaydediliyor..." : "Kaydet"}
+                    </Button>
+                </div>
+
+                <div className="mt-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div>
+                        <p className="text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2">Ana Rol</p>
+                        <select
+                            value={roleDraft}
+                            onChange={(e) => setRoleDraft(e.target.value)}
+                            className="h-11 w-full rounded-xl border border-gray-200 bg-white px-3 text-sm font-bold text-gray-800"
+                        >
+                            <option value="freelancer">Freelancer</option>
+                            <option value="employer">İş Veren</option>
+                        </select>
+                        <p className="text-[10px] text-gray-400 font-bold mt-2">Admin rolü bu ekrandan değiştirilmez.</p>
+                    </div>
+
+                    <div>
+                        <p className="text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2">Staff Görevleri</p>
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                            {[
+                                { key: "editor", label: "Editör" },
+                                { key: "iletisimci", label: "İletişimci" },
+                                { key: "canli_destek", label: "Canlı Destek" },
+                            ].map((r) => (
+                                <label key={r.key} className="flex items-center gap-2 rounded-xl border border-gray-200 bg-gray-50 px-3 py-3">
+                                    <input
+                                        type="checkbox"
+                                        checked={!!staffDraft[r.key]}
+                                        onChange={(e) => setStaffDraft((prev) => ({ ...prev, [r.key]: e.target.checked }))}
+                                    />
+                                    <span className="text-xs font-black text-gray-800">{r.label}</span>
+                                </label>
+                            ))}
+                        </div>
                     </div>
                 </div>
             </div>

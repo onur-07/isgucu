@@ -4,6 +4,7 @@ CREATE TABLE IF NOT EXISTS profiles (
   username TEXT UNIQUE NOT NULL,
   email TEXT NOT NULL,
   role TEXT CHECK (role IN ('employer', 'freelancer', 'admin', 'guest')) NOT NULL,
+  staff_roles TEXT[] DEFAULT '{}',
   full_name TEXT,
   bio TEXT,
   skills TEXT[] DEFAULT '{}',
@@ -466,6 +467,10 @@ CREATE TABLE IF NOT EXISTS paytr_events (
   raw_payload JSONB,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
 );
+
+-- STAFF ROLES (for existing databases)
+ALTER TABLE profiles
+  ADD COLUMN IF NOT EXISTS staff_roles TEXT[] DEFAULT '{}';
 
 -- SUPPORT V2 FIELDS
 ALTER TABLE support_tickets

@@ -11,6 +11,7 @@ interface User {
     username: string;
     fullName?: string;
     role: UserRole;
+    staffRoles?: string[];
     email: string;
     isBanned?: boolean;
     avatarUrl?: string;
@@ -21,9 +22,17 @@ type ProfileRow = {
     username: string;
     full_name?: string | null;
     role?: string | null;
+    staff_roles?: string[] | null;
     email?: string | null;
     is_banned?: boolean | null;
     avatar_url?: string | null;
+};
+
+const normalizeStaffRoles = (value: unknown): string[] => {
+    if (!Array.isArray(value)) return [];
+    return value
+        .map((x) => String(x || "").trim().toLowerCase())
+        .filter(Boolean);
 };
 
 const getMetaString = (meta: unknown, key: string) => {
@@ -177,6 +186,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                             username: resolvedProfile.username,
                             fullName: resolvedProfile.full_name ?? undefined,
                             role: normalizeRole(resolvedProfile.role),
+                            staffRoles: normalizeStaffRoles((resolvedProfile as any)?.staff_roles),
                             email: String(authEmail || resolvedProfile.email || ""),
                             isBanned: resolvedProfile.is_banned ?? undefined,
                             avatarUrl: resolvedProfile.avatar_url ?? undefined
@@ -277,6 +287,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                         username: resolvedProfile.username,
                         fullName: resolvedProfile.full_name ?? undefined,
                         role: normalizeRole(resolvedProfile.role),
+                        staffRoles: normalizeStaffRoles((resolvedProfile as any)?.staff_roles),
                         email: String(authEmail || resolvedProfile.email || ""),
                         isBanned: resolvedProfile.is_banned ?? undefined,
                         avatarUrl: resolvedProfile.avatar_url ?? undefined

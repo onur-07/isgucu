@@ -10,6 +10,7 @@ export interface PlatformUser {
     username: string;
     email: string;
     role: "employer" | "freelancer" | "admin";
+    staffRoles?: string[];
     createdAt: string;
     isBanned?: boolean;
 }
@@ -109,7 +110,7 @@ export async function getPlatformStats(): Promise<PlatformStats> {
 export async function getAllUsers(): Promise<PlatformUser[]> {
     const { data, error } = await supabase
         .from('profiles')
-        .select('id, username, email, role, created_at, is_banned')
+        .select('id, username, email, role, staff_roles, created_at, is_banned')
         .order('created_at', { ascending: false });
 
     if (error) {
@@ -122,6 +123,7 @@ export async function getAllUsers(): Promise<PlatformUser[]> {
         username: u.username,
         email: u.email,
         role: (u.role === "employer" || u.role === "freelancer" || u.role === "admin") ? u.role : "freelancer",
+        staffRoles: Array.isArray((u as any).staff_roles) ? (u as any).staff_roles : [],
         createdAt: u.created_at,
         isBanned: u.is_banned
     }));

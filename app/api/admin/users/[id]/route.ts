@@ -69,6 +69,7 @@ export async function GET(
         email: authUserData?.user?.email || profile.email,
         fullName: profile.full_name || "",
         role: profile.role,
+        staffRoles: Array.isArray((profile as any)?.staff_roles) ? (profile as any).staff_roles : [],
         bio: profile.bio || "",
         skills: profile.skills || [],
         location: profile.location || "",
@@ -164,8 +165,21 @@ export async function PATCH(
     const username = typeof body?.username === "string" ? body.username.trim() : "";
     const hasBanField = typeof body?.isBanned === "boolean";
     const isBanned = hasBanField ? Boolean(body.isBanned) : null;
+    const roleRaw = typeof body?.role === "string" ? String(body.role).trim().toLowerCase() : "";
+    const hasRoleField = !!roleRaw;
+    const staffRolesRaw = Array.isArray(body?.staffRoles) ? (body.staffRoles as unknown[]) : null;
+    const hasStaffRolesField = Array.isArray(staffRolesRaw);
 
-    if (!password && !email && !username && !hasBanField) {
+    const allowedRoles = new Set(["employer", "freelancer", "admin", "guest"]);
+    const nextRole = allowedRoles.has(roleRaw) ? roleRaw : "";
+    const nextStaffRoles = hasStaffRolesField
+      ? (staffRolesRaw || [])
+          .map((x) => String(x || "").trim().toLowerCase())
+          .filter(Boolean)
+          .slice(0, 10)
+      : null;
+
+    if (!password && !email && !username && !hasBanField && !hasRoleField && !hasStaffRolesField) {
       return NextResponse.json({ error: "missing_fields" }, { status: 400 });
     }
 
@@ -228,6 +242,38 @@ export async function PATCH(
       if (banErr) {
         return NextResponse.json(
           { error: "ban_update_failed", details: banErr.message },
+          { status: 400 }
+        );
+      }
+    }
+
+    if (hasRoleField) {
+      if (!nextRole) {
+        return NextResponse.json({ error: "invalid_role" }, { status: 400 });
+      }
+      const { error: roleErr } = await supabaseAdmin
+        .from("profiles")
+        .update({ role: nextRole })
+        .eq("id", targetUserId);
+      if (roleErr) {
+        return NextResponse.json(
+          { error: "role_update_failed", details: roleErr.message },
+          { status: 400 }
+        );
+      }
+      await supabaseAdmin.auth.admin.updateUserById(targetUserId, {
+        user_metadata: { role: nextRole },
+      });
+    }
+
+    if (hasStaffRolesField && nextStaffRoles) {
+      const { error: staffErr } = await supabaseAdmin
+        .from("profiles")
+        .update({ staff_roles: nextStaffRoles })
+        .eq("id", targetUserId);
+      if (staffErr) {
+        return NextResponse.json(
+          { error: "staff_roles_update_failed", details: staffErr.message },
           { status: 400 }
         );
       }

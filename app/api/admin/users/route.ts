@@ -51,7 +51,7 @@ export async function GET(req: Request) {
 
     const { data: profiles, error: profilesErr } = await profileClient
       .from("profiles")
-      .select("id, username, email, role, created_at, is_banned")
+      .select("id, username, email, role, staff_roles, created_at, is_banned")
       .order("created_at", { ascending: false });
 
     if (profilesErr) {
@@ -106,6 +106,7 @@ export async function GET(req: Request) {
         username: finalUsername || "(isimsiz)",
         email: finalEmail || "",
         role: p.role,
+        staffRoles: Array.isArray(p.staff_roles) ? p.staff_roles : [],
         createdAt: p.created_at,
         isBanned: !!p.is_banned,
       };

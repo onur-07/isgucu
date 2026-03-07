@@ -402,6 +402,7 @@ function AdminPageContent() {
             username: u.username,
             email: u.email,
             role: u.role,
+            staffRoles: Array.isArray(u.staffRoles) ? u.staffRoles : [],
             createdAt: u.createdAt,
             isBanned: u.isBanned,
         })) as PlatformUser[];
@@ -726,9 +727,11 @@ function AdminPageContent() {
             return;
         }
 
-        if (user.role !== "admin") {
+        const staff = Array.isArray((user as any)?.staffRoles) ? ((user as any).staffRoles as string[]) : [];
+        const isStaff = staff.length > 0;
+        if (user.role !== "admin" && !isStaff) {
             console.log("AdminPage: YETKİSİZ GİRİŞ! Rol:", user.role);
-            alert("Bu sayfaya erişim yetkiniz yok. Yönetici değilsiniz.");
+            alert("Bu sayfaya erişim yetkiniz yok.");
             router.push("/");
             return;
         }
@@ -1037,8 +1040,8 @@ function AdminPageContent() {
         </div>
     );
 
-    // Auth yüklendi ama user yok veya admin değil - useEffect zaten yönlendirecek
-    if (!user || user.role !== "admin") return (
+    // Auth yüklendi ama user yok veya yetkisi yok - useEffect zaten yönlendirecek
+    if (!user) return (
         <div className="h-screen flex items-center justify-center bg-gray-50 uppercase font-black text-xs tracking-widest animate-pulse">
             Yetki Kontrol Ediliyor...
         </div>
@@ -1114,6 +1117,41 @@ function AdminPageContent() {
     const openTicketsCount = tickets.filter(t => t.status === "open").length;
     const bannedUsers = users.filter((u) => !!u.isBanned);
 
+    const staffRoles = Array.isArray((user as any)?.staffRoles) ? (((user as any).staffRoles as string[]) || []) : [];
+    const isAdmin = !!user && user.role === "admin";
+    const canSupport = isAdmin || staffRoles.includes("canli_destek");
+    const canEditSite = isAdmin || staffRoles.includes("editor");
+    const canReports = isAdmin || staffRoles.includes("iletisimci");
+    const canUsers = isAdmin;
+    const canDeletions = isAdmin;
+    const canPayouts = isAdmin;
+    const canCategories = canEditSite;
+
+    const allowedTabs = [
+        { key: "overview" as const, label: "📊 Genel Bakış", count: null, show: true },
+        { key: "reports" as const, label: "📈 Raporlar", count: null, show: canReports },
+        { key: "users" as const, label: "👥 Üyeler", count: totalUsersCount, show: canUsers },
+        { key: "support" as const, label: "🎧 Destek", count: openTicketsCount > 0 ? openTicketsCount : null, show: canSupport },
+        { key: "payouts" as const, label: "💸 Ödeme Talepleri", count: null, show: canPayouts },
+        { key: "deletions" as const, label: "⚠️ Silme Talepleri", count: deletionRequests.length > 0 ? deletionRequests.length : null, show: canDeletions },
+        { key: "categories" as const, label: "📂 Kategoriler", count: null, show: canCategories },
+        { key: "site_settings" as const, label: "⚙️ Site Ayarları", count: null, show: canEditSite },
+    ].filter((t) => t.show);
+
+    if (!user || (!isAdmin && staffRoles.length === 0)) return (
+        <div className="h-screen flex items-center justify-center bg-gray-50 uppercase font-black text-xs tracking-widest animate-pulse">
+            Yetki Kontrol Ediliyor...
+        </div>
+    );
+
+    // Yetkisiz sekmedeyse ilk izinli sekmeye al
+    if (allowedTabs.length > 0 && !allowedTabs.some((t) => t.key === activeTab)) {
+        const first = allowedTabs[0].key;
+        if (first !== activeTab) {
+            setTimeout(() => setActiveTab(first), 0);
+        }
+    }
+
     return (
         <div className="mx-auto w-full max-w-6xl px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
             <div className="mb-8">
@@ -1126,67 +1164,61 @@ function AdminPageContent() {
             {/* Tabs */}
             <div className="mb-8 border-b -mx-4 px-4 sm:mx-0 sm:px-0 overflow-x-auto">
                 <div className="flex w-max min-w-full gap-1 sm:gap-2">
-                    {[
-                    { key: "overview" as const, label: "📊 Genel Bakış", count: null },
-                    { key: "reports" as const, label: "📈 Raporlar", count: null },
-                    { key: "users" as const, label: "👥 Üyeler", count: totalUsersCount },
-                    { key: "support" as const, label: "🎧 Destek", count: openTicketsCount > 0 ? openTicketsCount : null },
-                    { key: "payouts" as const, label: "💸 Ödeme Talepleri", count: null },
-                    { key: "deletions" as const, label: "⚠️ Silme Talepleri", count: deletionRequests.length > 0 ? deletionRequests.length : null },
-                    { key: "categories" as const, label: "📂 Kategoriler", count: null },
-                    { key: "site_settings" as const, label: "⚙️ Site Ayarları", count: null },
-                    ].map(tab => (
-                    tab.key === "categories" ? (
-                        <Link
-                            key={tab.key}
-                            href="/admin/categories"
-                            prefetch
-                            className={`px-3 sm:px-5 py-3 text-[10px] font-black uppercase tracking-widest border-b-2 transition-colors relative whitespace-nowrap ${activeTab === tab.key
-                                ? "border-blue-600 text-blue-600"
-                                : "border-transparent text-gray-400 hover:text-gray-700"
-                                }`}
-                        >
-                            {tab.label}
-                        </Link>
-                    ) : tab.key === "payouts" ? (
-                        <Link
-                            key={tab.key}
-                            href="/admin/payouts"
-                            prefetch
-                            className={`px-3 sm:px-5 py-3 text-[10px] font-black uppercase tracking-widest border-b-2 transition-colors relative whitespace-nowrap ${activeTab === tab.key
-                                ? "border-blue-600 text-blue-600"
-                                : "border-transparent text-gray-400 hover:text-gray-700"
-                                }`}
-                        >
-                            {tab.label}
-                        </Link>
-                    ) : (
-                        <button
-                            key={tab.key}
-                            onClick={() => setActiveTab(tab.key)}
-                            className={`px-3 sm:px-5 py-3 text-[10px] font-black uppercase tracking-widest border-b-2 transition-colors relative whitespace-nowrap ${activeTab === tab.key
-                                ? "border-blue-600 text-blue-600"
-                                : "border-transparent text-gray-400 hover:text-gray-700"
-                                }`}
-                        >
-                            {tab.label}
-                            {tab.count !== null && (
-                                <span className={`ml-2 text-[8px] px-1.5 py-0.5 rounded-full font-bold ${tab.key === "support" && openTicketsCount > 0
-                                    ? "bg-red-100 text-red-600"
-                                    : "bg-gray-100 text-gray-500"
-                                    }`}>
-                                    {tab.count}
-                                </span>
-                            )}
-                        </button>
-                    )
-                ))}
+                    {allowedTabs.map(tab => (
+                        tab.key === "categories" ? (
+                            <Link
+                                key={tab.key}
+                                href="/admin/categories"
+                                prefetch
+
+                                className={`px-3 sm:px-5 py-3 text-[10px] font-black uppercase tracking-widest border-b-2 transition-colors relative whitespace-nowrap ${activeTab === tab.key
+                                    ? "border-blue-600 text-blue-600"
+                                    : "border-transparent text-gray-400 hover:text-gray-700"
+                                    }`}
+                            >
+                                {tab.label}
+                            </Link>
+                        ) : tab.key === "payouts" ? (
+                            <Link
+                                key={tab.key}
+                                href="/admin/payouts"
+                                prefetch
+
+                                className={`px-3 sm:px-5 py-3 text-[10px] font-black uppercase tracking-widest border-b-2 transition-colors relative whitespace-nowrap ${activeTab === tab.key
+                                    ? "border-blue-600 text-blue-600"
+                                    : "border-transparent text-gray-400 hover:text-gray-700"
+                                    }`}
+                            >
+                                {tab.label}
+                            </Link>
+                        ) : (
+                            <button
+                                key={tab.key}
+                                onClick={() => setActiveTab(tab.key)}
+                                className={`px-3 sm:px-5 py-3 text-[10px] font-black uppercase tracking-widest border-b-2 transition-colors relative whitespace-nowrap ${activeTab === tab.key
+                                    ? "border-blue-600 text-blue-600"
+                                    : "border-transparent text-gray-400 hover:text-gray-700"
+                                    }`}
+                            >
+                                {tab.label}
+                                {tab.count !== null && (
+                                    <span className={`ml-2 text-[8px] px-1.5 py-0.5 rounded-full font-bold ${tab.key === "support" && openTicketsCount > 0
+                                        ? "bg-red-100 text-red-600"
+                                        : "bg-gray-100 text-gray-500"
+                                        }`}>
+                                        {tab.count}
+                                    </span>
+                                )}
+                            </button>
+                        )
+                    ))}
                 </div>
             </div>
 
             {/* OVERVIEW TAB */}
             {activeTab === "overview" && (
                 <>
+
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
                         <div className="bg-white border rounded-2xl p-6 shadow-sm">
                             <div className="flex items-center gap-3 mb-2">
