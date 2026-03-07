@@ -1169,9 +1169,9 @@ function AdminPageContent() {
         <div className="mx-auto w-full max-w-6xl px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
             <div className="mb-8">
                 <h1 className="text-2xl sm:text-3xl font-bold tracking-tight font-heading flex items-center gap-3 uppercase">
-                    <Shield className="h-8 w-8 text-red-600" /> Yönetim Paneli
+                    <Shield className="h-8 w-8 text-red-600" /> {isLiveSupportOnly ? "Destek Paneli" : "Yönetim Paneli"}
                 </h1>
-                <p className="text-[10px] sm:text-xs text-gray-400 font-bold mt-1">Hoş geldiniz, {user.username}. Platform yönetim alanı.</p>
+                <p className="text-[10px] sm:text-xs text-gray-400 font-bold mt-1">Hoş geldiniz, {user.username}. {isLiveSupportOnly ? "Destek yönetim alanı." : "Platform yönetim alanı."}</p>
             </div>
 
             {/* Tabs */}

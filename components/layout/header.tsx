@@ -561,9 +561,11 @@ export function Header() {
         ? [{ href: "/post-job", label: "İş İlanı Ver", color: "text-blue-600 font-semibold" }]
         : user?.role === "freelancer"
             ? [{ href: "/post-gig", label: "Hizmet İlanı Ver", color: "text-green-600 font-semibold" }]
-            : user?.role === "admin" || isLiveSupport
+            : user?.role === "admin"
                 ? [{ href: "/admin?tab=overview", label: "Yönetim Paneli", color: "text-red-600 font-semibold" }]
-                : [];
+                : isLiveSupport
+                    ? [{ href: "/admin?tab=overview", label: "Destek Paneli", color: "text-red-600 font-semibold" }]
+                    : [];
     const ordersLabel = user?.role === "freelancer" ? "İşlerim" : "Siparişlerim";
 
     return (
@@ -702,9 +704,14 @@ export function Header() {
                                                 </span>
                                             )}
                                         </Link>
-                                        {(user.role === "admin" || isLiveSupport) && (
+                                        {user.role === "admin" && (
                                             <Link href="/admin?tab=overview" className="flex items-center gap-3 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors" onClick={() => setProfileOpen(false)}>
                                                 ⚙️ Yönetim Paneli
+                                            </Link>
+                                        )}
+                                        {isLiveSupport && (
+                                            <Link href="/admin?tab=overview" className="flex items-center gap-3 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors" onClick={() => setProfileOpen(false)}>
+                                                🎧 Destek Paneli
                                             </Link>
                                         )}
                                         <div className="border-t border-gray-100 mt-1 pt-1">
@@ -790,9 +797,14 @@ export function Header() {
                                         </span>
                                     )}
                                 </Link>
-                                {(user.role === "admin" || isLiveSupport) && (
+                                {user.role === "admin" && (
                                     <Link href="/admin?tab=overview" className="flex items-center gap-3 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors" onClick={() => setMobileProfileOpen(false)}>
                                         ⚙️ Yönetim Paneli
+                                    </Link>
+                                )}
+                                {isLiveSupport && (
+                                    <Link href="/admin?tab=overview" className="flex items-center gap-3 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors" onClick={() => setMobileProfileOpen(false)}>
+                                        🎧 Destek Paneli
                                     </Link>
                                 )}
                                 <div className="border-t border-gray-100 mt-1 pt-1">
