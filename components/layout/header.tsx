@@ -488,9 +488,9 @@ export function Header() {
                     {siteConfig.announcement.text}
                 </div>
             )}
-            <div className="container flex h-20 md:h-24 items-center justify-between px-4 md:px-6 relative">
+            <div className="container h-20 md:h-24 items-center px-4 md:px-6 grid grid-cols-3 md:flex md:justify-between">
                 {/* Logo - Sol (Sadece Logo) */}
-                <div className="flex-shrink-0 z-10">
+                <div className="flex-shrink-0">
                     <Link href="/" className="flex items-center gap-2 sm:gap-3 min-w-0">
                         <Image
                             src={siteConfig.logoUrl || "/logo.png"}
@@ -507,8 +507,8 @@ export function Header() {
                 </div>
 
                 {/* Mobile Title - Ortada */}
-                <div className="md:hidden absolute left-1/2 -translate-x-1/2 flex items-center justify-center pointer-events-none z-20">
-                    <span className="font-heading text-xl font-bold text-blue-600">
+                <div className="md:hidden flex items-center justify-center">
+                    <span className="font-heading text-xl font-bold text-blue-600 text-center">
                         {siteConfig.siteName || "İŞGÜCÜ"}
                     </span>
                 </div>
@@ -636,27 +636,29 @@ export function Header() {
                     )}
                 </div>
 
-                {/* Mobile Menu Button */}
-                <button
-                    className="md:hidden p-2 rounded-lg hover:bg-gray-100 transition-colors z-10"
-                    onClick={() => setMobileOpen(!mobileOpen)}
-                >
-                    {mobileOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
-                </button>
+                {/* Mobile Right Side - ☰ + 👤 */}
+                <div className="md:hidden flex items-center justify-end gap-2 relative">
+                    {/* Mobile Menu Button */}
+                    <button
+                        className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+                        onClick={() => setMobileOpen(!mobileOpen)}
+                    >
+                        {mobileOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+                    </button>
 
-                {/* Mobile Profile Button (Sadece giriş yapmış kullanıcılar) */}
-                {user && (
-                    <div className="md:hidden flex items-center z-10 relative">
-                        <button
-                            onClick={() => setMobileProfileOpen(!mobileProfileOpen)}
-                            className="flex items-center justify-center p-2 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 text-white"
-                        >
-                            <User className="h-5 w-5" />
-                        </button>
+                    {/* Mobile Profile Button (Sadece giriş yapmış kullanıcılar) */}
+                    {user && (
+                        <>
+                            <button
+                                onClick={() => setMobileProfileOpen(!mobileProfileOpen)}
+                                className="flex items-center justify-center p-2 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 text-white"
+                            >
+                                <User className="h-5 w-5" />
+                            </button>
 
-                        {/* Mobile Profile Dropdown */}
-                        {mobileProfileOpen && (
-                            <div className="absolute top-full right-4 mt-2 w-56 bg-white rounded-xl shadow-xl border border-gray-100 py-2 z-50 animate-in fade-in slide-in-from-top-2 duration-200">
+                            {/* Mobile Profile Dropdown */}
+                            {mobileProfileOpen && (
+                                <div className="absolute top-full right-0 mt-2 w-56 bg-white rounded-xl shadow-xl border border-gray-100 py-2 z-50 animate-in fade-in slide-in-from-top-2 duration-200">
                                 <div className="px-4 py-2 border-b border-gray-100">
                                     <p className="text-sm font-semibold text-gray-900">{maskFullName(user.fullName) || user.username}</p>
                                     <p className="text-xs text-gray-500 capitalize">{user.role === "employer" ? "İş Veren" : user.role === "freelancer" ? "Freelancer" : "Yönetici"}</p>
@@ -706,10 +708,11 @@ export function Header() {
                                         🚪 Çıkış Yap
                                     </button>
                                 </div>
-                            </div>
-                        )}
-                    </div>
-                )}
+                                </div>
+                            )}
+                        </>
+                    )}
+                </div>
             </div>
 
             {/* Mobile Menu */}
