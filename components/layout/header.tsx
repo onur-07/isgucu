@@ -507,7 +507,7 @@ export function Header() {
                 </div>
 
                 {/* Mobile Title - Ortada */}
-                <div className="md:hidden absolute left-1/2 -translate-x-1/2 flex items-center justify-center pointer-events-none">
+                <div className="md:hidden absolute left-1/2 -translate-x-1/2 flex items-center justify-center pointer-events-none z-20">
                     <span className="font-heading text-xl font-bold text-blue-600">
                         {siteConfig.siteName || "İŞGÜCÜ"}
                     </span>
