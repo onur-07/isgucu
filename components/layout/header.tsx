@@ -207,7 +207,7 @@ export function Header() {
             .map((t) => Number(t.id))
             .filter((n) => Number.isFinite(n));
 
-        let latestAdminByTicket: Record<string, string> = {};
+        const latestAdminByTicket: Record<string, string> = {};
         if (idsNum.length > 0) {
             const repliesRes = await supabase
                 .from("support_ticket_replies")
