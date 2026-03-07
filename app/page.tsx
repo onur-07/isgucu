@@ -227,7 +227,7 @@ export default function Home() {
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
             <div className="lg:col-span-7 text-center lg:text-left space-y-6">
               <div className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-blue-100">
-                <Sparkles className="h-4 w-4 text-orange-300" /> Premium Freelancer Platformu
+                <Sparkles className="h-4 w-4 text-orange-300" /> Geleceğin İş Modeli
               </div>
               <p className="text-xl md:text-3xl font-black tracking-tight leading-tight text-white">
                 <span className="text-blue-100">Burada </span>
