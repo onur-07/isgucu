@@ -6,7 +6,23 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Search, Star, ZapIcon, Sparkles, ShieldCheck, Briefcase, ArrowRight } from "lucide-react";
+import {
+  Search,
+  Star,
+  ZapIcon,
+  Sparkles,
+  ShieldCheck,
+  Briefcase,
+  ArrowRight,
+  Clock3,
+  Users2,
+  ListChecks,
+  LifeBuoy,
+  Scale,
+  Smartphone,
+  BadgeCheck,
+  Shield,
+} from "lucide-react";
 import { JobList } from "@/components/jobs/job-list";
 import { GigList } from "@/components/gigs/gig-list";
 import { useAuth } from "@/components/auth/auth-context";
@@ -51,6 +67,40 @@ export default function Home() {
 
   const categories = useMemo(() => CATEGORIES, []);
   const latestPosts = useMemo(() => getBlogPosts().slice(0, 3), []);
+  const platformHighlights = useMemo(
+    () => [
+      { title: "Hızlı Eşleşme", desc: "İhtiyacına uygun uzmanı kısa sürede bul.", icon: Users2, bg: "bg-blue-50", border: "border-blue-200" },
+      { title: "Açık Süreç Akışı", desc: "Teklif, onay ve teslim adımları nettir.", icon: ListChecks, bg: "bg-indigo-50", border: "border-indigo-200" },
+      { title: "Korumalı Ödeme", desc: "İş onayı olmadan ödeme aktarımı yapılmaz.", icon: Shield, bg: "bg-cyan-50", border: "border-cyan-200" },
+      { title: "Canlı Destek", desc: "Ticket sistemiyle hızlı şekilde yardım al.", icon: LifeBuoy, bg: "bg-emerald-50", border: "border-emerald-200" },
+      { title: "Şeffaf Puanlama", desc: "Değerlendirmelerle doğru uzmanı seç.", icon: BadgeCheck, bg: "bg-amber-50", border: "border-amber-200" },
+      { title: "Revizyon Yönetimi", desc: "Teslim sonrası revizyon sürecini takip et.", icon: Scale, bg: "bg-violet-50", border: "border-violet-200" },
+      { title: "7/24 Erişim", desc: "İlanlarını ve siparişlerini her an yönet.", icon: Clock3, bg: "bg-sky-50", border: "border-sky-200" },
+      { title: "Mobil Uyum", desc: "Telefon ve tablette tam uyumlu deneyim.", icon: Smartphone, bg: "bg-rose-50", border: "border-rose-200" },
+    ],
+    []
+  );
+  const homepageFaq = useMemo(
+    () => [
+      {
+        q: "İş ilanı açtıktan sonra ne olur?",
+        a: "Freelancerlar teklif gönderir, sen teklifleri karşılaştırıp en uygun uzmanla çalışmaya başlarsın.",
+      },
+      {
+        q: "Ödeme süreci nasıl güvenli tutuluyor?",
+        a: "Ödeme sipariş durumuna bağlı takip edilir; teslim ve onay adımları tamamlanmadan süreç kapanmaz.",
+      },
+      {
+        q: "Revizyon ve teslim aşaması yönetiliyor mu?",
+        a: "Evet. Teslim, revizyon, onay ve iptal adımları sipariş akışında ayrı ayrı izlenir.",
+      },
+      {
+        q: "Freelancer olarak bana uygun işleri nasıl görürüm?",
+        a: "Yetenek ve hizmet alanlarına göre filtrelenen öneri iş listesiyle sana uygun ilanlar öne çıkarılır.",
+      },
+    ],
+    []
+  );
   const normalizeJobSearch = (value: string) => {
     const trMap: Record<string, string> = { ç: "c", ğ: "g", ı: "i", İ: "i", ö: "o", ş: "s", ü: "u" };
     const stop = new Set([
@@ -364,6 +414,22 @@ export default function Home() {
         </div>
       </section>
 
+      <section className="py-12 md:py-16 bg-white">
+        <div className="container mx-auto px-4 md:px-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {platformHighlights.map((item) => (
+              <div key={item.title} className={`rounded-2xl border p-4 ${item.bg} ${item.border}`}>
+                <div className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-white shadow-sm border border-white/60">
+                  <item.icon className="h-5 w-5 text-[#0b1f4d]" />
+                </div>
+                <h3 className="mt-3 text-sm font-black text-slate-900">{item.title}</h3>
+                <p className="mt-1 text-xs font-semibold text-slate-700 leading-relaxed">{item.desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* Categories */}
       <section className="py-18 md:py-20 bg-white">
         <div className="container mx-auto px-4 md:px-6">
@@ -530,6 +596,32 @@ export default function Home() {
                   </Button>
                 </CardFooter>
               </Card>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="py-16 md:py-20 bg-gradient-to-b from-[#f7fbff] to-white border-y border-blue-100">
+        <div className="container mx-auto px-4 md:px-6">
+          <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8">
+            <div>
+              <h2 className="text-3xl md:text-4xl font-black font-heading tracking-tight text-gray-900">
+                Sık Sorulan Sorular
+              </h2>
+              <p className="text-gray-600 font-semibold mt-2 max-w-2xl">
+                İş veren ve freelancer süreçleri için en çok merak edilen konular.
+              </p>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {homepageFaq.map((item) => (
+              <details key={item.q} className="group rounded-2xl border border-blue-100 bg-white p-5">
+                <summary className="cursor-pointer list-none font-black text-slate-900 flex items-start justify-between gap-3">
+                  <span>{item.q}</span>
+                  <span className="text-blue-600 transition-transform group-open:rotate-45">+</span>
+                </summary>
+                <p className="mt-3 text-sm font-semibold text-slate-700 leading-relaxed">{item.a}</p>
+              </details>
             ))}
           </div>
         </div>
