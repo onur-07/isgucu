@@ -179,6 +179,10 @@ export async function PATCH(
           .slice(0, 10)
       : null;
 
+    const shouldForceGuestForLiveSupport = Array.isArray(nextStaffRoles)
+      ? nextStaffRoles.includes("canli_destek")
+      : false;
+
     if (!password && !email && !username && !hasBanField && !hasRoleField && !hasStaffRolesField) {
       return NextResponse.json({ error: "missing_fields" }, { status: 400 });
     }
@@ -247,13 +251,14 @@ export async function PATCH(
       }
     }
 
-    if (hasRoleField) {
-      if (!nextRole) {
+    if (hasRoleField || shouldForceGuestForLiveSupport) {
+      const roleToSet = shouldForceGuestForLiveSupport ? "guest" : nextRole;
+      if (!roleToSet) {
         return NextResponse.json({ error: "invalid_role" }, { status: 400 });
       }
       const { error: roleErr } = await supabaseAdmin
         .from("profiles")
-        .update({ role: nextRole })
+        .update({ role: roleToSet })
         .eq("id", targetUserId);
       if (roleErr) {
         return NextResponse.json(
@@ -262,7 +267,7 @@ export async function PATCH(
         );
       }
       await supabaseAdmin.auth.admin.updateUserById(targetUserId, {
-        user_metadata: { role: nextRole },
+        user_metadata: { role: roleToSet },
       });
     }
 
