@@ -6,23 +6,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  Search,
-  Star,
-  ZapIcon,
-  Sparkles,
-  ShieldCheck,
-  Briefcase,
-  ArrowRight,
-  Clock3,
-  Users2,
-  ListChecks,
-  LifeBuoy,
-  Scale,
-  Smartphone,
-  BadgeCheck,
-  Shield,
-} from "lucide-react";
+import { Search, Star, ZapIcon, Sparkles, ShieldCheck, Briefcase, ArrowRight } from "lucide-react";
 import { JobList } from "@/components/jobs/job-list";
 import { GigList } from "@/components/gigs/gig-list";
 import { useAuth } from "@/components/auth/auth-context";
@@ -67,19 +51,6 @@ export default function Home() {
 
   const categories = useMemo(() => CATEGORIES, []);
   const latestPosts = useMemo(() => getBlogPosts().slice(0, 3), []);
-  const platformHighlights = useMemo(
-    () => [
-      { title: "Hızlı Eşleşme", desc: "İhtiyacına uygun uzmanı kısa sürede bul.", icon: Users2, bg: "bg-blue-50", border: "border-blue-200" },
-      { title: "Açık Süreç Akışı", desc: "Teklif, onay ve teslim adımları nettir.", icon: ListChecks, bg: "bg-indigo-50", border: "border-indigo-200" },
-      { title: "Korumalı Ödeme", desc: "İş onayı olmadan ödeme aktarımı yapılmaz.", icon: Shield, bg: "bg-cyan-50", border: "border-cyan-200" },
-      { title: "Canlı Destek", desc: "Ticket sistemiyle hızlı şekilde yardım al.", icon: LifeBuoy, bg: "bg-emerald-50", border: "border-emerald-200" },
-      { title: "Şeffaf Puanlama", desc: "Değerlendirmelerle doğru uzmanı seç.", icon: BadgeCheck, bg: "bg-amber-50", border: "border-amber-200" },
-      { title: "Revizyon Yönetimi", desc: "Teslim sonrası revizyon sürecini takip et.", icon: Scale, bg: "bg-violet-50", border: "border-violet-200" },
-      { title: "7/24 Erişim", desc: "İlanlarını ve siparişlerini her an yönet.", icon: Clock3, bg: "bg-sky-50", border: "border-sky-200" },
-      { title: "Mobil Uyum", desc: "Telefon ve tablette tam uyumlu deneyim.", icon: Smartphone, bg: "bg-rose-50", border: "border-rose-200" },
-    ],
-    []
-  );
   const homepageFaq = useMemo(
     () => [
       {
@@ -410,22 +381,6 @@ export default function Home() {
                 );
               })}
             </div>
-          </div>
-        </div>
-      </section>
-
-      <section className="py-12 md:py-16 bg-white">
-        <div className="container mx-auto px-4 md:px-6">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {platformHighlights.map((item) => (
-              <div key={item.title} className={`rounded-2xl border p-4 ${item.bg} ${item.border}`}>
-                <div className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-white shadow-sm border border-white/60">
-                  <item.icon className="h-5 w-5 text-[#0b1f4d]" />
-                </div>
-                <h3 className="mt-3 text-sm font-black text-slate-900">{item.title}</h3>
-                <p className="mt-1 text-xs font-semibold text-slate-700 leading-relaxed">{item.desc}</p>
-              </div>
-            ))}
           </div>
         </div>
       </section>
