@@ -22,6 +22,17 @@ export default function AboutPage() {
     const heroTitle = String(managedAbout?.title || "").trim();
     const heroSummary = String(managedAbout?.summary || "").trim();
     const storyContent = String(managedAbout?.content || "").trim();
+    const sectionTitle = String((managedAbout as any)?.sectionTitle || "").trim();
+    const sectionAccent = String((managedAbout as any)?.sectionAccent || "").trim();
+
+    const storyParagraphs = useMemo(() => {
+        if (!storyContent) return [];
+        const normalized = storyContent.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+        return normalized
+            .split(/\n\s*\n/g)
+            .map((p) => p.replace(/\n/g, " ").trim())
+            .filter(Boolean);
+    }, [storyContent]);
 
     const values = [
         {
@@ -69,11 +80,11 @@ export default function AboutPage() {
                             <span>Hikayemiz</span>
                         </div>
                         <h2 className="text-4xl md:text-5xl font-black text-slate-900 leading-tight">
-                            Bir Garajdan <br /> <span className="text-blue-600">Global Vizyona</span>
+                            {sectionTitle || "Bir Garajdan"} <br /> <span className="text-blue-600">{sectionAccent || "Global Vizyona"}</span>
                         </h2>
                         <div className="space-y-6 text-slate-600 text-lg leading-relaxed font-medium">
-                            {storyContent ? (
-                                <p>{storyContent}</p>
+                            {storyParagraphs.length > 0 ? (
+                                storyParagraphs.map((p, idx) => <p key={idx}>{p}</p>)
                             ) : (
                                 <>
                                     <p>

@@ -2150,6 +2150,30 @@ function AdminPageContent() {
                                                 className="bg-white border-slate-200"
                                             />
                                         </div>
+                                        {page.slug === "/about" && (
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                                <Input
+                                                    value={(page as any).sectionTitle || ""}
+                                                    onChange={(e) => {
+                                                        const next = [...(siteConfig.managedPages || [])];
+                                                        next[i] = { ...next[i], sectionTitle: e.target.value } as any;
+                                                        setSiteConfig({ ...siteConfig, managedPages: next });
+                                                    }}
+                                                    placeholder="Bölüm başlığı (sol)"
+                                                    className="bg-white border-slate-200 font-bold"
+                                                />
+                                                <Input
+                                                    value={(page as any).sectionAccent || ""}
+                                                    onChange={(e) => {
+                                                        const next = [...(siteConfig.managedPages || [])];
+                                                        next[i] = { ...next[i], sectionAccent: e.target.value } as any;
+                                                        setSiteConfig({ ...siteConfig, managedPages: next });
+                                                    }}
+                                                    placeholder="Bölüm vurgusu (sağ)"
+                                                    className="bg-white border-slate-200 font-bold"
+                                                />
+                                            </div>
+                                        )}
                                         <Textarea
                                             value={page.content}
                                             onChange={(e) => {

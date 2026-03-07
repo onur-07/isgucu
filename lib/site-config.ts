@@ -14,6 +14,8 @@ export interface ManagedPage {
     menuLabel: string;
     summary: string;
     content: string;
+    sectionTitle?: string;
+    sectionAccent?: string;
     enabled: boolean;
     showInHeader: boolean;
     showInFooter: boolean;
@@ -108,6 +110,8 @@ const DEFAULT_CONFIG: SiteConfig = {
             menuLabel: "Biz Kimiz",
             summary: "Kurumsal hikaye ve marka anlatımı",
             content: "Biz Kimiz sayfası içeriğini buradan yönetebilirsin.",
+            sectionTitle: "Bir Garajdan",
+            sectionAccent: "Global Vizyona",
             enabled: true,
             showInHeader: false,
             showInFooter: true,
