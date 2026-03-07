@@ -132,6 +132,19 @@ export function Header() {
         setSiteConfig(getSiteConfig());
     }, []);
 
+    const bustConfigCache = useCallback(() => {
+        // Force rehydration from remote to bust any stale local cache
+        hydrateSiteConfigFromRemote().then((remoteConfig) => {
+            if (remoteConfig) {
+                setSiteConfig(remoteConfig);
+            }
+        });
+    }, []);
+
+    useEffect(() => {
+        bustConfigCache();
+    }, [bustConfigCache]);
+
     const updateOrderApprovalCount = useCallback(async () => {
         if (!user || (user.role !== "employer" && user.role !== "freelancer")) {
             setOrderApprovalCount(0);
