@@ -743,6 +743,13 @@ function AdminPageContent() {
     useEffect(() => {
         const next = parseTabFromUrl(searchParams.get("tab"));
         if (!next) return;
+        // Canlı destek sadece support görebilsin
+        const staff = Array.isArray((user as any)?.staffRoles) ? (((user as any).staffRoles as string[]) || []) : [];
+        const isLiveSupportOnly = !!user && user.role !== "admin" && staff.includes("canli_destek") && staff.length === 1;
+        if (isLiveSupportOnly && next !== "support") {
+            setActiveTab("support");
+            return;
+        }
         if (activeTab === next) return;
         setActiveTab(next);
     }, [searchParams]);
@@ -1119,6 +1126,7 @@ function AdminPageContent() {
 
     const staffRoles = Array.isArray((user as any)?.staffRoles) ? (((user as any).staffRoles as string[]) || []) : [];
     const isAdmin = !!user && user.role === "admin";
+    const isLiveSupportOnly = !isAdmin && staffRoles.includes("canli_destek") && staffRoles.length === 1;
     const canSupport = isAdmin || staffRoles.includes("canli_destek");
     const canEditSite = isAdmin || staffRoles.includes("editor");
     const canReports = isAdmin || staffRoles.includes("iletisimci");
@@ -1128,7 +1136,7 @@ function AdminPageContent() {
     const canCategories = canEditSite;
 
     const allowedTabs = [
-        { key: "overview" as const, label: "📊 Genel Bakış", count: null, show: true },
+        { key: "overview" as const, label: "📊 Genel Bakış", count: null, show: !isLiveSupportOnly },
         { key: "reports" as const, label: "📈 Raporlar", count: null, show: canReports },
         { key: "users" as const, label: "👥 Üyeler", count: totalUsersCount, show: canUsers },
         { key: "support" as const, label: "🎧 Destek", count: openTicketsCount > 0 ? openTicketsCount : null, show: canSupport },
@@ -1150,6 +1158,11 @@ function AdminPageContent() {
         if (first !== activeTab) {
             setTimeout(() => setActiveTab(first), 0);
         }
+    }
+
+    // Canlı destek sadece support'a yönlendirilsin
+    if (isLiveSupportOnly && activeTab !== "support") {
+        setTimeout(() => setActiveTab("support"), 0);
     }
 
     return (

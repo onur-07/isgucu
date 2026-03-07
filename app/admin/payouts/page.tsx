@@ -48,6 +48,15 @@ export default function AdminPayoutsPage() {
     const { user, loading } = useAuth();
     const router = useRouter();
 
+    useEffect(() => {
+        if (loading) return;
+        const staffRoles = Array.isArray((user as any)?.staffRoles) ? (((user as any).staffRoles as string[]) || []) : [];
+        if (!user || user.role !== "admin") {
+            const canLiveSupport = !!user && staffRoles.includes("canli_destek");
+            router.push(canLiveSupport ? "/admin?tab=support" : "/");
+        }
+    }, [loading, user, router]);
+
     const [rows, setRows] = useState<PayoutRequestRow[]>([]);
     const [profiles, setProfiles] = useState<Record<string, ProfileMini>>({});
     const [busyId, setBusyId] = useState<string>("");

@@ -301,7 +301,12 @@ export function Header() {
     }, [user]);
 
     const pollAdminIncoming = useCallback(async () => {
-        if (!user || user.role !== "admin") return;
+        if (!user) return;
+
+        const staffRoles = Array.isArray((user as any)?.staffRoles) ? (((user as any).staffRoles as string[]) || []) : [];
+        const canLiveSupport = staffRoles.includes("canli_destek");
+        const isAdmin = user.role === "admin";
+        if (!isAdmin && !canLiveSupport) return;
 
         const baseKey = `isgucu_admin_inbox_${usernameKey(user.username)}`;
         const lastSupportKey = `${baseKey}_support_last`;
@@ -374,7 +379,7 @@ export function Header() {
                         title: "🎧 Yeni Destek Talebi",
                         description: String(r.subject || "Yeni destek talebi oluşturuldu."),
                         actionUrl: "/admin?tab=support",
-                        actionLabel: "Panele Git",
+                        actionLabel: "İncele",
                     });
                 }
 
@@ -394,6 +399,9 @@ export function Header() {
                 if (newest) localStorage.setItem(lastSupportKey, newest);
             }
         }
+
+        // Admin olmayan canlı destek yalnızca destek bildirimlerini almalı
+        if (!isAdmin) return;
 
         if (!payoutRes.error) {
             const rows = (payoutRes.data || []) as Array<{ id: any; created_at: any }>;
@@ -503,12 +511,14 @@ export function Header() {
         ]
         : [];
 
+    const staffRoles = Array.isArray((user as any)?.staffRoles) ? (((user as any).staffRoles as string[]) || []) : [];
+    const isLiveSupport = staffRoles.includes("canli_destek");
     const roleLinks = user?.role === "employer"
         ? [{ href: "/post-job", label: "İş İlanı Ver", color: "text-blue-600 font-semibold" }]
         : user?.role === "freelancer"
             ? [{ href: "/post-gig", label: "Hizmet İlanı Ver", color: "text-green-600 font-semibold" }]
-            : user?.role === "admin"
-                ? [{ href: "/admin", label: "Yönetim Paneli", color: "text-red-600 font-semibold" }]
+            : user?.role === "admin" || isLiveSupport
+                ? [{ href: "/admin?tab=support", label: "Yönetim Paneli", color: "text-red-600 font-semibold" }]
                 : [];
     const ordersLabel = user?.role === "freelancer" ? "İşlerim" : "Siparişlerim";
 
@@ -620,7 +630,7 @@ export function Header() {
                                     <div className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-xl border border-gray-100 py-2 z-50 animate-in fade-in slide-in-from-top-2 duration-200">
                                         <div className="px-4 py-2 border-b border-gray-100">
                                             <p className="text-sm font-semibold text-gray-900">{maskFullName(user.fullName) || user.username}</p>
-                                            <p className="text-xs text-gray-500 capitalize">{user.role === "employer" ? "İş Veren" : user.role === "freelancer" ? "Freelancer" : "Yönetici"}</p>
+                                            <p className="text-xs text-gray-500 capitalize">{isLiveSupport ? "Canlı Destek" : user.role === "employer" ? "İş Veren" : user.role === "freelancer" ? "Freelancer" : "Yönetici"}</p>
                                         </div>
                                         <Link href="/profile" className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors" onClick={() => setProfileOpen(false)}>
                                             <User className="h-4 w-4" /> Profilim
@@ -648,8 +658,8 @@ export function Header() {
                                                 </span>
                                             )}
                                         </Link>
-                                        {user.role === "admin" && (
-                                            <Link href="/admin" className="flex items-center gap-3 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors" onClick={() => setProfileOpen(false)}>
+                                        {(user.role === "admin" || isLiveSupport) && (
+                                            <Link href="/admin?tab=support" className="flex items-center gap-3 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors" onClick={() => setProfileOpen(false)}>
                                                 ⚙️ Yönetim Paneli
                                             </Link>
                                         )}
@@ -702,7 +712,7 @@ export function Header() {
                                 <div className="absolute top-full right-0 mt-2 w-56 bg-white rounded-xl shadow-xl border border-gray-100 py-2 z-50 animate-in fade-in slide-in-from-top-2 duration-200">
                                 <div className="px-4 py-2 border-b border-gray-100">
                                     <p className="text-sm font-semibold text-gray-900">{maskFullName(user.fullName) || user.username}</p>
-                                    <p className="text-xs text-gray-500 capitalize">{user.role === "employer" ? "İş Veren" : user.role === "freelancer" ? "Freelancer" : "Yönetici"}</p>
+                                    <p className="text-xs text-gray-500 capitalize">{isLiveSupport ? "Canlı Destek" : user.role === "employer" ? "İş Veren" : user.role === "freelancer" ? "Freelancer" : "Yönetici"}</p>
                                 </div>
                                 <Link href="/profile" className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors" onClick={() => setMobileProfileOpen(false)}>
                                     <User className="h-4 w-4" /> Profilim
@@ -736,8 +746,8 @@ export function Header() {
                                         </span>
                                     )}
                                 </Link>
-                                {user.role === "admin" && (
-                                    <Link href="/admin" className="flex items-center gap-3 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors" onClick={() => setMobileProfileOpen(false)}>
+                                {(user.role === "admin" || isLiveSupport) && (
+                                    <Link href="/admin?tab=support" className="flex items-center gap-3 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors" onClick={() => setMobileProfileOpen(false)}>
                                         ⚙️ Yönetim Paneli
                                     </Link>
                                 )}

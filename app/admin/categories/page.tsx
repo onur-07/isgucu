@@ -49,8 +49,11 @@ export default function AdminCategoriesPage() {
     useEffect(() => {
         if (authLoading) return;
         if (didInit.current) return;
-        if (!user || user.role !== "admin") {
-            router.push("/");
+        const staffRoles = Array.isArray((user as any)?.staffRoles) ? (((user as any).staffRoles as string[]) || []) : [];
+        const canEdit = !!user && (user.role === "admin" || staffRoles.includes("editor"));
+        if (!canEdit) {
+            const canLiveSupport = !!user && staffRoles.includes("canli_destek");
+            router.push(canLiveSupport ? "/admin?tab=support" : "/");
             return;
         }
 
