@@ -326,6 +326,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 username: profile.username,
                 fullName: profile.full_name,
                 role: normalizeRole(profile.role),
+                staffRoles: normalizeStaffRoles((profile as any)?.staff_roles),
                 email: String(authEmail || profile.email || ""),
                 isBanned: profile.is_banned ?? undefined,
                 avatarUrl: profile.avatar_url ?? undefined
