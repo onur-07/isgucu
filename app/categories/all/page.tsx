@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { CATEGORIES_DETAILED } from "@/lib/categories-data";
 import { GigList } from "@/components/gigs/gig-list";
 import { JobList } from "@/components/jobs/job-list";
@@ -15,6 +15,7 @@ export default function CategoriesAllPage() {
     const [query, setQuery] = useState("");
     const [activeTab, setActiveTab] = useState<"services" | "jobs" | "freelancers">("services");
     const [selectedCategoryId, setSelectedCategoryId] = useState<string>("all");
+    const listingsRef = useRef<HTMLDivElement | null>(null);
     const [gigCountsByCategory, setGigCountsByCategory] = useState<Record<string, number>>({});
     const [freelancers, setFreelancers] = useState<Array<{ id: string; username: string; fullName?: string; avatarUrl?: string; skills?: string[] }>>([]);
     const [freelancersLoading, setFreelancersLoading] = useState(false);
@@ -22,6 +23,16 @@ export default function CategoriesAllPage() {
     const categories = useMemo(() => {
         return [{ id: "all", title: "Tümü", icon: "✨", color: "bg-gray-50" }, ...CATEGORIES_DETAILED];
     }, []);
+
+    useEffect(() => {
+        if (activeTab !== "services") return;
+        if (selectedCategoryId === "all") return;
+        const el = listingsRef.current;
+        if (!el) return;
+        window.setTimeout(() => {
+            el.scrollIntoView({ behavior: "smooth", block: "start" });
+        }, 0);
+    }, [activeTab, selectedCategoryId]);
 
     useEffect(() => {
         let cancelled = false;
@@ -261,7 +272,7 @@ export default function CategoriesAllPage() {
                                                 <button
                                                     key={c.id}
                                                     type="button"
-                                                    onClick={() => setSelectedCategoryId(c.id)}
+                                                    onClick={() => setSelectedCategoryId((prev) => (prev === c.id ? "all" : c.id))}
                                                     className={`shrink-0 rounded-full border px-4 py-2 text-xs font-black uppercase tracking-widest transition-all ${
                                                         active
                                                             ? "bg-blue-600 text-white border-blue-600 shadow"
@@ -285,7 +296,7 @@ export default function CategoriesAllPage() {
                                                 <button
                                                     key={c.id}
                                                     type="button"
-                                                    onClick={() => setSelectedCategoryId(c.id)}
+                                                    onClick={() => setSelectedCategoryId((prev) => (prev === c.id ? "all" : c.id))}
                                                     className={`group text-left rounded-[2rem] border border-slate-100 bg-white p-6 shadow-sm transition-all hover:shadow-xl hover:-translate-y-1 ${
                                                         selectedCategoryId === c.id ? "ring-2 ring-blue-200" : ""
                                                     }`}
@@ -323,7 +334,7 @@ export default function CategoriesAllPage() {
                                                 <button
                                                     key={c.id}
                                                     type="button"
-                                                    onClick={() => setSelectedCategoryId(c.id)}
+                                                    onClick={() => setSelectedCategoryId((prev) => (prev === c.id ? "all" : c.id))}
                                                     className={`w-full rounded-2xl border px-4 py-3 text-left transition-all ${
                                                         selectedCategoryId === c.id
                                                             ? "border-blue-200 bg-blue-50"
@@ -355,6 +366,7 @@ export default function CategoriesAllPage() {
                 <div className="mt-12">
                     {activeTab === "services" && (
                         <>
+                            <div ref={listingsRef} />
                             <div className="flex items-end justify-between gap-4 flex-wrap">
                                 <div>
                                     <h3 className="text-xl font-black text-slate-900">Hizmet İlanları</h3>
