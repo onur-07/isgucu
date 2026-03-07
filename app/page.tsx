@@ -292,8 +292,8 @@ export default function Home() {
                   { label: "Hızlı Eşleşme", icon: ZapIcon },
                   { label: "Net Süreç", icon: Briefcase },
                 ].map((item) => (
-                  <div key={item.label} className="rounded-xl border border-white/15 bg-white/10 px-4 py-3 text-blue-50 font-bold text-xs flex items-center gap-2 justify-center lg:justify-start">
-                    <item.icon className="h-4 w-4 text-cyan-300" /> {item.label}
+                  <div key={item.label} className="rounded-xl border border-cyan-200/60 bg-white px-4 py-3 text-[#0b1f4d] font-black text-xs shadow-lg flex items-center gap-2 justify-center lg:justify-start">
+                    <item.icon className="h-4 w-4 text-[#0b1f4d]" /> {item.label}
                   </div>
                 ))}
               </div>
@@ -324,6 +324,46 @@ export default function Home() {
                 </div>
               </div>
             </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="py-10 md:py-14 bg-[#f5f9ff] border-y border-blue-100">
+        <div className="container mx-auto px-4 md:px-6">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {[
+              { value: "10.000+", label: "Aktif Freelancer" },
+              { value: "5.000+", label: "Yayınlanan Proje" },
+              { value: "%98", label: "Memnuniyet Oranı" },
+              { value: "7/24", label: "Destek Sistemi" },
+            ].map((item) => (
+              <div key={item.label} className="rounded-2xl bg-white border border-blue-100 px-4 py-5 text-center shadow-sm">
+                <p className="text-2xl md:text-3xl font-black text-[#0b1f4d]">{item.value}</p>
+                <p className="text-[11px] font-black uppercase tracking-widest text-slate-500 mt-1">{item.label}</p>
+              </div>
+            ))}
+          </div>
+
+          <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+            {[
+              {
+                title: "Aynı Gün Başlangıç",
+                desc: "Doğru freelancer ile dakikalar içinde eşleşip projene hızlıca başlanır.",
+              },
+              {
+                title: "Anlaşmalı Teslim Akışı",
+                desc: "Teslim, revizyon ve onay adımları net olduğundan süreç kontrol sende olur.",
+              },
+              {
+                title: "Ödeme Korumalı Sistem",
+                desc: "Ödeme onay süreciyle yönetilir; iki taraf için de güvenli işleyiş sağlanır.",
+              },
+            ].map((item) => (
+              <div key={item.title} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                <h3 className="text-base font-black text-slate-900">{item.title}</h3>
+                <p className="mt-2 text-sm font-semibold text-slate-600 leading-relaxed">{item.desc}</p>
+              </div>
+            ))}
           </div>
         </div>
       </section>
