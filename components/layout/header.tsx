@@ -487,8 +487,8 @@ export function Header() {
                 </div>
             )}
             <div className="container flex h-20 md:h-24 items-center justify-between px-4 md:px-6">
-                {/* Logo */}
-                <div className="flex items-center gap-3 md:gap-8">
+                {/* Logo - Sol */}
+                <div className="flex-shrink-0">
                     <Link href="/" className="flex items-center gap-2 sm:gap-3 min-w-0">
                         <Image
                             src={siteConfig.logoUrl || "/logo.png"}
@@ -502,24 +502,24 @@ export function Header() {
                             {siteConfig.siteName || "İŞGÜCÜ"}
                         </span>
                     </Link>
-
-                    {/* Desktop Nav */}
-                    <nav className="hidden md:flex items-center justify-center flex-1 gap-6 text-sm font-medium">
-                        {navLinks.map((link) => (
-                            <Link key={link.href} href={link.href} className="transition-colors hover:text-foreground/80 text-foreground/60">
-                                {link.label}
-                            </Link>
-                        ))}
-                        {roleLinks.map((link) => (
-                            <Link key={link.href} href={link.href} className={`transition-colors hover:opacity-80 ${link.color}`}>
-                                {link.label}
-                            </Link>
-                        ))}
-                    </nav>
                 </div>
 
-                {/* Desktop Right Side */}
-                <div className="hidden md:flex items-center gap-3 pr-2">
+                {/* Desktop Nav - Orta (Tam Ortalı) */}
+                <nav className="hidden md:flex flex-1 items-center justify-center gap-6 text-sm font-medium px-4">
+                    {navLinks.map((link) => (
+                        <Link key={link.href} href={link.href} className="transition-colors hover:text-foreground/80 text-foreground/60">
+                            {link.label}
+                        </Link>
+                    ))}
+                    {roleLinks.map((link) => (
+                        <Link key={link.href} href={link.href} className={`transition-colors hover:opacity-80 ${link.color}`}>
+                            {link.label}
+                        </Link>
+                    ))}
+                </nav>
+
+                {/* Desktop Right Side - Sağ */}
+                <div className="hidden md:flex flex-shrink-0 items-center gap-3 pr-4">
                     {loading ? (
                         <div className="h-8 w-8 animate-pulse bg-gray-100 rounded-full" />
                     ) : user ? (
