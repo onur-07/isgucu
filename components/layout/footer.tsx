@@ -7,6 +7,18 @@ import { useState, useEffect } from "react";
 import type { ReactNode } from "react";
 import { getSiteConfig, hydrateSiteConfigFromRemote } from "@/lib/site-config";
 
+function normalizeNavLabel(label: string): string {
+    const raw = String(label || "").trim();
+    const k = raw.toLowerCase();
+    if (k === "about" || k === "about us" || k === "hakkımızda" || k === "hakkimizda") return "Biz Kimiz";
+    if (k === "contact" || k === "contact us" || k === "iletisim" || k === "iletişim") return "İletişim";
+    if (k === "help" || k === "support" || k === "destek") return "Destek";
+    if (k === "rules" || k === "terms" || k === "kurallar") return "Platform Kuralları";
+    if (k === "privacy" || k === "privacy policy" || k === "gizlilik") return "Veri Gizliliği";
+    if (k === "blog" || k === "academy" || k === "akademi") return "Akademi / Blog";
+    return raw;
+}
+
 export function Footer() {
     const [siteConfig, setSiteConfig] = useState(getSiteConfig());
 
@@ -30,10 +42,10 @@ export function Footer() {
     };
 
     const footerMenu = [
-        ...siteConfig.footerLinks,
+        ...siteConfig.footerLinks.map(l => ({ ...l, label: normalizeNavLabel(l.label) })),
         ...(siteConfig.managedPages || [])
             .filter((p) => p.enabled && p.showInFooter && p.slug !== "/" && p.slug !== "/about")
-            .map((p) => ({ href: p.slug, label: p.menuLabel || p.title })),
+            .map((p) => ({ href: p.slug, label: normalizeNavLabel(p.menuLabel || p.title) })),
     ];
 
     return (

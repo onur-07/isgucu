@@ -10,6 +10,18 @@ import { Menu, X, Bell, MessageCircle, User, ChevronDown } from "lucide-react";
 import { getSiteConfig, hydrateSiteConfigFromRemote } from "@/lib/site-config";
 import { supabase } from "@/lib/supabase";
 
+function normalizeNavLabel(label: string): string {
+    const raw = String(label || "").trim();
+    const k = raw.toLowerCase();
+    if (k === "about" || k === "about us" || k === "hakkımızda" || k === "hakkimizda") return "Biz Kimiz";
+    if (k === "contact" || k === "contact us" || k === "iletisim" || k === "iletişim") return "İletişim";
+    if (k === "help" || k === "support" || k === "destek") return "Destek";
+    if (k === "rules" || k === "terms" || k === "kurallar") return "Platform Kuralları";
+    if (k === "privacy" || k === "privacy policy" || k === "gizlilik") return "Veri Gizliliği";
+    if (k === "blog" || k === "academy" || k === "akademi") return "Akademi / Blog";
+    return raw;
+}
+
 export function Header() {
     const { user, logout, loading } = useAuth();
     const [mobileOpen, setMobileOpen] = useState(false);
@@ -420,12 +432,12 @@ export function Header() {
     }, [siteConfig]);
 
     const navLinks = [
-        ...siteConfig.headerLinks,
+        ...siteConfig.headerLinks.map(l => ({ ...l, label: normalizeNavLabel(l.label) })),
         ...(siteConfig.managedPages || [])
             .filter((p: { enabled?: boolean; showInHeader?: boolean; slug?: string; menuLabel?: string; title?: string }) =>
                 Boolean(p.enabled) && Boolean(p.showInHeader) && p.slug !== "/" && p.slug !== "/about"
             )
-            .map((p: { slug?: string; menuLabel?: string; title?: string }) => ({ href: String(p.slug || ""), label: String(p.menuLabel || p.title || "") })),
+            .map((p) => ({ href: p.slug, label: normalizeNavLabel(p.menuLabel || p.title) })),
     ];
 
     const roleLinks = user?.role === "employer"
