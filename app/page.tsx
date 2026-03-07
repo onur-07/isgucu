@@ -332,13 +332,13 @@ export default function Home() {
         <div className="container mx-auto px-4 md:px-6">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {[
-              { value: "10.000+", label: "Aktif Freelancer" },
-              { value: "5.000+", label: "Yayınlanan Proje" },
-              { value: "%98", label: "Memnuniyet Oranı" },
-              { value: "7/24", label: "Destek Sistemi" },
+              { value: "Gerçek Zamanlı", label: "Aktif Freelancer Havuzu" },
+              { value: "Canlı", label: "Yayınlanan Projeler" },
+              { value: "Şeffaf", label: "Değerlendirme Sistemi" },
+              { value: "Hızlı", label: "Destek Sistemi" },
             ].map((item) => (
               <div key={item.label} className="rounded-2xl bg-white border border-blue-100 px-4 py-5 text-center shadow-sm">
-                <p className="text-2xl md:text-3xl font-black text-[#0b1f4d]">{item.value}</p>
+                <p className="text-xl md:text-2xl font-black text-[#0b1f4d]">{item.value}</p>
                 <p className="text-[11px] font-black uppercase tracking-widest text-slate-500 mt-1">{item.label}</p>
               </div>
             ))}
