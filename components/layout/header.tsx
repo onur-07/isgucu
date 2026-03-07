@@ -25,6 +25,7 @@ function normalizeNavLabel(label: string): string {
 export function Header() {
     const { user, logout, loading } = useAuth();
     const [mobileOpen, setMobileOpen] = useState(false);
+    const [mobileProfileOpen, setMobileProfileOpen] = useState(false);
     const [profileOpen, setProfileOpen] = useState(false);
     const [notifCount, setNotifCount] = useState(0);
     const [orderApprovalCount, setOrderApprovalCount] = useState(0);
@@ -35,6 +36,7 @@ export function Header() {
     const handleLogout = async () => {
         setProfileOpen(false);
         setMobileOpen(false);
+        setMobileProfileOpen(false);
         await logout();
     };
 
@@ -634,6 +636,85 @@ export function Header() {
                     )}
                 </div>
 
+                {/* Mobile Right Side - Profil Butonu (Sadece giriş yapmış kullanıcılar) */}
+                {user && (
+                    <div className="md:hidden flex items-center gap-2 z-10">
+                        {/* Mobile Profile Button */}
+                        <button
+                            onClick={() => setMobileProfileOpen(!mobileProfileOpen)}
+                            className="flex items-center justify-center p-2 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 text-white"
+                        >
+                            {user.avatarUrl ? (
+                                <Image
+                                    src={user.avatarUrl}
+                                    alt="Profil"
+                                    width={28}
+                                    height={28}
+                                    className="h-7 w-7 rounded-full object-cover"
+                                    unoptimized
+                                />
+                            ) : (
+                                <span className="text-sm font-bold">{(maskFullName(user.fullName) || user.username).charAt(0).toUpperCase()}</span>
+                            )}
+                        </button>
+
+                        {/* Mobile Profile Dropdown */}
+                        {mobileProfileOpen && (
+                            <div className="absolute top-full right-4 mt-2 w-56 bg-white rounded-xl shadow-xl border border-gray-100 py-2 z-50 animate-in fade-in slide-in-from-top-2 duration-200">
+                                <div className="px-4 py-2 border-b border-gray-100">
+                                    <p className="text-sm font-semibold text-gray-900">{maskFullName(user.fullName) || user.username}</p>
+                                    <p className="text-xs text-gray-500 capitalize">{user.role === "employer" ? "İş Veren" : user.role === "freelancer" ? "Freelancer" : "Yönetici"}</p>
+                                </div>
+                                <Link href="/profile" className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors" onClick={() => setMobileProfileOpen(false)}>
+                                    <User className="h-4 w-4" /> Profilim
+                                </Link>
+                                <Link href="/orders" className="flex items-center justify-between gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors" onClick={() => setMobileProfileOpen(false)}>
+                                    <span>📋 {ordersLabel}</span>
+                                    {orderApprovalCount > 0 && (
+                                        <span className="h-5 min-w-5 px-1.5 bg-red-500 text-white text-[10px] font-black rounded-full flex items-center justify-center">
+                                            {orderApprovalCount}
+                                        </span>
+                                    )}
+                                </Link>
+                                <Link href="/wallet" className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors" onClick={() => setMobileProfileOpen(false)}>
+                                    💰 Cüzdanım
+                                </Link>
+                                <Link href="/messages" className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors" onClick={() => setMobileProfileOpen(false)}>
+                                    💬 Mesajlar
+                                </Link>
+                                <Link href="/notifications" className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors" onClick={() => setMobileProfileOpen(false)}>
+                                    🔔 Bildirimler
+                                </Link>
+                                <Link
+                                    href="/support"
+                                    className="flex items-center justify-between gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                                    onClick={() => setMobileProfileOpen(false)}
+                                >
+                                    <span>🎧 Destek</span>
+                                    {supportReplyCount > 0 && (
+                                        <span className="h-5 min-w-5 px-1.5 bg-red-500 text-white text-[10px] font-black rounded-full flex items-center justify-center">
+                                            {supportReplyCount}
+                                        </span>
+                                    )}
+                                </Link>
+                                {user.role === "admin" && (
+                                    <Link href="/admin" className="flex items-center gap-3 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors" onClick={() => setMobileProfileOpen(false)}>
+                                        ⚙️ Yönetim Paneli
+                                    </Link>
+                                )}
+                                <div className="border-t border-gray-100 mt-1 pt-1">
+                                    <button
+                                        onClick={handleLogout}
+                                        className="flex items-center gap-3 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 w-full text-left transition-colors"
+                                    >
+                                        🚪 Çıkış Yap
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                )}
+
                 {/* Mobile Menu Button */}
                 <button
                     className="md:hidden p-2 rounded-lg hover:bg-gray-100 transition-colors z-10 mr-2"
@@ -660,39 +741,6 @@ export function Header() {
 
                         {user ? (
                             <>
-                                <div className="border-t my-2" />
-                                <Link href="/profile" className="px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-lg" onClick={() => setMobileOpen(false)}>
-                                    👤 Profilim
-                                </Link>
-                                <Link href="/orders" className="px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-lg flex items-center justify-between gap-3" onClick={() => setMobileOpen(false)}>
-                                    <span>📋 {ordersLabel}</span>
-                                    {orderApprovalCount > 0 && (
-                                        <span className="h-5 min-w-5 px-1.5 bg-red-500 text-white text-[10px] font-black rounded-full flex items-center justify-center">
-                                            {orderApprovalCount}
-                                        </span>
-                                    )}
-                                </Link>
-                                <Link href="/wallet" className="px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-lg" onClick={() => setMobileOpen(false)}>
-                                    💰 Cüzdanım
-                                </Link>
-                                <Link href="/messages" className="px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-lg" onClick={() => setMobileOpen(false)}>
-                                    💬 Mesajlar
-                                </Link>
-                                <Link href="/notifications" className="px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-lg" onClick={() => setMobileOpen(false)}>
-                                    🔔 Bildirimler
-                                </Link>
-                                <Link
-                                    href="/support"
-                                    className="px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-lg flex items-center justify-between gap-3"
-                                    onClick={() => setMobileOpen(false)}
-                                >
-                                    <span>🎧 Destek</span>
-                                    {supportReplyCount > 0 && (
-                                        <span className="h-5 min-w-5 px-1.5 bg-red-500 text-white text-[10px] font-black rounded-full flex items-center justify-center">
-                                            {supportReplyCount}
-                                        </span>
-                                    )}
-                                </Link>
                                 <div className="border-t my-2" />
                                 <button onClick={handleLogout} className="px-4 py-3 text-sm font-medium text-red-600 hover:bg-red-50 rounded-lg text-left">
                                     🚪 Çıkış Yap
