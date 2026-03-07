@@ -7,10 +7,11 @@ import { getSiteConfig } from "@/lib/site-config";
 // Türkçe yolları İngilizce karşılıklarına eşleştir (nested path'ler için)
 const NESTED_SLUG_MAPPING: Record<string, string> = {
     // Kategoriler
-    "kategoriler/tum": "/categories/tum",
-    "kategoriler/tumu": "/categories/tum",
-    "kategoriler/tümü": "/categories/tum",
-    "kategoriler/hepsi": "/categories/tum",
+    "kategoriler/tum": "/categories/all",
+    "kategoriler/tumu": "/categories/all",
+    "kategoriler/tümü": "/categories/all",
+    "kategoriler/hepsi": "/categories/all",
+    "kategoriler/all": "/categories/all",
     
     // Diğer nested yollar buraya eklenebilir
 };
