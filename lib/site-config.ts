@@ -350,7 +350,9 @@ export async function hydrateSiteConfigFromRemote() {
 
 export async function saveSiteConfig(config: SiteConfig) {
     if (typeof window === "undefined") return;
-    localStorage.setItem(SITE_CONFIG_STORAGE_KEY, JSON.stringify(config));
+    // Normalize config before saving to ensure Turkish labels
+    const normalized = mergeSiteConfig(config);
+    localStorage.setItem(SITE_CONFIG_STORAGE_KEY, JSON.stringify(normalized));
     window.dispatchEvent(new Event("site_config_updated"));
 
     try {
@@ -363,7 +365,7 @@ export async function saveSiteConfig(config: SiteConfig) {
                 "Content-Type": "application/json",
                 Authorization: `Bearer ${sessionData.session.access_token}`,
             },
-            body: JSON.stringify({ config }),
+            body: JSON.stringify({ config: normalized }),
         });
     } catch {
         // Local save is fallback; remote sync is best effort.
