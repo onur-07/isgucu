@@ -330,18 +330,26 @@ export default function Home() {
 
       <section className="py-10 md:py-14 bg-[#f5f9ff] border-y border-blue-100">
         <div className="container mx-auto px-4 md:px-6">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {[
-              { value: "Gerçek Zamanlı", label: "Aktif Freelancer Havuzu" },
-              { value: "Canlı", label: "Yayınlanan Projeler" },
-              { value: "Şeffaf", label: "Değerlendirme Sistemi" },
-              { value: "Hızlı", label: "Destek Sistemi" },
-            ].map((item) => (
-              <div key={item.label} className="rounded-2xl bg-white border border-blue-100 px-4 py-5 text-center shadow-sm">
-                <p className="text-xl md:text-2xl font-black text-[#0b1f4d]">{item.value}</p>
-                <p className="text-[11px] font-black uppercase tracking-widest text-slate-500 mt-1">{item.label}</p>
-              </div>
-            ))}
+          <div className="overflow-hidden rounded-2xl border border-blue-100 bg-white/70 p-3 md:p-4">
+            <div className="marquee-track flex items-center gap-3 md:gap-4 w-max">
+              {[
+                "Aktif Freelancer Havuzu",
+                "Doğru Uzman ile Tamamlanmış Projeler",
+                "Şeffaf Değerlendirme Sistemi",
+                "Hızlı Destek, Güvenilir Ödeme ve %100 Memnuniyet",
+                "Aktif Freelancer Havuzu",
+                "Doğru Uzman ile Tamamlanmış Projeler",
+                "Şeffaf Değerlendirme Sistemi",
+                "Hızlı Destek, Güvenilir Ödeme ve %100 Memnuniyet",
+              ].map((item, idx) => (
+                <div
+                  key={`${item}-${idx}`}
+                  className="shrink-0 rounded-xl border border-blue-200 bg-white px-4 md:px-6 py-3 md:py-4 text-[#0b1f4d] font-black text-xs md:text-sm whitespace-nowrap transition-colors duration-300 hover:bg-[#0b5bd3] hover:text-white"
+                >
+                  {item}
+                </div>
+              ))}
+            </div>
           </div>
 
           <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -367,6 +375,24 @@ export default function Home() {
           </div>
         </div>
       </section>
+      <style jsx>{`
+        .marquee-track {
+          animation: marquee-x 34s linear infinite;
+        }
+        @keyframes marquee-x {
+          0% {
+            transform: translateX(0);
+          }
+          100% {
+            transform: translateX(-50%);
+          }
+        }
+        @media (max-width: 768px) {
+          .marquee-track {
+            animation-duration: 42s;
+          }
+        }
+      `}</style>
 
       {/* Categories */}
       <section className="py-18 md:py-20 bg-white">
