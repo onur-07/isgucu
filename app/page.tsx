@@ -204,9 +204,9 @@ export default function Home() {
               <h2 className="text-2xl font-black text-gray-900 uppercase tracking-tight">Kategorileri Keşfet</h2>
               <Link href="/kategoriler/tumu" className="text-[10px] font-black uppercase text-amber-600 hover:underline tracking-widest">Kategori Listesi →</Link>
             </div>
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
               {categories.map((cat) => (
-                <Link key={cat.slug} href={`/categories/${cat.slug}`} className="group p-6 bg-white border border-gray-100 rounded-2xl text-center hover:shadow-xl transition-all hover:-translate-y-1">
+                <Link key={cat.slug} href={`/categories/${cat.slug}`} className="group p-4 sm:p-6 bg-white border border-gray-100 rounded-2xl text-center hover:shadow-xl transition-all hover:-translate-y-1">
                   <div className="text-3xl mb-3">{cat.icon}</div>
                   <span className="text-[10px] font-black uppercase text-gray-600 group-hover:text-amber-600 tracking-widest">{cat.title}</span>
                 </Link>
@@ -402,12 +402,12 @@ export default function Home() {
             </Link>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
             {categories.map((cat) => (
               <Link
                 key={cat.slug}
                 href={`/categories/${cat.slug}`}
-                className="group rounded-[2rem] border border-gray-100 bg-white p-6 hover:shadow-xl transition-all hover:-translate-y-1"
+                className="group rounded-[2rem] border border-gray-100 bg-white p-4 sm:p-6 hover:shadow-xl transition-all hover:-translate-y-1"
               >
                 <div className={`h-12 w-12 rounded-2xl ${cat.bg} flex items-center justify-center text-2xl mb-4`}>
                   {cat.icon}
