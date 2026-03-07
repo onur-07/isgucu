@@ -1,24 +1,22 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import { getSiteConfig } from "@/lib/site-config";
+import CategoriesAllPageContent from "../categories/all/page";
 
-// Türkçe yolları İngilizce karşılıklarına eşleştir (nested path'ler için)
-const NESTED_SLUG_MAPPING: Record<string, string> = {
+// Türkçe nested yollar için hangi sayfa component'i render edilecek?
+const NESTED_STATIC_PAGES: Record<string, React.ComponentType> = {
     // Kategoriler
-    "kategoriler/tum": "/categories/all",
-    "kategoriler/tumu": "/categories/all",
-    "kategoriler/tümü": "/categories/all",
-    "kategoriler/hepsi": "/categories/all",
-    "kategoriler/all": "/categories/all",
-    
-    // Diğer nested yollar buraya eklenebilir
+    "kategoriler/tum": CategoriesAllPageContent,
+    "kategoriler/tumu": CategoriesAllPageContent,
+    "kategoriler/tümü": CategoriesAllPageContent,
+    "kategoriler/hepsi": CategoriesAllPageContent,
+    "kategoriler/all": CategoriesAllPageContent,
 };
 
 export default function NestedDynamicPage() {
     const params = useParams();
-    const router = useRouter();
     const [config, setConfig] = useState(getSiteConfig());
 
     useEffect(() => {
@@ -31,20 +29,8 @@ export default function NestedDynamicPage() {
     const slugArray = Array.isArray(params?.slug) ? params.slug : [params?.slug];
     const fullPath = slugArray.filter(Boolean).join("/").toLowerCase();
 
-    // Mapping'ten İngilizce karşılığını bul
-    const mappedPath = NESTED_SLUG_MAPPING[fullPath];
-
-    if (mappedPath) {
-        // Client-side redirect to the English path
-        router.replace(mappedPath);
-        return (
-            <div className="min-h-screen bg-white flex items-center justify-center">
-                <div className="text-center">
-                    <p className="text-lg text-slate-600">Yönlendiriliyor...</p>
-                </div>
-            </div>
-        );
-    }
+    const PageComponent = NESTED_STATIC_PAGES[fullPath];
+    if (PageComponent) return <PageComponent />;
 
     // 404 - Sayfa bulunamadı
     return (
