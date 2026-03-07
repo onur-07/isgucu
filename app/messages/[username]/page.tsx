@@ -56,6 +56,31 @@ const OFFER_STATUS_LABELS: Record<string, string> = {
 const offerStatusLabel = (status: string | null | undefined) =>
     OFFER_STATUS_LABELS[String(status || "pending").toLowerCase()] || "Bekliyor";
 
+const QUICK_TEMPLATES = [
+    "Merhaba, projenizi inceledim. Detaylari netlestirebiliriz.",
+    "Bu isi tahmini fiyat ve sureyle tamamlayabilirim.",
+    "Teslimden once ara guncelleme paylasacagim.",
+    "Revizyon taleplerinizi hizli sekilde uygulayabilirim.",
+];
+
+const ALLOWED_LINK_HOSTS = ["supabase.co", "vercel.app", "isgucu.com"];
+
+const hasDisallowedExternalLink = (value: string) => {
+    const text = String(value || "");
+    const urls = text.match(/https?:\/\/[^\s)\]]+/g) || [];
+    for (const raw of urls) {
+        try {
+            const u = new URL(raw);
+            const host = String(u.hostname || "").toLowerCase();
+            const ok = ALLOWED_LINK_HOSTS.some((d) => host === d || host.endsWith(`.${d}`));
+            if (!ok) return true;
+        } catch {
+            return true;
+        }
+    }
+    return false;
+};
+
 export default function MessageThreadPage() {
     const router = useRouter();
     const searchParams = useSearchParams();
@@ -531,6 +556,10 @@ export default function MessageThreadPage() {
         if (!meFold || !otherFold || !meKey || !otherKey) return;
         const trimmed = text.trim();
         if (!trimmed) return;
+        if (hasDisallowedExternalLink(trimmed)) {
+            setError("Guvenlik nedeniyle yalnizca platform ve dosya baglanti alanlarina izin verilir.");
+            return;
+        }
 
         const mod = sanitizeMessage(trimmed);
         if (!mod.allowed) {
@@ -547,6 +576,9 @@ export default function MessageThreadPage() {
             text: mod.cleanedText || trimmed,
             read: false,
         };
+        const latestIncoming = [...messages]
+            .reverse()
+            .find((m) => usernameKey(m.sender_username) === otherKey && usernameKey(m.receiver_username) === meKey);
 
         // Optimistic UI: unblock the user immediately; realtime will bring the server row.
         const tempId = `temp-${Date.now()}-${Math.random().toString(16).slice(2)}`;
@@ -602,6 +634,22 @@ export default function MessageThreadPage() {
             }
 
             setError("");
+            if (user?.id) {
+                supabase.from("profiles").update({ last_active_at: new Date().toISOString() }).eq("id", user.id).then(() => {});
+                if (latestIncoming?.created_at) {
+                    const diffMin = Math.max(1, Math.round((Date.now() - new Date(String(latestIncoming.created_at)).getTime()) / 60000));
+                    supabase
+                        .from("profiles")
+                        .select("avg_response_minutes")
+                        .eq("id", user.id)
+                        .maybeSingle()
+                        .then((res: any) => {
+                            const prev = Number(res?.data?.avg_response_minutes || 0);
+                            const next = prev > 0 ? Math.round((prev * 0.7) + (diffMin * 0.3)) : diffMin;
+                            supabase.from("profiles").update({ avg_response_minutes: next }).eq("id", user.id).then(() => {});
+                        });
+                }
+            }
 
             // Realtime should append instantly; polling will keep it consistent.
             // Do a best-effort sync shortly after to ensure persistence even if realtime is flaky.
@@ -716,6 +764,10 @@ export default function MessageThreadPage() {
         }
 
         if (offerNote.trim()) {
+            if (hasDisallowedExternalLink(offerNote.trim())) {
+                setError("Guvenlik nedeniyle teklif notunda dis baglantiya izin verilmiyor.");
+                return;
+            }
             const mod = sanitizeMessage(offerNote.trim());
             if (!mod.allowed) {
                 setError(mod.reason || "Bu içerik gönderilemez");
@@ -732,6 +784,7 @@ export default function MessageThreadPage() {
         setSending(true);
         setError("");
         try {
+            const nextRound = (offers || []).filter((o) => String(o.sender_username || "") === meKey || String(o.receiver_username || "") === meKey).length + 1;
             const payload = {
                 gig_id: null,
                 sender_id: user.id,
@@ -741,7 +794,7 @@ export default function MessageThreadPage() {
                 message: offerNote.trim() || null,
                 price,
                 delivery_days: days,
-                extras: null,
+                extras: { round: nextRound, kind: nextRound > 1 ? "counter_offer" : "offer" },
                 status: "pending",
             };
 
@@ -1090,6 +1143,11 @@ export default function MessageThreadPage() {
                                                 {offerStatusLabel(statusKey)}
                                             </div>
                                         </div>
+                                        {Number((o.extras as any)?.round || 0) > 0 ? (
+                                            <div className="mt-1 text-[10px] font-black uppercase tracking-widest text-indigo-600">
+                                                Tur #{String((o.extras as any)?.round)}
+                                            </div>
+                                        ) : null}
 
                                         <div className="mt-2 grid grid-cols-2 gap-2">
                                             <div className="rounded-xl bg-gray-50 p-3">
@@ -1209,6 +1267,18 @@ export default function MessageThreadPage() {
                             <div className="text-[10px] font-black uppercase tracking-widest text-gray-400">
                                 {otherUserId ? "" : "Kullanıcı bulunamadı"}
                             </div>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                            {QUICK_TEMPLATES.map((tpl) => (
+                                <button
+                                    key={tpl}
+                                    type="button"
+                                    onClick={() => setText((prev) => (prev.trim() ? `${prev}\n${tpl}` : tpl))}
+                                    className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-slate-600 hover:bg-slate-50"
+                                >
+                                    + Şablon
+                                </button>
+                            ))}
                         </div>
 
                         <Textarea

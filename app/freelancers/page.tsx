@@ -6,6 +6,7 @@ import { CATEGORIES_DETAILED } from "@/lib/categories-data";
 
 export default function FreelancersPage() {
     const [selectedCategoryId, setSelectedCategoryId] = useState<string>("all");
+    const [verifiedOnly, setVerifiedOnly] = useState(false);
 
     const categories = useMemo(() => {
         return [{ id: "all", title: "Tümü", icon: "✨", color: "bg-gray-50" }, ...CATEGORIES_DETAILED];
@@ -43,6 +44,14 @@ export default function FreelancersPage() {
             <div className="mb-8">
                 <div className="flex items-center justify-between gap-4 flex-wrap">
                     <h2 className="text-sm font-semibold text-gray-700">Kategoriler</h2>
+                    <div className="flex items-center gap-3">
+                        <button
+                            type="button"
+                            onClick={() => setVerifiedOnly((v) => !v)}
+                            className={`text-sm font-semibold ${verifiedOnly ? "text-emerald-700" : "text-gray-600"} hover:text-emerald-700`}
+                        >
+                            {verifiedOnly ? "✓ Doğrulanmış Freelancer" : "Doğrulanmışları Göster"}
+                        </button>
                     {selectedCategoryId !== "all" && (
                         <button
                             type="button"
@@ -52,6 +61,7 @@ export default function FreelancersPage() {
                             Filtreyi Temizle
                         </button>
                     )}
+                    </div>
                 </div>
 
                 <div className="mt-4 sm:hidden">
@@ -91,7 +101,7 @@ export default function FreelancersPage() {
                 </div>
             </div>
 
-            <GigList categoryId={selectedCategoryId === "all" ? undefined : selectedCategoryId} />
+            <GigList categoryId={selectedCategoryId === "all" ? undefined : selectedCategoryId} verifiedOnly={verifiedOnly} />
         </div>
     );
 }

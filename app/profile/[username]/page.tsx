@@ -3,6 +3,7 @@
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
+import { useAuth } from "@/components/auth/auth-context";
 import {
     Star, MapPin, Calendar, Briefcase, Award,
     Globe, Phone, Mail, ShieldCheck, Clock,
@@ -29,17 +30,25 @@ interface ProfileData {
     avatar_url: string;
     created_at: string;
     website?: string;
+    kyc_verified?: boolean;
+    portfolio_verified?: boolean;
+    avg_response_minutes?: number | null;
+    last_active_at?: string | null;
 }
 
 export default function PublicProfilePage() {
     const params = useParams<{ username: string }>();
     const router = useRouter();
+    const { user } = useAuth();
     const [loading, setLoading] = useState(true);
     const [profile, setProfile] = useState<ProfileData | null>(null);
     const [gigs, setGigs] = useState<any[]>([]);
     const [jobs, setJobs] = useState<any[]>([]);
     const [ratingAvg, setRatingAvg] = useState<number>(0);
     const [ratingCount, setRatingCount] = useState<number>(0);
+    const [offerSuccess, setOfferSuccess] = useState<{ accepted: number; total: number }>({ accepted: 0, total: 0 });
+    const [favorite, setFavorite] = useState(false);
+    const [favoriteCount, setFavoriteCount] = useState(0);
 
     useEffect(() => {
         const fetchData = async () => {
@@ -89,6 +98,32 @@ export default function PublicProfilePage() {
                     setRatingCount(count);
                     setRatingAvg(Number.isFinite(avg) ? Math.round(avg * 10) / 10 : 0);
 
+                    const { data: offerRows } = await supabase
+                        .from("offers")
+                        .select("id, status")
+                        .eq("sender_id", targetUser.id);
+                    const allOffers = Array.isArray(offerRows) ? offerRows : [];
+                    const accepted = allOffers.filter((o: any) => String(o?.status || "").toLowerCase() === "accepted").length;
+                    setOfferSuccess({ accepted, total: allOffers.length });
+
+                    const { count: favCount } = await supabase
+                        .from("user_favorites")
+                        .select("id", { count: "exact", head: true })
+                        .eq("target_user_id", targetUser.id);
+                    setFavoriteCount(Number(favCount || 0));
+
+                    if (user?.id) {
+                        const { data: meFav } = await supabase
+                            .from("user_favorites")
+                            .select("id")
+                            .eq("user_id", user.id)
+                            .eq("target_user_id", targetUser.id)
+                            .maybeSingle();
+                        setFavorite(!!meFav?.id);
+                    } else {
+                        setFavorite(false);
+                    }
+
                     // 2. Fetch Gigs if Freelancer
                     if (targetUser.role === "freelancer") {
                         const { data: gigsData } = await supabase
@@ -117,7 +152,7 @@ export default function PublicProfilePage() {
         };
 
         fetchData();
-    }, [params?.username]);
+    }, [params?.username, user?.id]);
 
     if (loading) {
         return (
@@ -147,6 +182,23 @@ export default function PublicProfilePage() {
         );
     }
 
+    const toggleFavorite = async () => {
+        if (!user?.id || !profile?.id || String(user.id) === String(profile.id)) return;
+        if (favorite) {
+            await supabase
+                .from("user_favorites")
+                .delete()
+                .eq("user_id", user.id)
+                .eq("target_user_id", profile.id);
+            setFavorite(false);
+            setFavoriteCount((p) => Math.max(0, p - 1));
+        } else {
+            await supabase.from("user_favorites").insert([{ user_id: user.id, target_user_id: profile.id }]);
+            setFavorite(true);
+            setFavoriteCount((p) => p + 1);
+        }
+    };
+
     const isFreelancer = profile.role === "freelancer";
     const isEmployer = profile.role === "employer" || profile.role === "admin";
 
@@ -161,12 +213,23 @@ export default function PublicProfilePage() {
                         </div>
                         <span className="font-black text-[10px] uppercase tracking-widest">Geri Dön</span>
                     </button>
-                    <Button
-                        onClick={() => router.push(`/messages/${encodeURIComponent(profile.username)}`)}
-                        className="bg-blue-600 hover:bg-blue-700 text-white rounded-2xl h-12 px-6 font-black uppercase text-[10px] tracking-widest gap-3 shadow-lg shadow-blue-100"
-                    >
-                        <MessageCircle className="h-4 w-4" /> MESAJ GÖNDER
-                    </Button>
+                    <div className="flex items-center gap-2">
+                        <Button
+                            onClick={() => router.push(`/messages/${encodeURIComponent(profile.username)}`)}
+                            className="bg-blue-600 hover:bg-blue-700 text-white rounded-2xl h-12 px-6 font-black uppercase text-[10px] tracking-widest gap-3 shadow-lg shadow-blue-100"
+                        >
+                            <MessageCircle className="h-4 w-4" /> MESAJ GÖNDER
+                        </Button>
+                        {user?.id && String(user.id) !== String(profile.id) ? (
+                            <Button
+                                variant="outline"
+                                onClick={toggleFavorite}
+                                className="rounded-2xl h-12 px-4 font-black uppercase text-[10px] tracking-widest"
+                            >
+                                {favorite ? "Favoriden Cikar" : "Favoriye Ekle"} ({favoriteCount})
+                            </Button>
+                        ) : null}
+                    </div>
                 </div>
             </div>
 
@@ -236,6 +299,26 @@ export default function PublicProfilePage() {
                                             <Star className="h-4 w-4 fill-amber-400 text-amber-400" />
                                             {ratingCount > 0 ? `${ratingAvg.toFixed(1)} / 5.0` : "0.0 / 5.0"}
                                             <span className="text-[10px] text-amber-500 normal-case font-bold">({ratingCount} değerlendirme)</span>
+                                        </div>
+                                        <div className="flex flex-wrap items-center gap-2">
+                                            {profile.kyc_verified ? (
+                                                <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-emerald-50 border border-emerald-100 text-emerald-700 text-[10px] font-black uppercase tracking-widest">
+                                                    <ShieldCheck className="h-4 w-4" /> KYC Doğrulandı
+                                                </span>
+                                            ) : null}
+                                            {profile.portfolio_verified ? (
+                                                <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-blue-50 border border-blue-100 text-blue-700 text-[10px] font-black uppercase tracking-widest">
+                                                    <Award className="h-4 w-4" /> Portföy Doğrulandı
+                                                </span>
+                                            ) : null}
+                                            <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-indigo-50 border border-indigo-100 text-indigo-700 text-[10px] font-black uppercase tracking-widest">
+                                                <Clock className="h-4 w-4" />
+                                                Ortalama Yanıt: {Number(profile.avg_response_minutes || 0) > 0 ? `${profile.avg_response_minutes} dk` : "Bilinmiyor"}
+                                            </span>
+                                            <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-violet-50 border border-violet-100 text-violet-700 text-[10px] font-black uppercase tracking-widest">
+                                                <Briefcase className="h-4 w-4" />
+                                                Teklif Başarı: {offerSuccess.total > 0 ? `%${Math.round((offerSuccess.accepted / offerSuccess.total) * 100)}` : "%0"}
+                                            </span>
                                         </div>
                                     </div>
 

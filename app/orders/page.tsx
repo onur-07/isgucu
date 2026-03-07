@@ -36,6 +36,38 @@ type OrderDeliveryRow = {
     created_at: string;
 };
 
+type DisputeRow = {
+    id: string | number;
+    order_id: string | number;
+    opened_by_id: string;
+    opened_by_role: "employer" | "freelancer";
+    reason: string;
+    status: string;
+    created_at: string;
+};
+
+type WorkspaceItemRow = {
+    id: string | number;
+    order_id: string | number;
+    author_id: string;
+    author_role: "employer" | "freelancer";
+    content: string;
+    is_done: boolean;
+    created_at: string;
+};
+
+type ScheduleRequestRow = {
+    id: string | number;
+    order_id: string | number;
+    requester_id: string;
+    requester_role: "employer" | "freelancer";
+    responder_id: string;
+    requested_days: number;
+    reason: string | null;
+    status: "pending" | "accepted" | "rejected";
+    created_at: string;
+};
+
 const statusConfig = {
     pending: { label: "Bekliyor", icon: Clock, color: "text-yellow-600 bg-yellow-50 border-yellow-200" },
     active: { label: "Devam Ediyor", icon: Clock, color: "text-blue-600 bg-blue-50 border-blue-200" },
@@ -50,6 +82,10 @@ export default function OrdersPage() {
     const [orders, setOrders] = useState<Order[]>([]);
     const [cancelRequests, setCancelRequests] = useState<CancellationRequestRow[]>([]);
     const [revisionNotesByOrder, setRevisionNotesByOrder] = useState<Record<string, string>>({});
+    const [disputes, setDisputes] = useState<DisputeRow[]>([]);
+    const [workspaceByOrder, setWorkspaceByOrder] = useState<Record<string, WorkspaceItemRow[]>>({});
+    const [workspaceInputByOrder, setWorkspaceInputByOrder] = useState<Record<string, string>>({});
+    const [scheduleRequests, setScheduleRequests] = useState<ScheduleRequestRow[]>([]);
     const [busyId, setBusyId] = useState<string>("");
 
     const [reviewOpen, setReviewOpen] = useState(false);
@@ -57,6 +93,9 @@ export default function OrdersPage() {
     const [reviewRating, setReviewRating] = useState<string>("5");
     const [reviewHover, setReviewHover] = useState<number>(0);
     const [reviewComment, setReviewComment] = useState<string>("");
+    const [reviewCommunication, setReviewCommunication] = useState<string>("5");
+    const [reviewQuality, setReviewQuality] = useState<string>("5");
+    const [reviewSpeed, setReviewSpeed] = useState<string>("5");
     const norm = (v: string | null | undefined) => String(v || "").trim().toLowerCase();
 
     const [deliveryOpen, setDeliveryOpen] = useState(false);
@@ -126,6 +165,68 @@ export default function OrdersPage() {
         setRevisionNotesByOrder(next);
     };
 
+    const loadDisputes = async (orderRows: Order[]) => {
+        const ids = orderRows.map((o) => Number(o.id)).filter((n) => Number.isFinite(n) && n > 0);
+        if (ids.length === 0) {
+            setDisputes([]);
+            return;
+        }
+        const { data, error } = await supabase
+            .from("order_disputes")
+            .select("id, order_id, opened_by_id, opened_by_role, reason, status, created_at")
+            .in("order_id", ids)
+            .order("created_at", { ascending: false });
+        if (error) {
+            setDisputes([]);
+            return;
+        }
+        setDisputes((data || []) as unknown as DisputeRow[]);
+    };
+
+    const loadWorkspace = async (orderRows: Order[]) => {
+        const ids = orderRows.map((o) => Number(o.id)).filter((n) => Number.isFinite(n) && n > 0);
+        if (ids.length === 0) {
+            setWorkspaceByOrder({});
+            return;
+        }
+        const { data, error } = await supabase
+            .from("order_workspace_items")
+            .select("id, order_id, author_id, author_role, content, is_done, created_at")
+            .in("order_id", ids)
+            .order("created_at", { ascending: false });
+        if (error) {
+            setWorkspaceByOrder({});
+            return;
+        }
+        const rows = (data || []) as unknown as WorkspaceItemRow[];
+        const map: Record<string, WorkspaceItemRow[]> = {};
+        for (const r of rows) {
+            const k = String(r.order_id || "");
+            if (!k) continue;
+            if (!map[k]) map[k] = [];
+            map[k].push(r);
+        }
+        setWorkspaceByOrder(map);
+    };
+
+    const loadScheduleRequests = async (orderRows: Order[]) => {
+        const ids = orderRows.map((o) => Number(o.id)).filter((n) => Number.isFinite(n) && n > 0);
+        if (ids.length === 0) {
+            setScheduleRequests([]);
+            return;
+        }
+        const { data, error } = await supabase
+            .from("order_schedule_requests")
+            .select("id, order_id, requester_id, requester_role, responder_id, requested_days, reason, status, created_at")
+            .in("order_id", ids)
+            .order("created_at", { ascending: false });
+        if (error) {
+            setScheduleRequests([]);
+            return;
+        }
+        setScheduleRequests((data || []) as unknown as ScheduleRequestRow[]);
+    };
+
     useEffect(() => {
         if (!user) { router.push("/login"); return; }
         (async () => {
@@ -133,6 +234,9 @@ export default function OrdersPage() {
             setOrders(rows);
             await loadCancellationRequests(rows);
             await loadRevisionNotes(rows);
+            await loadDisputes(rows);
+            await loadWorkspace(rows);
+            await loadScheduleRequests(rows);
         })();
     }, [user, router]);
 
@@ -230,6 +334,9 @@ export default function OrdersPage() {
         setOrders(rows);
         await loadCancellationRequests(rows);
         await loadRevisionNotes(rows);
+        await loadDisputes(rows);
+        await loadWorkspace(rows);
+        await loadScheduleRequests(rows);
     };
 
     const safeTransitionOrderStatus = async (orderId: number, nextStatus: "active" | "delivered" | "completed" | "cancelled") => {
@@ -388,6 +495,148 @@ export default function OrdersPage() {
         }
     };
 
+    const handleOpenDispute = async (order: Order) => {
+        if (!user || !order?.id || busyId) return;
+        const reason = window.prompt("Anlasmazlik nedeni nedir?");
+        if (!reason || !reason.trim()) return;
+        setBusyId(String(order.id));
+        try {
+            const openedByRole = user.role === "employer" ? "employer" : "freelancer";
+            const { error } = await supabase.from("order_disputes").insert([
+                {
+                    order_id: Number(order.id),
+                    opened_by_id: user.id,
+                    opened_by_role: openedByRole,
+                    reason: reason.trim(),
+                    status: "open",
+                },
+            ]);
+            if (error) throw error;
+            await logAuditEvent(supabase, {
+                actorId: user.id,
+                actorRole: user.role,
+                action: "order_dispute_opened",
+                targetType: "order",
+                targetId: String(order.id),
+                metadata: { reason: reason.trim().slice(0, 180) },
+            });
+            await refresh();
+        } catch (e: any) {
+            window.alert("Anlasmazlik olusturulamadi: " + String(e?.message || e));
+        } finally {
+            setBusyId("");
+        }
+    };
+
+    const handleAddWorkspaceItem = async (order: Order) => {
+        if (!user || !order?.id || busyId) return;
+        const content = String(workspaceInputByOrder[String(order.id)] || "").trim();
+        if (!content) return;
+        setBusyId(`ws-${String(order.id)}`);
+        try {
+            const role = user.role === "employer" ? "employer" : "freelancer";
+            const { error } = await supabase.from("order_workspace_items").insert([
+                {
+                    order_id: Number(order.id),
+                    author_id: user.id,
+                    author_role: role,
+                    kind: "todo",
+                    content,
+                    is_done: false,
+                },
+            ]);
+            if (error) throw error;
+            setWorkspaceInputByOrder((prev) => ({ ...prev, [String(order.id)]: "" }));
+            await refresh();
+        } catch (e: any) {
+            window.alert("Workspace kaydi eklenemedi: " + String(e?.message || e));
+        } finally {
+            setBusyId("");
+        }
+    };
+
+    const handleToggleWorkspaceDone = async (item: WorkspaceItemRow) => {
+        if (busyId) return;
+        setBusyId(`ws-item-${String(item.id)}`);
+        try {
+            const { error } = await supabase
+                .from("order_workspace_items")
+                .update({ is_done: !item.is_done, updated_at: new Date().toISOString() })
+                .eq("id", Number(item.id));
+            if (error) throw error;
+            await refresh();
+        } catch (e: any) {
+            window.alert("Workspace kaydi guncellenemedi: " + String(e?.message || e));
+        } finally {
+            setBusyId("");
+        }
+    };
+
+    const handleCreateScheduleRequest = async (order: Order) => {
+        if (!user || !order?.id || busyId) return;
+        const daysRaw = window.prompt("Kac gun ek sure istiyorsunuz? (sayi)");
+        const days = Number(String(daysRaw || "").trim());
+        if (!Number.isFinite(days) || days <= 0) return;
+        const reason = window.prompt("Kisa aciklama (opsiyonel):") || "";
+
+        const requesterRole = user.role === "employer" ? "employer" : "freelancer";
+        const responderId = requesterRole === "employer" ? (order.sellerId || "") : (order.buyerId || "");
+        if (!responderId) return;
+
+        setBusyId(`sch-${String(order.id)}`);
+        try {
+            const { error } = await supabase.from("order_schedule_requests").insert([
+                {
+                    order_id: Number(order.id),
+                    requester_id: user.id,
+                    requester_role: requesterRole,
+                    responder_id: responderId,
+                    requested_days: days,
+                    reason: reason.trim() || null,
+                    status: "pending",
+                },
+            ]);
+            if (error) throw error;
+            await refresh();
+        } catch (e: any) {
+            window.alert("Tarih uzatma talebi olusturulamadi: " + String(e?.message || e));
+        } finally {
+            setBusyId("");
+        }
+    };
+
+    const handleRespondScheduleRequest = async (req: ScheduleRequestRow, decision: "accepted" | "rejected") => {
+        if (!user || busyId) return;
+        if (String(req.responder_id) !== String(user.id)) return;
+        setBusyId(`sch-req-${String(req.id)}`);
+        try {
+            const { error: updErr } = await supabase
+                .from("order_schedule_requests")
+                .update({ status: decision, responded_at: new Date().toISOString() })
+                .eq("id", Number(req.id));
+            if (updErr) throw updErr;
+            if (decision === "accepted") {
+                const { data: ord, error: ordErr } = await supabase
+                    .from("orders")
+                    .select("id, total_days")
+                    .eq("id", Number(req.order_id))
+                    .maybeSingle();
+                if (ordErr) throw ordErr;
+                const currentDays = Number((ord as any)?.total_days || 0);
+                const { error: ordUpdErr } = await supabase
+                    .from("orders")
+                    .update({ total_days: currentDays + Number(req.requested_days || 0) })
+                    .eq("id", Number(req.order_id));
+                if (ordUpdErr) throw ordUpdErr;
+            }
+            await refresh();
+        } catch (e: any) {
+            window.alert("Tarih talebi guncellenemedi: " + String(e?.message || e));
+        } finally {
+            setBusyId("");
+        }
+    };
+
     const handleSendDelivery = async (order: Order, messageInput: string) => {
         if (!user) return;
         if (busyId) return;
@@ -398,6 +647,13 @@ export default function OrdersPage() {
 
         setBusyId(order.id);
         try {
+            const { data: deliveryRows } = await supabase
+                .from("order_deliveries")
+                .select("id")
+                .eq("order_id", Number(order.id))
+                .eq("kind", "delivery");
+            const version = (Array.isArray(deliveryRows) ? deliveryRows.length : 0) + 1;
+
             const { error: insErr } = await supabase.from("order_deliveries").insert([
                 {
                     order_id: Number(order.id),
@@ -405,7 +661,7 @@ export default function OrdersPage() {
                     sender_role: "freelancer",
                     kind: "delivery",
                     message: message.trim() || null,
-                    files: null,
+                    files: { version },
                 },
             ]);
             if (insErr) throw insErr;
@@ -439,7 +695,14 @@ export default function OrdersPage() {
         }
     };
 
-    const insertReview = async (order: Order, rating: number, comment: string) => {
+    const insertReview = async (
+        order: Order,
+        rating: number,
+        comment: string,
+        communicationRating: number,
+        qualityRating: number,
+        speedRating: number
+    ) => {
         if (!user) return;
         if (busyId) return;
         if (order.status !== "completed" && order.status !== "delivered") return;
@@ -459,6 +722,9 @@ export default function OrdersPage() {
                     to_user_id: otherId,
                     rating,
                     comment: comment.trim() || null,
+                    communication_rating: communicationRating,
+                    quality_rating: qualityRating,
+                    speed_rating: speedRating,
                 },
             ]);
             if (error) {
@@ -484,6 +750,9 @@ export default function OrdersPage() {
         if (order.status !== "completed" && order.status !== "delivered") return;
         setReviewOrder(order);
         setReviewRating("5");
+        setReviewCommunication("5");
+        setReviewQuality("5");
+        setReviewSpeed("5");
         setReviewHover(0);
         setReviewComment("");
         setReviewOpen(true);
@@ -499,7 +768,14 @@ export default function OrdersPage() {
         setReviewOpen(false);
         const o = reviewOrder;
         setReviewOrder(null);
-        await insertReview(o, rating, reviewComment);
+        const c = Math.round(Number(reviewCommunication));
+        const q = Math.round(Number(reviewQuality));
+        const s = Math.round(Number(reviewSpeed));
+        if (![c, q, s].every((v) => Number.isFinite(v) && v >= 1 && v <= 5)) {
+            window.alert("Alt puanlar 1-5 arasinda olmalidir.");
+            return;
+        }
+        await insertReview(o, rating, reviewComment, c, q, s);
     };
 
     const handleRequestRevision = async (order: Order, reasonInput: string) => {
@@ -735,6 +1011,20 @@ export default function OrdersPage() {
                             <div className="space-y-2">
                                 <div className="text-xs font-black uppercase tracking-widest text-slate-500">Yorum (opsiyonel)</div>
                                 <Textarea value={reviewComment} onChange={(e) => setReviewComment(e.target.value)} className="min-h-[110px]" />
+                            </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                <div>
+                                    <div className="text-xs font-black uppercase tracking-widest text-slate-500 mb-1">Iletisim</div>
+                                    <Input value={reviewCommunication} onChange={(e) => setReviewCommunication(e.target.value.replace(/[^\d]/g, "").slice(0, 1) || "5")} />
+                                </div>
+                                <div>
+                                    <div className="text-xs font-black uppercase tracking-widest text-slate-500 mb-1">Kalite</div>
+                                    <Input value={reviewQuality} onChange={(e) => setReviewQuality(e.target.value.replace(/[^\d]/g, "").slice(0, 1) || "5")} />
+                                </div>
+                                <div>
+                                    <div className="text-xs font-black uppercase tracking-widest text-slate-500 mb-1">Hiz</div>
+                                    <Input value={reviewSpeed} onChange={(e) => setReviewSpeed(e.target.value.replace(/[^\d]/g, "").slice(0, 1) || "5")} />
+                                </div>
                             </div>
                         </div>
 
@@ -983,6 +1273,26 @@ export default function OrdersPage() {
                                                     <Star className="h-4 w-4 mr-1" /> Değerlendir
                                                 </Button>
                                             )}
+                                            {(order.status === "active" || order.status === "delivered") && (
+                                                <Button
+                                                    size="sm"
+                                                    disabled={busy}
+                                                    onClick={() => handleOpenDispute(order)}
+                                                    className="bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200"
+                                                >
+                                                    Anlasmazlik
+                                                </Button>
+                                            )}
+                                            {(order.status === "active" || order.status === "delivered") && (
+                                                <Button
+                                                    size="sm"
+                                                    disabled={busy}
+                                                    onClick={() => handleCreateScheduleRequest(order)}
+                                                    className="bg-sky-50 hover:bg-sky-100 text-sky-700 border border-sky-200"
+                                                >
+                                                    Tarih Talebi
+                                                </Button>
+                                            )}
                                         </div>
                                     </div>
                                 </div>
@@ -1028,6 +1338,59 @@ export default function OrdersPage() {
                                         )}
                                     </div>
                                 )}
+                                <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-4">
+                                    <div className="text-[10px] font-black uppercase tracking-widest text-slate-500">Order Workspace</div>
+                                    <div className="mt-3 flex gap-2">
+                                        <Input
+                                            value={workspaceInputByOrder[String(order.id)] || ""}
+                                            onChange={(e) => setWorkspaceInputByOrder((prev) => ({ ...prev, [String(order.id)]: e.target.value }))}
+                                            placeholder="Yapilacak veya not ekle..."
+                                        />
+                                        <Button
+                                            size="sm"
+                                            disabled={busyId === `ws-${String(order.id)}`}
+                                            onClick={() => handleAddWorkspaceItem(order)}
+                                            className="bg-slate-900 hover:bg-slate-800 text-white"
+                                        >
+                                            Ekle
+                                        </Button>
+                                    </div>
+                                    <div className="mt-3 space-y-2">
+                                        {(workspaceByOrder[String(order.id)] || []).slice(0, 5).map((item) => (
+                                            <div key={String(item.id)} className="flex items-center justify-between gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2">
+                                                <div className={`text-sm ${item.is_done ? "line-through text-slate-400" : "text-slate-700"}`}>{item.content}</div>
+                                                <Button variant="outline" size="sm" onClick={() => handleToggleWorkspaceDone(item)}>
+                                                    {item.is_done ? "Geri Al" : "Tamamla"}
+                                                </Button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                                {!!disputes.find((d) => Number(d.order_id) === Number(order.id)) && (
+                                    <div className="mt-4 rounded-xl border border-rose-200 bg-rose-50 p-4">
+                                        <div className="text-[10px] font-black uppercase tracking-widest text-rose-700">
+                                            Anlasmazlik Kaydi: {String(disputes.find((d) => Number(d.order_id) === Number(order.id))?.status || "").toUpperCase()}
+                                        </div>
+                                        <div className="text-sm text-rose-900 mt-1">
+                                            {String(disputes.find((d) => Number(d.order_id) === Number(order.id))?.reason || "")}
+                                        </div>
+                                    </div>
+                                )}
+                                {scheduleRequests.filter((r) => Number(r.order_id) === Number(order.id)).slice(0, 1).map((sr) => (
+                                    <div key={String(sr.id)} className="mt-4 rounded-xl border border-sky-200 bg-sky-50 p-4">
+                                        <div className="text-[10px] font-black uppercase tracking-widest text-sky-700">
+                                            Tarih Talebi - {String(sr.status || "").toUpperCase()}
+                                        </div>
+                                        <div className="text-sm text-sky-900 mt-1">Ek sure: {sr.requested_days} gun</div>
+                                        {sr.reason ? <div className="text-xs text-sky-800 mt-1">{sr.reason}</div> : null}
+                                        {String(sr.status) === "pending" && String(sr.responder_id) === String(user.id) ? (
+                                            <div className="mt-2 flex gap-2 justify-end">
+                                                <Button size="sm" variant="outline" onClick={() => handleRespondScheduleRequest(sr, "rejected")}>Reddet</Button>
+                                                <Button size="sm" className="bg-sky-600 hover:bg-sky-700 text-white" onClick={() => handleRespondScheduleRequest(sr, "accepted")}>Onayla</Button>
+                                            </div>
+                                        ) : null}
+                                    </div>
+                                ))}
                             </div>
                         );
                     })}

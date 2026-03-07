@@ -522,3 +522,139 @@ DROP POLICY IF EXISTS "Admins can view paytr events" ON paytr_events;
 CREATE POLICY "Admins can view paytr events" ON paytr_events
   FOR SELECT
   USING (EXISTS (SELECT 1 FROM profiles p WHERE p.id = auth.uid() AND p.role = 'admin'));
+
+-- COLLABORATION V2 (FEATURES 3-12)
+ALTER TABLE reviews
+  ADD COLUMN IF NOT EXISTS communication_rating INTEGER CHECK (communication_rating >= 1 AND communication_rating <= 5),
+  ADD COLUMN IF NOT EXISTS quality_rating INTEGER CHECK (quality_rating >= 1 AND quality_rating <= 5),
+  ADD COLUMN IF NOT EXISTS speed_rating INTEGER CHECK (speed_rating >= 1 AND speed_rating <= 5),
+  ADD COLUMN IF NOT EXISTS moderated BOOLEAN DEFAULT FALSE,
+  ADD COLUMN IF NOT EXISTS moderation_note TEXT;
+
+ALTER TABLE profiles
+  ADD COLUMN IF NOT EXISTS kyc_verified BOOLEAN DEFAULT FALSE,
+  ADD COLUMN IF NOT EXISTS portfolio_verified BOOLEAN DEFAULT FALSE,
+  ADD COLUMN IF NOT EXISTS avg_response_minutes INTEGER,
+  ADD COLUMN IF NOT EXISTS last_active_at TIMESTAMP WITH TIME ZONE;
+
+CREATE TABLE IF NOT EXISTS order_disputes (
+  id BIGSERIAL PRIMARY KEY,
+  order_id BIGINT REFERENCES orders(id) ON DELETE CASCADE NOT NULL,
+  opened_by_id UUID REFERENCES auth.users ON DELETE CASCADE NOT NULL,
+  opened_by_role TEXT CHECK (opened_by_role IN ('employer', 'freelancer')) NOT NULL,
+  reason TEXT NOT NULL,
+  evidence JSONB,
+  status TEXT CHECK (status IN ('open', 'under_review', 'resolved_for_employer', 'resolved_for_freelancer', 'rejected')) DEFAULT 'open',
+  resolution_note TEXT,
+  resolved_by_admin_id UUID REFERENCES auth.users ON DELETE SET NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL,
+  resolved_at TIMESTAMP WITH TIME ZONE
+);
+
+CREATE TABLE IF NOT EXISTS order_workspace_items (
+  id BIGSERIAL PRIMARY KEY,
+  order_id BIGINT REFERENCES orders(id) ON DELETE CASCADE NOT NULL,
+  author_id UUID REFERENCES auth.users ON DELETE CASCADE NOT NULL,
+  author_role TEXT CHECK (author_role IN ('employer', 'freelancer')) NOT NULL,
+  kind TEXT CHECK (kind IN ('todo', 'note', 'checklist')) DEFAULT 'todo',
+  content TEXT NOT NULL,
+  is_done BOOLEAN DEFAULT FALSE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL,
+  updated_at TIMESTAMP WITH TIME ZONE
+);
+
+CREATE TABLE IF NOT EXISTS order_schedule_requests (
+  id BIGSERIAL PRIMARY KEY,
+  order_id BIGINT REFERENCES orders(id) ON DELETE CASCADE NOT NULL,
+  requester_id UUID REFERENCES auth.users ON DELETE CASCADE NOT NULL,
+  requester_role TEXT CHECK (requester_role IN ('employer', 'freelancer')) NOT NULL,
+  responder_id UUID REFERENCES auth.users ON DELETE CASCADE NOT NULL,
+  requested_days INTEGER NOT NULL CHECK (requested_days > 0),
+  reason TEXT,
+  status TEXT CHECK (status IN ('pending', 'accepted', 'rejected')) DEFAULT 'pending',
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL,
+  responded_at TIMESTAMP WITH TIME ZONE
+);
+
+CREATE TABLE IF NOT EXISTS user_favorites (
+  id BIGSERIAL PRIMARY KEY,
+  user_id UUID REFERENCES auth.users ON DELETE CASCADE NOT NULL,
+  target_user_id UUID REFERENCES auth.users ON DELETE CASCADE NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL,
+  UNIQUE(user_id, target_user_id)
+);
+
+ALTER TABLE order_disputes ENABLE ROW LEVEL SECURITY;
+ALTER TABLE order_workspace_items ENABLE ROW LEVEL SECURITY;
+ALTER TABLE order_schedule_requests ENABLE ROW LEVEL SECURITY;
+ALTER TABLE user_favorites ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Users can view own disputes" ON order_disputes;
+CREATE POLICY "Users can view own disputes" ON order_disputes
+  FOR SELECT
+  USING (
+    EXISTS (
+      SELECT 1 FROM orders o
+      WHERE o.id = order_disputes.order_id
+        AND (auth.uid() = o.buyer_id OR auth.uid() = o.seller_id)
+    )
+    OR EXISTS (SELECT 1 FROM profiles p WHERE p.id = auth.uid() AND p.role = 'admin')
+  );
+
+DROP POLICY IF EXISTS "Users can create disputes" ON order_disputes;
+CREATE POLICY "Users can create disputes" ON order_disputes
+  FOR INSERT
+  WITH CHECK (auth.uid() = opened_by_id);
+
+DROP POLICY IF EXISTS "Users can view workspace" ON order_workspace_items;
+CREATE POLICY "Users can view workspace" ON order_workspace_items
+  FOR SELECT
+  USING (
+    EXISTS (
+      SELECT 1 FROM orders o
+      WHERE o.id = order_workspace_items.order_id
+        AND (auth.uid() = o.buyer_id OR auth.uid() = o.seller_id)
+    )
+  );
+
+DROP POLICY IF EXISTS "Users can write workspace" ON order_workspace_items;
+CREATE POLICY "Users can write workspace" ON order_workspace_items
+  FOR INSERT
+  WITH CHECK (auth.uid() = author_id);
+
+DROP POLICY IF EXISTS "Users can update workspace" ON order_workspace_items;
+CREATE POLICY "Users can update workspace" ON order_workspace_items
+  FOR UPDATE
+  USING (
+    EXISTS (
+      SELECT 1 FROM orders o
+      WHERE o.id = order_workspace_items.order_id
+        AND (auth.uid() = o.buyer_id OR auth.uid() = o.seller_id)
+    )
+  );
+
+DROP POLICY IF EXISTS "Users can view schedule requests" ON order_schedule_requests;
+CREATE POLICY "Users can view schedule requests" ON order_schedule_requests
+  FOR SELECT
+  USING (auth.uid() = requester_id OR auth.uid() = responder_id);
+
+DROP POLICY IF EXISTS "Users can create schedule requests" ON order_schedule_requests;
+CREATE POLICY "Users can create schedule requests" ON order_schedule_requests
+  FOR INSERT
+  WITH CHECK (auth.uid() = requester_id);
+
+DROP POLICY IF EXISTS "Responder can update schedule requests" ON order_schedule_requests;
+CREATE POLICY "Responder can update schedule requests" ON order_schedule_requests
+  FOR UPDATE
+  USING (auth.uid() = responder_id);
+
+DROP POLICY IF EXISTS "Users can view favorites" ON user_favorites;
+CREATE POLICY "Users can view favorites" ON user_favorites
+  FOR SELECT
+  USING (auth.uid() = user_id OR auth.uid() = target_user_id);
+
+DROP POLICY IF EXISTS "Users can manage favorites" ON user_favorites;
+CREATE POLICY "Users can manage favorites" ON user_favorites
+  FOR ALL
+  USING (auth.uid() = user_id)
+  WITH CHECK (auth.uid() = user_id);

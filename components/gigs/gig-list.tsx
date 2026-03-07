@@ -25,12 +25,13 @@ interface Gig {
     isActive?: boolean;
     seller?: string;
     sellerAvatarUrl?: string;
+    sellerVerified?: boolean;
     images?: string[];
     tags?: string[];
     packages?: Record<string, PackageData>;
 }
 
-export function GigList({ category, categoryId, limit }: { category?: string; categoryId?: string; limit?: number }) {
+export function GigList({ category, categoryId, limit, verifiedOnly }: { category?: string; categoryId?: string; limit?: number; verifiedOnly?: boolean }) {
     const [gigs, setGigs] = useState<Gig[]>([]);
     const [loading, setLoading] = useState(true);
     const [loadError, setLoadError] = useState<string>("");
@@ -93,11 +94,12 @@ export function GigList({ category, categoryId, limit }: { category?: string; ca
 
                     let usernameById: Record<string, string> = {};
                     let avatarById: Record<string, string> = {};
+                    let verifiedById: Record<string, boolean> = {};
                     if (userIds.length > 0) {
                         const profilesRes = (await withTimeout(
                             supabase
                                 .from("profiles")
-                                .select("id, username, avatar_url")
+                                .select("id, username, avatar_url, kyc_verified")
                                 .in("id", userIds),
                             TIMEOUT_MS,
                             "Profiles sorgusu"
@@ -118,6 +120,11 @@ export function GigList({ category, categoryId, limit }: { category?: string; ca
                                 if (p?.id && p?.avatar_url) acc[String(p.id)] = String(p.avatar_url);
                                 return acc;
                             }, {} as Record<string, string>);
+
+                            verifiedById = (profiles || []).reduce((acc: any, p: any) => {
+                                if (p?.id) acc[String(p.id)] = !!p?.kyc_verified;
+                                return acc;
+                            }, {} as Record<string, boolean>);
                         }
                     }
 
@@ -134,6 +141,7 @@ export function GigList({ category, categoryId, limit }: { category?: string; ca
                         packages: g.packages || undefined,
                         seller: usernameById[String(g.user_id)] || "Anonim",
                         sellerAvatarUrl: avatarById[String(g.user_id)] || "",
+                        sellerVerified: !!verifiedById[String(g.user_id)],
                     }));
                     setGigs(normalized);
                 }
@@ -184,8 +192,9 @@ export function GigList({ category, categoryId, limit }: { category?: string; ca
     }
 
     const displayGigs = limit ? filteredGigs.slice(0, limit) : filteredGigs;
+    const finalGigs = verifiedOnly ? displayGigs.filter((g) => !!g.sellerVerified) : displayGigs;
 
-    if (displayGigs.length === 0) {
+    if (finalGigs.length === 0) {
         return (
             <div className="w-full py-14">
                 <div className="mx-auto max-w-xl rounded-2xl border border-gray-100 bg-white p-8 text-center shadow-sm">
@@ -203,7 +212,7 @@ export function GigList({ category, categoryId, limit }: { category?: string; ca
 
     return (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {displayGigs.map((gig) => (
+            {finalGigs.map((gig) => (
                 <GigCard key={gig.id} gig={gig} />
             ))}
         </div>
