@@ -216,125 +216,114 @@ export default function Home() {
   return (
     <div className="flex flex-col min-h-screen">
       {/* Hero Section */}
-      <section className="relative w-full py-16 md:py-20 lg:py-24 overflow-hidden">
-        <div className="absolute inset-0 -z-10 bg-white">
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_var(--tw-gradient-stops))] from-blue-100/40 via-transparent to-transparent"></div>
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom_left,_var(--tw-gradient-stops))] from-indigo-100/40 via-transparent to-transparent"></div>
-          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-full max-w-[1200px] bg-[url('/grid.svg')] opacity-[0.04]"></div>
-          <div className="absolute -top-12 -left-12 h-48 w-48 rounded-full bg-blue-200/25 blur-3xl" />
-          <div className="absolute -bottom-16 -right-10 h-56 w-56 rounded-full bg-cyan-200/30 blur-3xl" />
+      <section className="relative w-full overflow-hidden bg-gradient-to-b from-[#07153a] via-[#0b1f4d] to-[#f8fbff] py-14 md:py-20 lg:py-24">
+        <div className="absolute inset-0 -z-10">
+          <div className="absolute -top-16 -left-20 h-72 w-72 rounded-full bg-cyan-400/20 blur-3xl" />
+          <div className="absolute top-24 right-0 h-80 w-80 rounded-full bg-blue-500/20 blur-3xl" />
+          <div className="absolute inset-x-0 top-0 h-64 bg-[radial-gradient(circle_at_30%_20%,rgba(255,255,255,.18),transparent_55%)]" />
         </div>
 
-        <div className="container mx-auto px-4 md:px-6 flex flex-col items-center justify-center text-center space-y-6 relative z-10">
-          <p className="text-xl md:text-3xl font-black tracking-tight leading-tight">
-            <span className="text-black">Burada </span>
-            <span
-              key={rotatingHeroWords[activeHeroWordIndex]}
-              className="text-orange-500 animate-in fade-in duration-500 inline-block"
-            >
-              {rotatingHeroWords[activeHeroWordIndex]}
-            </span>
-            <span className="text-black"> çok kolay</span>
-          </p>
-
-          <div className="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 border-transparent bg-blue-50 text-blue-700 hover:bg-blue-100 mb-4">
-            ✨ Geleceğin Çalışma Modeli
-          </div>
-
-          <h1 className="text-5xl md:text-7xl font-bold tracking-tight bg-gradient-to-br from-gray-900 via-gray-800 to-gray-600 bg-clip-text text-transparent font-heading max-w-[900px] leading-tight mb-12 animate-in fade-in slide-in-from-bottom-5 duration-1000">
-            Projeni <br /> <span className="text-blue-600 italic">Gerçeğe Dönüştür</span>
-          </h1>
-
-          {homeSummaryText.length > 0 && (
-            <p className="max-w-[800px] text-gray-600 text-base md:text-lg font-semibold leading-relaxed">
-              {homeSummaryText}
-            </p>
-          )}
-
-          <div className="w-full max-w-4xl rounded-3xl border border-blue-100 bg-gradient-to-r from-blue-50 via-white to-cyan-50 px-6 py-5 shadow-sm">
-            <h2 className="text-lg md:text-2xl font-black text-gray-900">
-              Freelancer Platformu: Proje Yaptırma, İş Bulma ve Uzman Freelancer Hizmetleri
-            </h2>
-            <p className="mt-2 text-sm md:text-base font-semibold text-gray-600">
-              Web tasarım, yapay zeka, logo tasarım, video düzenleme ve içerik üretimi dahil yüzlerce hizmette hızlı eşleşme, güvenli ödeme ve şeffaf süreç sunuyoruz.
-            </p>
-            <div className="mt-3 flex flex-wrap justify-center gap-2">
-              {["freelancer platformu", "proje yaptırma", "uzman freelancer", "hizmet ilanı", "güvenli ödeme"].map((item) => (
-                <span key={item} className="rounded-full border border-blue-200 bg-white px-3 py-1 text-xs font-bold text-blue-700">
-                  {item}
-                </span>
-              ))}
-            </div>
-          </div>
-
-          <form
-            className="w-full max-w-2xl"
-            onSubmit={(e) => {
-              e.preventDefault();
-              const raw = query.trim();
-              if (!raw) {
-                router.push("/jobs");
-                return;
-              }
-              const normalized = normalizeJobSearch(raw);
-              router.push(`/jobs?q=${encodeURIComponent(normalized || raw)}`);
-            }}
-          >
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 bg-white p-3 rounded-3xl shadow-2xl border border-gray-100">
-              <div className="relative flex-1">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
-                <Input
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  className="pl-12 h-12 border-0 shadow-none focus-visible:ring-0 text-base"
-                  placeholder="Ne hizmeti arıyorsun? (ör: logo, web sitesi, seo)"
-                />
+        <div className="container mx-auto px-4 md:px-6 relative z-10">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+            <div className="lg:col-span-7 text-center lg:text-left space-y-6">
+              <div className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-blue-100">
+                <Sparkles className="h-4 w-4 text-orange-300" /> Premium Freelancer Platformu
               </div>
-              <Button size="lg" className="rounded-2xl bg-blue-600 hover:bg-blue-700 h-12 px-10 font-black">
-                Ara
-              </Button>
+              <p className="text-xl md:text-3xl font-black tracking-tight leading-tight text-white">
+                <span className="text-blue-100">Burada </span>
+                <span key={rotatingHeroWords[activeHeroWordIndex]} className="text-orange-300 animate-in fade-in duration-500 inline-block">
+                  {rotatingHeroWords[activeHeroWordIndex]}
+                </span>
+                <span className="text-blue-100"> çok kolay</span>
+              </p>
+              <h1 className="text-4xl md:text-6xl font-black tracking-tight leading-tight text-white">
+                Projeni <span className="text-cyan-300 italic">Doğru Uzmanla</span> Büyüt
+              </h1>
+              {homeSummaryText.length > 0 ? (
+                <p className="max-w-2xl text-blue-100/90 text-sm md:text-base font-semibold leading-relaxed mx-auto lg:mx-0">
+                  {homeSummaryText}
+                </p>
+              ) : null}
+
+              <form
+                className="w-full max-w-2xl mx-auto lg:mx-0"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  const raw = query.trim();
+                  if (!raw) {
+                    router.push("/jobs");
+                    return;
+                  }
+                  const normalized = normalizeJobSearch(raw);
+                  router.push(`/jobs?q=${encodeURIComponent(normalized || raw)}`);
+                }}
+              >
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 bg-white p-2 rounded-2xl shadow-2xl border border-white/30">
+                  <div className="relative flex-1">
+                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
+                    <Input
+                      value={query}
+                      onChange={(e) => setQuery(e.target.value)}
+                      className="pl-12 h-12 border-0 shadow-none focus-visible:ring-0 text-base text-slate-900"
+                      placeholder="Hizmet, etiket veya ilan ara..."
+                    />
+                  </div>
+                  <Button size="lg" className="rounded-xl bg-[#0b1f4d] hover:bg-[#102d73] h-12 px-8 font-black text-white">
+                    Ara
+                  </Button>
+                </div>
+                <div className="mt-4 flex flex-col sm:flex-row gap-3">
+                  <Link href="/register?role=freelancer" className="w-full sm:w-auto">
+                    <Button size="lg" variant="secondary" className="w-full sm:w-auto font-black px-8 h-12 rounded-xl">
+                      Freelancer Ol
+                    </Button>
+                  </Link>
+                  <Link href="/register?role=employer" className="w-full sm:w-auto">
+                    <Button size="lg" className="w-full sm:w-auto bg-orange-500 hover:bg-orange-600 text-white font-black px-8 h-12 rounded-xl">
+                      İş İlanı Ver
+                    </Button>
+                  </Link>
+                </div>
+              </form>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
+                {[
+                  { label: "Güvenli Ödeme", icon: ShieldCheck },
+                  { label: "Hızlı Eşleşme", icon: ZapIcon },
+                  { label: "Net Süreç", icon: Briefcase },
+                ].map((item) => (
+                  <div key={item.label} className="rounded-xl border border-white/15 bg-white/10 px-4 py-3 text-blue-50 font-bold text-xs flex items-center gap-2 justify-center lg:justify-start">
+                    <item.icon className="h-4 w-4 text-cyan-300" /> {item.label}
+                  </div>
+                ))}
+              </div>
             </div>
 
-            <div className="mt-4 flex flex-col sm:flex-row gap-3 justify-center">
-              <Link href="/register?role=freelancer" className="w-full sm:w-auto">
-                <Button size="lg" variant="secondary" className="w-full sm:w-auto font-black px-10 h-14 rounded-2xl shadow-lg">
-                  Freelancer Ol
-                </Button>
-              </Link>
-              <Link href="/register?role=employer" className="w-full sm:w-auto">
-                <Button size="lg" className="w-full sm:w-auto bg-gray-900 hover:bg-black font-black px-10 h-14 rounded-2xl shadow-lg">
-                  İş İlanı Ver
-                </Button>
-              </Link>
-            </div>
-          </form>
-
-          <div className="pt-2 grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-4xl w-full">
-            {[{
-              title: "Güvenli Ödeme",
-              desc: "Ödeme süreçleri kontrol altında.",
-              Icon: ShieldCheck,
-            }, {
-              title: "Hızlı Eşleşme",
-              desc: "Doğru uzmanı dakikalar içinde bul.",
-              Icon: ZapIcon,
-            }, {
-              title: "Şeffaf Süreç",
-              desc: "Teklif, teslim, onay adımları net.",
-              Icon: Briefcase,
-            }].map(({ title, desc, Icon }) => (
-              <div key={title} className="rounded-3xl border border-gray-100 bg-white/70 backdrop-blur px-6 py-5 text-left shadow-sm">
-                <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-2xl bg-blue-50 text-blue-700 flex items-center justify-center">
-                    <Icon className="h-5 w-5" />
+            <div className="lg:col-span-5">
+              <div className="rounded-[2rem] border border-white/20 bg-white/10 p-5 backdrop-blur-xl shadow-2xl">
+                <div className="rounded-2xl bg-white p-5 border border-slate-100 shadow-lg">
+                  <div className="flex items-center justify-between mb-4">
+                    <span className="text-xs font-black uppercase tracking-widest text-slate-500">Öne Çıkan Projeler</span>
+                    <Star className="h-4 w-4 text-orange-500" />
                   </div>
-                  <div>
-                    <div className="text-sm font-black text-gray-900">{title}</div>
-                    <div className="text-xs font-bold text-gray-500 mt-0.5">{desc}</div>
+                  <div className="space-y-3">
+                    {[
+                      "WordPress E-ticaret Kurulumu",
+                      "Logo ve Kurumsal Kimlik Tasarımı",
+                      "Yapay Zeka Destekli İçerik Üretimi",
+                    ].map((item, idx) => (
+                      <div key={item} className="rounded-xl border border-slate-100 bg-slate-50 px-3 py-2">
+                        <p className="text-sm font-black text-slate-900">{item}</p>
+                        <p className="text-[10px] font-bold text-slate-500 mt-1">#{idx + 1} Popüler kategori</p>
+                      </div>
+                    ))}
                   </div>
+                  <Link href="/jobs" className="mt-4 inline-flex items-center gap-2 text-xs font-black text-blue-700 hover:underline">
+                    Tüm ilanları incele <ArrowRight className="h-3.5 w-3.5" />
+                  </Link>
                 </div>
               </div>
-            ))}
+            </div>
           </div>
         </div>
       </section>
