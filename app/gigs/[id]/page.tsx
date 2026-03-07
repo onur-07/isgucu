@@ -336,6 +336,8 @@ export default function GigDetailPage() {
                     total_days: totalDays,
                     extras: selectedExtrasPayload,
                     status: "pending",
+                    payment_provider: "paytr",
+                    payment_status: "unpaid",
                 },
             ]);
 

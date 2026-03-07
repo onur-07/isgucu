@@ -813,7 +813,9 @@ export default function MessageThreadPage() {
                             extras_days: 0,
                             total_days: daysNum,
                             extras: { source: "offer", offer_id: String(acceptedOffer.id) },
-                            status: "active",
+                            status: "pending",
+                            payment_provider: "paytr",
+                            payment_status: "unpaid",
                         },
                     ]);
                     if (orderInsError) throw orderInsError;
@@ -854,7 +856,7 @@ export default function MessageThreadPage() {
             }
             if (typeof window !== "undefined") window.dispatchEvent(new Event("storage_updated"));
             if (status === "accepted") {
-                window.alert("Teklif kabul edildi. Devam akisina Siparislerim sayfasindan devam edebilirsin.");
+                window.alert("Teklif kabul edildi. Sipariş ödeme adımından sonra aktif olacaktır.");
                 router.push("/orders");
             }
         } catch (e: any) {

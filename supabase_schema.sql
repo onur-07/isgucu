@@ -443,3 +443,26 @@ CREATE POLICY "Responder can update cancellation requests" ON order_cancellation
     auth.uid() = responder_id
     OR EXISTS (SELECT 1 FROM profiles p WHERE p.id = auth.uid() AND p.role = 'admin')
   );
+
+-- PAYMENT / PAYTR FIELDS
+ALTER TABLE orders
+  ADD COLUMN IF NOT EXISTS payment_provider TEXT,
+  ADD COLUMN IF NOT EXISTS payment_status TEXT DEFAULT 'unpaid',
+  ADD COLUMN IF NOT EXISTS payment_merchant_oid TEXT,
+  ADD COLUMN IF NOT EXISTS payment_amount_minor INTEGER,
+  ADD COLUMN IF NOT EXISTS payment_paid_at TIMESTAMP WITH TIME ZONE,
+  ADD COLUMN IF NOT EXISTS payment_last_error TEXT;
+
+CREATE UNIQUE INDEX IF NOT EXISTS orders_payment_merchant_oid_uniq
+  ON orders(payment_merchant_oid)
+  WHERE payment_merchant_oid IS NOT NULL;
+
+CREATE TABLE IF NOT EXISTS paytr_events (
+  id BIGSERIAL PRIMARY KEY,
+  merchant_oid TEXT NOT NULL,
+  order_id BIGINT REFERENCES orders(id) ON DELETE SET NULL,
+  status TEXT,
+  total_amount TEXT,
+  raw_payload JSONB,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
+);

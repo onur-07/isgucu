@@ -360,7 +360,7 @@ export default function OrdersPage() {
         if (busyId) return;
         if (user.role !== "freelancer") return;
         if (!order.id) return;
-        if (order.status !== "active" && order.status !== "pending") return;
+        if (order.status !== "active") return;
         const message = String(messageInput || "");
 
         setBusyId(order.id);
@@ -871,6 +871,8 @@ export default function OrdersPage() {
                             String(latestCancelReq.status) === "pending" &&
                             String(latestCancelReq.responder_id || "") === String(user.id || "");
                         const busy = busyId === order.id;
+                        const paymentStatus = String(order.paymentStatus || "unpaid").toLowerCase();
+                        const paymentPending = order.status === "pending" && paymentStatus !== "paid";
 
                         return (
                             <div key={order.id} className="bg-white border rounded-xl p-6 hover:shadow-md transition-shadow">
@@ -888,6 +890,7 @@ export default function OrdersPage() {
                                             <span>👤 {user.role === "freelancer" ? `İş Veren: ${order.client}` : `Freelancer: ${order.freelancer}`}</span>
                                             <span>📅 {order.createdAt}</span>
                                             <span>⏰ Teslim: {order.dueDate}</span>
+                                            {paymentPending ? <span className="text-amber-700 font-semibold">💳 Ödeme bekleniyor</span> : null}
                                         </div>
                                     </div>
 
@@ -910,7 +913,17 @@ export default function OrdersPage() {
                                                     Iptal Talebi
                                                 </Button>
                                             )}
-                                            {(order.status === "active" || order.status === "pending") && isMineFreelancer && (
+                                            {order.status === "pending" && isMineEmployer && paymentPending && (
+                                                <Button
+                                                    size="sm"
+                                                    disabled={busy}
+                                                    onClick={() => router.push(`/orders/pay/${encodeURIComponent(String(order.id))}`)}
+                                                    className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                                                >
+                                                    💳 Ödemeyi Tamamla
+                                                </Button>
+                                            )}
+                                            {order.status === "active" && isMineFreelancer && (
                                                 <Button
                                                     size="sm"
                                                     disabled={busy}

@@ -63,6 +63,7 @@ export interface Order {
     sellerId?: string;
     price: number;
     status: "pending" | "active" | "delivered" | "completed" | "cancelled";
+    paymentStatus?: "unpaid" | "initiated" | "paid" | "failed" | string;
     paidToSeller?: boolean;
     createdAt: string;
     dueDate: string;
@@ -497,7 +498,7 @@ export async function getUserOrders(
 
     const { data, error } = await supabase
         .from("orders")
-        .select("id, gig_id, buyer_id, seller_id, buyer_username, seller_username, total_price, total_days, status, created_at, paid_to_seller, gigs(title)")
+        .select("id, gig_id, buyer_id, seller_id, buyer_username, seller_username, total_price, total_days, status, payment_status, created_at, paid_to_seller, gigs(title)")
         .or(clauses.join(","))
         .order("created_at", { ascending: false });
 
@@ -515,6 +516,7 @@ export async function getUserOrders(
         total_price?: unknown;
         total_days?: unknown;
         status?: unknown;
+        payment_status?: unknown;
         created_at?: unknown;
         paid_to_seller?: unknown;
         gigs?: { title?: unknown } | null;
@@ -545,6 +547,7 @@ export async function getUserOrders(
             sellerId: o?.seller_id != null ? String(o.seller_id) : undefined,
             price: Number.isFinite(priceNum) ? priceNum : 0,
             status: normalizedStatus,
+            paymentStatus: String(o?.payment_status || "unpaid").toLowerCase(),
             paidToSeller: Boolean(o?.paid_to_seller),
             createdAt,
             dueDate,
