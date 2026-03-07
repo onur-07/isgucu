@@ -19,6 +19,10 @@ export default function AboutPage() {
         [config]
     );
 
+    const heroTitle = String(managedAbout?.title || "").trim();
+    const heroSummary = String(managedAbout?.summary || "").trim();
+    const storyContent = String(managedAbout?.content || "").trim();
+
     const values = [
         {
             icon: <ShieldCheck className="w-10 h-10 text-blue-600" />,
@@ -43,10 +47,16 @@ export default function AboutPage() {
                 <div className="absolute top-0 right-0 w-1/2 h-full bg-blue-600/10 skew-x-12 transform origin-right"></div>
                 <div className="container mx-auto px-4 relative z-10 text-center">
                     <h1 className="text-4xl md:text-7xl font-black font-heading text-white mb-6 uppercase tracking-tight">
-                        {managedAbout?.title || "İş Gücünün"} <span className="text-blue-500 italic">Geleceği</span>
+                        {heroTitle ? (
+                            heroTitle
+                        ) : (
+                            <>
+                                İş Gücünün <span className="text-blue-500 italic">Geleceği</span>
+                            </>
+                        )}
                     </h1>
                     <p className="text-slate-400 text-lg md:text-2xl max-w-3xl mx-auto leading-relaxed font-medium">
-                        {managedAbout?.summary || "İşgücü, yeteneğin özgürleştiği ve sınırların kalktığı modern bir çalışma ekosistemidir."}
+                        {heroSummary || "İşgücü, yeteneğin özgürleştiği ve sınırların kalktığı modern bir çalışma ekosistemidir."}
                     </p>
                 </div>
             </div>
@@ -62,7 +72,18 @@ export default function AboutPage() {
                             Bir Garajdan <br /> <span className="text-blue-600">Global Vizyona</span>
                         </h2>
                         <div className="space-y-6 text-slate-600 text-lg leading-relaxed font-medium">
-                            <p>{managedAbout?.content || "Bu sayfanın içeriği artık yönetim panelinden düzenlenebilir."}</p>
+                            {storyContent ? (
+                                <p>{storyContent}</p>
+                            ) : (
+                                <>
+                                    <p>
+                                        İşgücü; freelancer’ları ve işverenleri güven, hız ve kalite odağında bir araya getirmek için yola çıktı.
+                                    </p>
+                                    <p>
+                                        Bugün hedefimiz; doğru yeteneği doğru projeyle buluşturmak, üretkenliği artırmak ve yeni nesil çalışma kültürünü güçlendirmek.
+                                    </p>
+                                </>
+                            )}
                         </div>
                     </div>
                     <div className="relative">
