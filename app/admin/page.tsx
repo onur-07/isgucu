@@ -3,7 +3,7 @@
 import { useAuth } from "@/components/auth/auth-context";
 import { useRouter } from "next/navigation";
 import { useSearchParams } from "next/navigation";
-import { useEffect, useState, Suspense } from "react";
+import { useEffect, useMemo, useState, Suspense } from "react";
 import { getAllUsers, getPlatformStats, updateUserInfo, type PlatformUser, type PlatformStats } from "@/lib/data-service";
 import { Users, Briefcase, TrendingUp, Shield, Trash2, Headphones, MessageCircle, CheckCircle2, Clock, Send, Settings, Globe, Layout, Palette, Plus, Save, FileText, ChevronDown, ChevronUp, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -46,6 +46,23 @@ const displayNameFromUrl = (url: string) => {
     }
 };
 
+const formatSlaLeft = (ms: number) => {
+    if (!Number.isFinite(ms)) return "SLA tanimsiz";
+    if (ms <= 0) return "SLA gecikti";
+    const totalMin = Math.floor(ms / (1000 * 60));
+    const h = Math.floor(totalMin / 60);
+    const m = totalMin % 60;
+    if (h <= 0) return `${m} dk`;
+    return `${h} sa ${m} dk`;
+};
+
+const getPriorityLabel = (priorityRaw: string | null | undefined) => {
+    const p = String(priorityRaw || "medium").toLowerCase();
+    if (p === "high") return "Yuksek";
+    if (p === "low") return "Dusuk";
+    return "Orta";
+};
+
 interface SupportTicket {
     id: string;
     from_user: string;
@@ -57,6 +74,12 @@ interface SupportTicket {
     created_at: string;
     reply?: string;
     replied_at?: string;
+    assigned_admin_id?: string | null;
+    assigned_admin_username?: string | null;
+    priority?: "low" | "medium" | "high" | null;
+    first_response_due_at?: string | null;
+    resolution_due_at?: string | null;
+    sla_breached?: boolean | null;
 }
 
 interface SupportTicketReply {
@@ -107,12 +130,23 @@ function AdminPageContent() {
     const [showBannedModal, setShowBannedModal] = useState(false);
     const [showDeletedModal, setShowDeletedModal] = useState(false);
     const [supportSearch, setSupportSearch] = useState("");
+    const [slaNow, setSlaNow] = useState<number>(() => Date.now());
+
+    const adminUsers = useMemo(
+        () => users.filter((u) => String(u.role || "").toLowerCase() === "admin"),
+        [users]
+    );
 
     const parseTabFromUrl = (raw: string | null) => {
         const v = String(raw || "").trim();
         if (v === "overview" || v === "reports" || v === "users" || v === "support" || v === "payouts" || v === "deletions" || v === "site_settings") return v;
         return null;
     };
+
+    useEffect(() => {
+        const id = window.setInterval(() => setSlaNow(Date.now()), 30000);
+        return () => window.clearInterval(id);
+    }, []);
 
     const toggleSupportTicket = (ticketId: string) => {
         setOpenSupportTickets((prev) => ({ ...prev, [ticketId]: !prev[ticketId] }));
@@ -476,7 +510,7 @@ function AdminPageContent() {
                 withTimeout(
                     supabase
                         .from('support_tickets')
-                        .select('id, from_user, from_email, subject, category, message, status, created_at, reply, replied_at')
+                        .select('id, from_user, from_email, subject, category, message, status, created_at, reply, replied_at, assigned_admin_id, assigned_admin_username, priority, first_response_due_at, resolution_due_at, sla_breached')
                         .order('created_at', { ascending: false }),
                     7000,
                     "supportTickets"
@@ -912,6 +946,43 @@ function AdminPageContent() {
         loadData();
     };
 
+    const assignTicketAdmin = async (ticketId: string, adminId: string) => {
+        const selected = adminUsers.find((a) => String(a.id) === String(adminId));
+        const payload: Record<string, unknown> = {
+            assigned_admin_id: adminId || null,
+            assigned_admin_username: selected?.username || null,
+        };
+        await supabase.from("support_tickets").update(payload).eq("id", ticketId);
+        setTickets((prev) =>
+            prev.map((t) =>
+                String(t.id) === String(ticketId)
+                    ? { ...t, assigned_admin_id: (payload.assigned_admin_id as string | null) || null, assigned_admin_username: (payload.assigned_admin_username as string | null) || null }
+                    : t
+            )
+        );
+    };
+
+    const updateTicketPriority = async (ticketId: string, priority: "low" | "medium" | "high") => {
+        const dueNow = new Date();
+        const firstResponse = new Date(dueNow.getTime() + (priority === "high" ? 30 : priority === "medium" ? 120 : 360) * 60 * 1000).toISOString();
+        const resolution = new Date(dueNow.getTime() + (priority === "high" ? 6 : priority === "medium" ? 24 : 72) * 60 * 60 * 1000).toISOString();
+        await supabase
+            .from("support_tickets")
+            .update({
+                priority,
+                first_response_due_at: firstResponse,
+                resolution_due_at: resolution,
+            })
+            .eq("id", ticketId);
+        setTickets((prev) =>
+            prev.map((t) =>
+                String(t.id) === String(ticketId)
+                    ? { ...t, priority, first_response_due_at: firstResponse, resolution_due_at: resolution }
+                    : t
+            )
+        );
+    };
+
     const deleteTicket = async (ticketId: string) => {
         if (!ticketId) return;
         if (!confirm("Bu destek talebini kalıcı olarak silmek istediğinize emin misiniz?")) return;
@@ -1028,6 +1099,18 @@ function AdminPageContent() {
     const userTickets = tickets.filter((t) => !isSystemTicket(t));
     const filteredSystemTickets = systemTickets.filter(ticketMatchesSearch);
     const filteredUserTickets = userTickets.filter(ticketMatchesSearch);
+    const getSlaDueAt = (ticket: SupportTicket) => {
+        if (ticket.status === "closed") return null;
+        if (ticket.status === "open") return ticket.first_response_due_at || null;
+        return ticket.resolution_due_at || null;
+    };
+    const overdueTicketsCount = userTickets.filter((t) => {
+        const dueAt = getSlaDueAt(t);
+        if (!dueAt) return false;
+        const dueMs = new Date(dueAt).getTime();
+        return Number.isFinite(dueMs) && dueMs < slaNow;
+    }).length;
+    const assignedTicketsCount = userTickets.filter((t) => !!String(t.assigned_admin_id || "").trim()).length;
     const openTicketsCount = tickets.filter(t => t.status === "open").length;
     const bannedUsers = users.filter((u) => !!u.isBanned);
 
@@ -1270,7 +1353,7 @@ function AdminPageContent() {
             {/* USERS TAB */}
             {activeTab === "reports" && (
                 <div className="space-y-6">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
                         <div className="bg-white border rounded-2xl p-6 shadow-sm">
                             <div className="text-[10px] font-black text-gray-400 uppercase mb-2">Toplam İşlem Hacmi</div>
                             <div className="text-3xl font-black text-slate-900">₺{Number(stats?.totalPayments || 0).toLocaleString("tr-TR")}</div>
@@ -1498,10 +1581,15 @@ function AdminPageContent() {
                             <div className="text-3xl font-black text-emerald-700">{userTickets.filter(t => t.status === 'replied').length}</div>
                             <div className="text-[10px] font-black uppercase tracking-widest">Yanıtlanan Kullanıcı</div>
                         </div>
-                        <div className="bg-blue-50 border border-blue-100 rounded-2xl p-6 text-center shadow-sm">
-                            <MessageCircle className="h-8 w-8 text-blue-600 mx-auto mb-2" />
-                            <div className="text-3xl font-black text-blue-700">{systemTickets.length}</div>
-                            <div className="text-[10px] font-black uppercase tracking-widest">Sistem Ticketı</div>
+                        <div className="bg-cyan-50 border border-cyan-100 rounded-2xl p-6 text-center shadow-sm">
+                            <MessageCircle className="h-8 w-8 text-cyan-600 mx-auto mb-2" />
+                            <div className="text-3xl font-black text-cyan-700">{assignedTicketsCount}</div>
+                            <div className="text-[10px] font-black uppercase tracking-widest">Atanan Ticket</div>
+                        </div>
+                        <div className="bg-red-50 border border-red-100 rounded-2xl p-6 text-center shadow-sm">
+                            <Clock className="h-8 w-8 text-red-600 mx-auto mb-2" />
+                            <div className="text-3xl font-black text-red-700">{overdueTicketsCount}</div>
+                            <div className="text-[10px] font-black uppercase tracking-widest">SLA Geciken</div>
                         </div>
                     </div>
 
@@ -1537,6 +1625,10 @@ function AdminPageContent() {
                             const ticketMessageBody = stripUrls(ticket.message);
                             const isOpen = !!openSupportTickets[String(ticket.id)];
                             const ticketCode = getTicketCode(ticket);
+                            const dueAt = getSlaDueAt(ticket);
+                            const dueMs = dueAt ? new Date(dueAt).getTime() : NaN;
+                            const isOverdue = Number.isFinite(dueMs) ? dueMs < slaNow : false;
+                            const leftMs = Number.isFinite(dueMs) ? dueMs - slaNow : NaN;
                             return (
                             <div key={ticket.id} className={`bg-white border rounded-[2rem] overflow-hidden shadow-sm transition-all ${ticket.status === 'open' ? 'border-l-8 border-l-orange-500' : 'border-l-8 border-l-emerald-500'}`}>
                                 <div className="p-5 sm:p-8">
@@ -1576,6 +1668,12 @@ function AdminPageContent() {
                                         <div className="flex items-center gap-2">
                                             <span className={`text-[9px] font-black px-4 py-1.5 rounded-full uppercase tracking-widest ${ticket.status === 'open' ? 'bg-orange-100 text-orange-600' : 'bg-emerald-100 text-emerald-600'}`}>
                                                 {ticket.status === 'open' ? '⏳ Açık' : '✅ Yanıtlandı'}
+                                            </span>
+                                            <span className={`text-[9px] font-black px-3 py-1.5 rounded-full uppercase tracking-widest ${String(ticket.priority || "medium") === "high" ? "bg-red-100 text-red-700" : String(ticket.priority || "medium") === "low" ? "bg-slate-100 text-slate-700" : "bg-blue-100 text-blue-700"}`}>
+                                                {getPriorityLabel(ticket.priority)}
+                                            </span>
+                                            <span className={`text-[9px] font-black px-3 py-1.5 rounded-full uppercase tracking-widest ${isOverdue ? "bg-red-100 text-red-700" : "bg-emerald-100 text-emerald-700"}`}>
+                                                {dueAt ? formatSlaLeft(leftMs) : "SLA tanimsiz"}
                                             </span>
                                             <span className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500">
                                                 {isOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
@@ -1709,6 +1807,38 @@ function AdminPageContent() {
                                             <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest mb-3">📩 Gönderilen Yanıt:</p>
                                             <p className="text-sm font-bold text-emerald-800 leading-relaxed">{ticket.reply}</p>
                                             <p className="text-[9px] text-emerald-400 mt-4 font-black uppercase tracking-widest">{new Date(ticket.replied_at!).toLocaleString("tr-TR")}</p>
+                                        </div>
+                                    )}
+
+                                    {isOpen && (
+                                        <div className="mt-6 p-4 rounded-2xl border border-slate-200 bg-slate-50">
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                                <div>
+                                                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">Atanan Admin</p>
+                                                    <select
+                                                        value={String(ticket.assigned_admin_id || "")}
+                                                        onChange={(e) => assignTicketAdmin(ticket.id, e.target.value)}
+                                                        className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm font-bold text-slate-700"
+                                                    >
+                                                        <option value="">Atanmamis</option>
+                                                        {adminUsers.map((a) => (
+                                                            <option key={a.id} value={a.id}>{a.username}</option>
+                                                        ))}
+                                                    </select>
+                                                </div>
+                                                <div>
+                                                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">Oncelik Seviyesi</p>
+                                                    <select
+                                                        value={String(ticket.priority || "medium")}
+                                                        onChange={(e) => updateTicketPriority(ticket.id, e.target.value as "low" | "medium" | "high")}
+                                                        className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm font-bold text-slate-700"
+                                                    >
+                                                        <option value="low">Dusuk</option>
+                                                        <option value="medium">Orta</option>
+                                                        <option value="high">Yuksek</option>
+                                                    </select>
+                                                </div>
+                                            </div>
                                         </div>
                                     )}
 
