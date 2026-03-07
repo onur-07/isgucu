@@ -636,26 +636,22 @@ export function Header() {
                     )}
                 </div>
 
-                {/* Mobile Right Side - Profil Butonu (Sadece giriş yapmış kullanıcılar) */}
+                {/* Mobile Menu Button */}
+                <button
+                    className="md:hidden p-2 rounded-lg hover:bg-gray-100 transition-colors z-10"
+                    onClick={() => setMobileOpen(!mobileOpen)}
+                >
+                    {mobileOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+                </button>
+
+                {/* Mobile Profile Button (Sadece giriş yapmış kullanıcılar) */}
                 {user && (
-                    <div className="md:hidden flex items-center gap-2 z-10">
-                        {/* Mobile Profile Button */}
+                    <div className="md:hidden flex items-center z-10 relative">
                         <button
                             onClick={() => setMobileProfileOpen(!mobileProfileOpen)}
                             className="flex items-center justify-center p-2 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 text-white"
                         >
-                            {user.avatarUrl ? (
-                                <Image
-                                    src={user.avatarUrl}
-                                    alt="Profil"
-                                    width={28}
-                                    height={28}
-                                    className="h-7 w-7 rounded-full object-cover"
-                                    unoptimized
-                                />
-                            ) : (
-                                <span className="text-sm font-bold">{(maskFullName(user.fullName) || user.username).charAt(0).toUpperCase()}</span>
-                            )}
+                            <User className="h-5 w-5" />
                         </button>
 
                         {/* Mobile Profile Dropdown */}
@@ -714,14 +710,6 @@ export function Header() {
                         )}
                     </div>
                 )}
-
-                {/* Mobile Menu Button */}
-                <button
-                    className="md:hidden p-2 rounded-lg hover:bg-gray-100 transition-colors z-10 mr-2"
-                    onClick={() => setMobileOpen(!mobileOpen)}
-                >
-                    {mobileOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
-                </button>
             </div>
 
             {/* Mobile Menu */}
