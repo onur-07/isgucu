@@ -487,18 +487,18 @@ export function Header() {
                 </div>
             )}
             <div className="container flex h-20 md:h-24 items-center justify-between px-4 md:px-6">
-                {/* Logo - Sol */}
-                <div className="flex-shrink-0">
+                {/* Logo - Sol (Mobilde ortalı) */}
+                <div className="flex-shrink-0 md:flex-shrink-0 w-full md:w-auto flex justify-center md:justify-start">
                     <Link href="/" className="flex items-center gap-2 sm:gap-3 min-w-0">
                         <Image
                             src={siteConfig.logoUrl || "/logo.png"}
                             alt="İşgücü Logo"
                             width={160}
                             height={80}
-                            className="h-14 sm:h-12 md:h-20 w-auto object-contain transition-all"
+                            className="h-16 sm:h-14 md:h-24 w-auto object-contain transition-all"
                             unoptimized
                         />
-                        <span className="font-heading text-xl sm:text-2xl md:text-3xl font-bold bg-gradient-to-r from-blue-700 to-indigo-700 bg-clip-text text-transparent block leading-none">
+                        <span className="font-heading text-xl sm:text-2xl md:text-3xl font-bold text-blue-600 block leading-none">
                             {siteConfig.siteName || "İŞGÜCÜ"}
                         </span>
                     </Link>
@@ -507,7 +507,7 @@ export function Header() {
                 {/* Desktop Nav - Orta (Tam Ortalı) */}
                 <nav className="hidden md:flex flex-1 items-center justify-center gap-6 text-sm font-medium px-4">
                     {navLinks.map((link) => (
-                        <Link key={link.href} href={link.href} className="transition-colors hover:text-foreground/80 text-foreground/60">
+                        <Link key={link.href} href={link.href} className="transition-colors hover:text-blue-800 text-blue-600">
                             {link.label}
                         </Link>
                     ))}
