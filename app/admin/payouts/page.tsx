@@ -6,6 +6,8 @@ import { supabase } from "@/lib/supabase";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
+import { canTransitionOrderStatus, transitionGuardMessage } from "@/lib/order-state";
+import { logAuditEvent } from "@/lib/audit-log";
 
 type PayoutRequestRow = {
     id: string | number;
@@ -33,6 +35,15 @@ type CancelEscalationRow = {
     created_at: string;
 };
 
+type PaytrEventRow = {
+    id: string | number;
+    merchant_oid: string;
+    order_id: string | number | null;
+    status: string | null;
+    total_amount: string | null;
+    created_at: string;
+};
+
 export default function AdminPayoutsPage() {
     const { user, loading } = useAuth();
     const router = useRouter();
@@ -42,11 +53,92 @@ export default function AdminPayoutsPage() {
     const [busyId, setBusyId] = useState<string>("");
     const [error, setError] = useState<string>("");
     const [cancelEscalations, setCancelEscalations] = useState<CancelEscalationRow[]>([]);
+    const [paytrEvents, setPaytrEvents] = useState<PaytrEventRow[]>([]);
 
     const pendingRows = useMemo(
         () => rows.filter((r) => String(r.status || "").toLowerCase() === "pending"),
         [rows]
     );
+
+    const safeAdminTransitionOrderStatus = async (orderId: number, nextStatus: "cancelled") => {
+        const { data: current, error: currentErr } = await supabase
+            .from("orders")
+            .select("id, status")
+            .eq("id", orderId)
+            .maybeSingle();
+        if (currentErr) throw currentErr;
+        const fromStatus = String((current as any)?.status || "");
+        if (!canTransitionOrderStatus(fromStatus, nextStatus)) {
+            throw new Error(transitionGuardMessage(fromStatus, nextStatus));
+        }
+        const { error: updErr } = await supabase
+            .from("orders")
+            .update({ status: nextStatus })
+            .eq("id", orderId);
+        if (updErr) throw updErr;
+
+        await logAuditEvent(supabase, {
+            actorId: user?.id,
+            actorRole: user?.role,
+            action: "order_status_transition_admin",
+            targetType: "order",
+            targetId: String(orderId),
+            metadata: { fromStatus, toStatus: nextStatus },
+        });
+    };
+
+    const applyCancellationSplitToWallet = async (orderId: number, compensationRateRaw: number) => {
+        const compensationRate = Math.min(1, Math.max(0, Number(compensationRateRaw || 0)));
+        const { data: orderRow, error: ordErr } = await supabase
+            .from("orders")
+            .select("id, buyer_id, seller_id, total_price, status")
+            .eq("id", orderId)
+            .maybeSingle();
+        if (ordErr) throw ordErr;
+        const row = (orderRow || {}) as any;
+        const status = String(row.status || "").toLowerCase();
+        if (status !== "cancelled") return;
+
+        const total = Number(row.total_price || 0);
+        if (!Number.isFinite(total) || total <= 0) return;
+        const sellerShare = Math.round(total * compensationRate * 100) / 100;
+        const buyerShare = Math.round((total - sellerShare) * 100) / 100;
+        const buyerId = String(row.buyer_id || "");
+        const sellerId = String(row.seller_id || "");
+        if (!buyerId || !sellerId) return;
+
+        const { data: existing } = await supabase
+            .from("wallet_ledger")
+            .select("id")
+            .eq("order_id", orderId)
+            .ilike("description", "Iptal mutabakat%")
+            .limit(1);
+        if (Array.isArray(existing) && existing.length > 0) return;
+
+        const inserts: Array<Record<string, unknown>> = [];
+        if (sellerShare > 0) {
+            inserts.push({
+                user_id: sellerId,
+                order_id: orderId,
+                type: "credit",
+                amount: sellerShare,
+                description: `Iptal mutabakat (Freelancer payi %${Math.round(compensationRate * 100)})`,
+            });
+        }
+        if (buyerShare > 0) {
+            inserts.push({
+                user_id: buyerId,
+                order_id: orderId,
+                type: "credit",
+                amount: buyerShare,
+                description: `Iptal mutabakat (Isveren iade payi %${Math.round((1 - compensationRate) * 100)})`,
+            });
+        }
+        if (inserts.length === 0) return;
+
+        const { error: insErr } = await supabase.from("wallet_ledger").insert(inserts);
+        if (insErr) throw insErr;
+    };
 
     const reopenRelatedJobIfAny = async (orderId: number) => {
         const { data: orderRow, error: ordSelErr } = await supabase
@@ -153,6 +245,17 @@ export default function AdminPayoutsPage() {
             } else {
                 setCancelEscalations((cancelRows || []) as unknown as CancelEscalationRow[]);
             }
+
+            const { data: paytrRows, error: paytrErr } = await supabase
+                .from("paytr_events")
+                .select("id, merchant_oid, order_id, status, total_amount, created_at")
+                .order("created_at", { ascending: false })
+                .limit(100);
+            if (paytrErr) {
+                setPaytrEvents([]);
+            } else {
+                setPaytrEvents((paytrRows || []) as unknown as PaytrEventRow[]);
+            }
         })();
     }, [user, loading, router]);
 
@@ -186,6 +289,14 @@ export default function AdminPayoutsPage() {
                 },
             ]);
             if (ledErr) throw ledErr;
+            await logAuditEvent(supabase, {
+                actorId: user.id,
+                actorRole: user.role,
+                action: "payout_request_approved",
+                targetType: "payout_request",
+                targetId: String(id),
+                metadata: { amount, userId: row.user_id },
+            });
 
             setRows((prev) => prev.map((r) => (String(r.id) === id ? { ...r, status: "approved" } : r)));
         } catch (e: any) {
@@ -212,11 +323,8 @@ export default function AdminPayoutsPage() {
         setError("");
         try {
             if (approveCancel) {
-                const { error: ordErr } = await supabase
-                    .from("orders")
-                    .update({ status: "cancelled" })
-                    .eq("id", Number(row.order_id));
-                if (ordErr) throw ordErr;
+                await safeAdminTransitionOrderStatus(Number(row.order_id), "cancelled");
+                await applyCancellationSplitToWallet(Number(row.order_id), Number(row.compensation_rate || 0));
                 await reopenRelatedJobIfAny(Number(row.order_id));
             }
 
@@ -226,6 +334,14 @@ export default function AdminPayoutsPage() {
                 .update({ status: nextStatus, responded_at: new Date().toISOString(), resolved_by_admin_id: user.id })
                 .eq("id", Number(row.id));
             if (reqErr) throw reqErr;
+            await logAuditEvent(supabase, {
+                actorId: user.id,
+                actorRole: user.role,
+                action: "cancel_escalation_resolved",
+                targetType: "order_cancellation_request",
+                targetId: String(row.id),
+                metadata: { decision: nextStatus, orderId: row.order_id, compensationRate: row.compensation_rate },
+            });
 
             setCancelEscalations((prev) => prev.filter((x) => String(x.id) !== rowId));
         } catch (e: any) {
@@ -352,6 +468,48 @@ export default function AdminPayoutsPage() {
                                 </div>
                             );
                         })}
+                    </div>
+                )}
+            </div>
+
+            <div className="mt-8 bg-white border rounded-[2rem] overflow-hidden shadow-sm">
+                <div className="p-8 border-b bg-gray-50/30 flex items-center justify-between">
+                    <h3 className="font-black text-gray-900 text-lg uppercase tracking-tight">PAYTR Callback Log ({paytrEvents.length})</h3>
+                </div>
+                {paytrEvents.length === 0 ? (
+                    <div className="p-12 text-center text-gray-500 font-semibold">Callback kaydi bulunamadi.</div>
+                ) : (
+                    <div className="overflow-x-auto">
+                        <table className="min-w-full text-sm">
+                            <thead>
+                                <tr className="text-left bg-slate-50 border-b">
+                                    <th className="px-4 py-3 font-black text-slate-700 uppercase text-[10px]">OID</th>
+                                    <th className="px-4 py-3 font-black text-slate-700 uppercase text-[10px]">Order</th>
+                                    <th className="px-4 py-3 font-black text-slate-700 uppercase text-[10px]">Status</th>
+                                    <th className="px-4 py-3 font-black text-slate-700 uppercase text-[10px]">Amount</th>
+                                    <th className="px-4 py-3 font-black text-slate-700 uppercase text-[10px]">Time</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {paytrEvents.map((ev) => (
+                                    <tr key={String(ev.id)} className="border-b last:border-b-0">
+                                        <td className="px-4 py-3 font-mono text-xs text-slate-700">{String(ev.merchant_oid || "-")}</td>
+                                        <td className="px-4 py-3 text-slate-700">#{String(ev.order_id || "-")}</td>
+                                        <td className="px-4 py-3">
+                                            <span className={`inline-flex rounded-full px-2.5 py-1 text-[10px] font-black uppercase ${
+                                                String(ev.status || "").toLowerCase() === "success"
+                                                    ? "bg-emerald-100 text-emerald-700"
+                                                    : "bg-amber-100 text-amber-700"
+                                            }`}>
+                                                {String(ev.status || "unknown")}
+                                            </span>
+                                        </td>
+                                        <td className="px-4 py-3 text-slate-700">{String(ev.total_amount || "-")}</td>
+                                        <td className="px-4 py-3 text-slate-500 text-xs">{ev.created_at ? new Date(ev.created_at).toLocaleString("tr-TR") : ""}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
                     </div>
                 )}
             </div>

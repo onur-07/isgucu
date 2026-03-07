@@ -466,3 +466,59 @@ CREATE TABLE IF NOT EXISTS paytr_events (
   raw_payload JSONB,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
 );
+
+-- SUPPORT V2 FIELDS
+ALTER TABLE support_tickets
+  ADD COLUMN IF NOT EXISTS assigned_admin_id UUID REFERENCES auth.users ON DELETE SET NULL,
+  ADD COLUMN IF NOT EXISTS assigned_admin_username TEXT,
+  ADD COLUMN IF NOT EXISTS priority TEXT CHECK (priority IN ('low', 'medium', 'high')) DEFAULT 'medium',
+  ADD COLUMN IF NOT EXISTS first_response_due_at TIMESTAMP WITH TIME ZONE,
+  ADD COLUMN IF NOT EXISTS resolution_due_at TIMESTAMP WITH TIME ZONE,
+  ADD COLUMN IF NOT EXISTS sla_breached BOOLEAN DEFAULT FALSE;
+
+CREATE INDEX IF NOT EXISTS support_tickets_priority_status_idx
+  ON support_tickets(priority, status, created_at DESC);
+
+CREATE INDEX IF NOT EXISTS support_tickets_assigned_admin_idx
+  ON support_tickets(assigned_admin_id, created_at DESC);
+
+-- ADMIN AUDIT LOG
+CREATE TABLE IF NOT EXISTS admin_audit_logs (
+  id BIGSERIAL PRIMARY KEY,
+  actor_id UUID REFERENCES auth.users ON DELETE SET NULL,
+  actor_role TEXT,
+  action TEXT NOT NULL,
+  target_type TEXT,
+  target_id TEXT,
+  metadata JSONB DEFAULT '{}'::jsonb,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS admin_audit_logs_created_at_idx
+  ON admin_audit_logs(created_at DESC);
+
+CREATE INDEX IF NOT EXISTS admin_audit_logs_action_idx
+  ON admin_audit_logs(action, created_at DESC);
+
+ALTER TABLE admin_audit_logs ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Admins can view audit logs" ON admin_audit_logs;
+CREATE POLICY "Admins can view audit logs" ON admin_audit_logs
+  FOR SELECT
+  USING (EXISTS (SELECT 1 FROM profiles p WHERE p.id = auth.uid() AND p.role = 'admin'));
+
+DROP POLICY IF EXISTS "Users can insert own audit logs" ON admin_audit_logs;
+CREATE POLICY "Users can insert own audit logs" ON admin_audit_logs
+  FOR INSERT
+  WITH CHECK (
+    auth.uid() = actor_id
+    OR EXISTS (SELECT 1 FROM profiles p WHERE p.id = auth.uid() AND p.role = 'admin')
+  );
+
+-- PAYTR EVENT LOG ACCESS
+ALTER TABLE paytr_events ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Admins can view paytr events" ON paytr_events;
+CREATE POLICY "Admins can view paytr events" ON paytr_events
+  FOR SELECT
+  USING (EXISTS (SELECT 1 FROM profiles p WHERE p.id = auth.uid() AND p.role = 'admin'));

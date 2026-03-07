@@ -10,6 +10,8 @@ import { supabase } from "@/lib/supabase";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { pushLocalNotification } from "@/lib/notification-center";
+import { canTransitionOrderStatus, transitionGuardMessage } from "@/lib/order-state";
+import { logAuditEvent } from "@/lib/audit-log";
 
 type CancellationRequestRow = {
     id: string | number;
@@ -230,6 +232,33 @@ export default function OrdersPage() {
         await loadRevisionNotes(rows);
     };
 
+    const safeTransitionOrderStatus = async (orderId: number, nextStatus: "active" | "delivered" | "completed" | "cancelled") => {
+        const { data: current, error: currentErr } = await supabase
+            .from("orders")
+            .select("id, status")
+            .eq("id", orderId)
+            .maybeSingle();
+        if (currentErr) throw currentErr;
+        const fromStatus = String((current as any)?.status || "");
+        if (!canTransitionOrderStatus(fromStatus, nextStatus)) {
+            throw new Error(transitionGuardMessage(fromStatus, nextStatus));
+        }
+        const { error: updErr } = await supabase
+            .from("orders")
+            .update({ status: nextStatus })
+            .eq("id", orderId);
+        if (updErr) throw updErr;
+
+        await logAuditEvent(supabase, {
+            actorId: user?.id,
+            actorRole: user?.role,
+            action: "order_status_transition",
+            targetType: "order",
+            targetId: String(orderId),
+            metadata: { fromStatus, toStatus: nextStatus },
+        });
+    };
+
     const reopenRelatedJobIfAny = async (orderId: number) => {
         const { data: orderRow, error: ordSelErr } = await supabase
             .from("orders")
@@ -314,6 +343,14 @@ export default function OrdersPage() {
                 },
             ]);
             if (error) throw error;
+            await logAuditEvent(supabase, {
+                actorId: user.id,
+                actorRole: user.role,
+                action: "order_cancel_request_created",
+                targetType: "order",
+                targetId: String(order.id),
+                metadata: { compensationRate, requesterRole, responderRole },
+            });
             await refresh();
         } catch (e: any) {
             window.alert("Iptal talebi olusturulamadi: " + String(e?.message || e));
@@ -338,11 +375,7 @@ export default function OrdersPage() {
             if (updErr) throw updErr;
 
             if (decision === "accepted") {
-                const { error: ordErr } = await supabase
-                    .from("orders")
-                    .update({ status: "cancelled" })
-                    .eq("id", Number(req.order_id));
-                if (ordErr) throw ordErr;
+                await safeTransitionOrderStatus(Number(req.order_id), "cancelled");
                 await reopenRelatedJobIfAny(Number(req.order_id));
             }
 
@@ -377,11 +410,7 @@ export default function OrdersPage() {
             ]);
             if (insErr) throw insErr;
 
-            const { error: updErr } = await supabase
-                .from("orders")
-                .update({ status: "delivered" })
-                .eq("id", Number(order.id));
-            if (updErr) throw updErr;
+            await safeTransitionOrderStatus(Number(order.id), "delivered");
 
             await refresh();
             const actionUrl = `/orders?reviewOrder=${encodeURIComponent(String(order.id))}`;
@@ -496,11 +525,7 @@ export default function OrdersPage() {
             ]);
             if (insErr) throw insErr;
 
-            const { error: updErr } = await supabase
-                .from("orders")
-                .update({ status: "active" })
-                .eq("id", Number(order.id));
-            if (updErr) throw updErr;
+            await safeTransitionOrderStatus(Number(order.id), "active");
 
             await refresh();
             if (typeof window !== "undefined") window.dispatchEvent(new Event("orders_updated"));
@@ -535,11 +560,7 @@ export default function OrdersPage() {
             ]);
             if (insErr) throw insErr;
 
-            const { error: updErr } = await supabase
-                .from("orders")
-                .update({ status: "completed" })
-                .eq("id", Number(order.id));
-            if (updErr) throw updErr;
+            await safeTransitionOrderStatus(Number(order.id), "completed");
 
             if (!order.sellerId) throw new Error("Satıcı bilgisi bulunamadı");
             const creditAmount = Number(order.price);
