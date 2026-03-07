@@ -312,10 +312,12 @@ export function Header() {
         const lastSupportKey = `${baseKey}_support_last`;
         const lastPayoutKey = `${baseKey}_payout_last`;
         const lastDeletionKey = `${baseKey}_deletion_last`;
+        const lastDisputeKey = `${baseKey}_dispute_last`;
 
         const lastSupport = String(localStorage.getItem(lastSupportKey) || "");
         const lastPayout = String(localStorage.getItem(lastPayoutKey) || "");
         const lastDeletion = String(localStorage.getItem(lastDeletionKey) || "");
+        const lastDispute = String(localStorage.getItem(lastDisputeKey) || "");
 
         const [supportRes, supportRepliesRes, payoutRes, deletionRes] = await Promise.all([
             supabase
@@ -444,6 +446,48 @@ export function Header() {
                     });
                 }
                 if (newest) localStorage.setItem(lastDeletionKey, newest);
+            }
+        }
+
+        const disputeRes = await supabase
+            .from("order_disputes")
+            .select("id, order_id, reason, created_at")
+            .order("created_at", { ascending: false })
+            .limit(10);
+        if (!disputeRes.error) {
+            const rows = (disputeRes.data || []) as Array<{ id: any; order_id: any; reason: any; created_at: any }>;
+            const newest = rows[0]?.created_at ? String(rows[0].created_at) : "";
+            if (!lastDispute) {
+                const now = Date.now();
+                for (const r of rows) {
+                    const createdAt = r.created_at ? String(r.created_at) : "";
+                    const createdMs = createdAt ? new Date(createdAt).getTime() : 0;
+                    if (!createdAt || !Number.isFinite(createdMs)) continue;
+                    if (now - createdMs > 30 * 60 * 1000) continue;
+                    upsertLocalNotification({
+                        id: `admin-dispute-${String(r.id)}`,
+                        type: "system",
+                        title: "⚠️ Yeni Anlaşmazlık Talebi",
+                        description: `Sipariş #${String(r.order_id)} için anlaşmazlık açıldı.`,
+                        actionUrl: "/admin?tab=support",
+                        actionLabel: "İncele",
+                    });
+                }
+                if (newest) localStorage.setItem(lastDisputeKey, newest);
+            } else {
+                for (const r of rows) {
+                    const createdAt = r.created_at ? String(r.created_at) : "";
+                    if (!createdAt || createdAt <= lastDispute) continue;
+                    upsertLocalNotification({
+                        id: `admin-dispute-${String(r.id)}`,
+                        type: "system",
+                        title: "⚠️ Yeni Anlaşmazlık Talebi",
+                        description: `Sipariş #${String(r.order_id)} için anlaşmazlık açıldı.`,
+                        actionUrl: "/admin?tab=support",
+                        actionLabel: "İncele",
+                    });
+                }
+                if (newest) localStorage.setItem(lastDisputeKey, newest);
             }
         }
     }, [upsertLocalNotification, user]);

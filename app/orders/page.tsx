@@ -532,15 +532,17 @@ export default function OrdersPage() {
             });
             const { error: supportTicketError } = await supabase.from("support_tickets").insert([
                 {
-                    from_user: "SYSTEM",
-                    from_email: "system@isgucu.local",
+                    from_user: String(user.username || ""),
+                    from_email: String(user.email || ""),
                     subject: `Anlaşmazlık Bildirimi #${String(order.id)}`,
                     category: "Sipariş Sorunu",
                     message: `Sipariş #${String(order.id)} için anlaşmazlık açıldı.\nAçan: ${String(user.username)} (${openedByRole})\nTaraflar: ${String(order.client)} ↔ ${String(order.freelancer)}\nGerekçe: ${reason}`,
                     status: "open",
                 },
             ]);
-            if (supportTicketError) throw supportTicketError;
+            if (supportTicketError) {
+                console.error("Dispute support ticket insert error:", supportTicketError);
+            }
 
             await logAuditEvent(supabase, {
                 actorId: user.id,
