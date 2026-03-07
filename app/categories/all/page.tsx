@@ -170,11 +170,11 @@ export default function CategoriesAllPage() {
                                     İhtiyacına uygun hizmeti seç, ilanları incele ve hemen teklif al.
                                 </p>
 
-                                <div className="mt-5 inline-flex flex-wrap gap-2 rounded-2xl border border-white/60 bg-white/70 p-2 shadow-sm">
+                                <div className="mt-5 grid grid-cols-3 gap-2 rounded-2xl border border-white/60 bg-white/70 p-2 shadow-sm">
                                     {[
                                         { key: "services" as const, label: "Hizmetler" },
                                         { key: "jobs" as const, label: "İşler" },
-                                        { key: "freelancers" as const, label: "Freelancers" },
+                                        { key: "freelancers" as const, label: "Uzmanlar" },
                                     ].map((t) => {
                                         const active = activeTab === t.key;
                                         return (
@@ -185,7 +185,7 @@ export default function CategoriesAllPage() {
                                                     setActiveTab(t.key);
                                                     if (t.key !== "services") setSelectedCategoryId("all");
                                                 }}
-                                                className={`h-10 rounded-2xl px-5 text-[10px] font-black uppercase tracking-widest transition-all ${
+                                                className={`h-10 w-full rounded-2xl px-2 sm:px-5 text-[10px] font-black uppercase tracking-widest transition-all ${
                                                     active
                                                         ? "bg-blue-600 text-white shadow"
                                                         : "bg-white/70 text-slate-700 hover:bg-white"
