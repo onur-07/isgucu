@@ -99,8 +99,8 @@ export default function AboutPage() {
                     </div>
                     <div className="relative">
                         <div className="aspect-square bg-blue-50 rounded-[4rem] rotate-3 absolute inset-0 -z-10"></div>
-                        <div className="aspect-square bg-slate-900 rounded-[4rem] overflow-hidden shadow-2xl transform transition-transform hover:-translate-y-4 duration-500 flex items-center justify-center p-12">
-                            <Image src={config.logoUrl || "/logo.png"} alt="İşgücü Logo" width={400} height={400} className="w-full h-auto object-contain opacity-80" />
+                        <div className="aspect-square bg-gradient-to-br from-white via-slate-50 to-blue-50 rounded-[4rem] overflow-hidden shadow-2xl transform transition-transform hover:-translate-y-4 duration-500 flex items-center justify-center p-12 border border-slate-100">
+                            <Image src={config.logoUrl || "/logo.png"} alt="İşgücü Logo" width={400} height={400} className="w-full h-auto object-contain opacity-100 drop-shadow-sm" />
                         </div>
                     </div>
                 </div>
