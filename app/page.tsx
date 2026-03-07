@@ -448,20 +448,6 @@ export default function Home() {
       {/* Latest Jobs */}
       <section className="py-18 md:py-20 bg-white">
         <div className="container mx-auto px-4 md:px-6">
-          <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-10">
-            <div>
-              <h2 className="text-3xl md:text-4xl font-black font-heading tracking-tight text-gray-900">
-                Son İş İlanları
-              </h2>
-              <p className="text-gray-600 font-semibold mt-2 max-w-2xl">
-                Freelancer isen hızlıca teklif ver, iş veren isen ilan aç.
-              </p>
-            </div>
-            <Link href="/jobs" className="inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-blue-600 hover:underline">
-              İş İlanlarını Gör <ArrowRight className="h-3.5 w-3.5" />
-            </Link>
-          </div>
-
           <div className="mb-8 grid grid-cols-1 md:grid-cols-3 gap-4">
             {[
               {
@@ -488,6 +474,20 @@ export default function Home() {
                 <p className="mt-2 text-sm font-semibold text-slate-700 leading-relaxed">{item.desc}</p>
               </div>
             ))}
+          </div>
+
+          <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-10">
+            <div>
+              <h2 className="text-3xl md:text-4xl font-black font-heading tracking-tight text-gray-900">
+                Son İş İlanları
+              </h2>
+              <p className="text-gray-600 font-semibold mt-2 max-w-2xl">
+                Freelancer isen hızlıca teklif ver, iş veren isen ilan aç.
+              </p>
+            </div>
+            <Link href="/jobs" className="inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-blue-600 hover:underline">
+              İş İlanlarını Gör <ArrowRight className="h-3.5 w-3.5" />
+            </Link>
           </div>
 
           <JobList limit={6} />
