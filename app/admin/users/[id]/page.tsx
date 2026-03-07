@@ -79,12 +79,6 @@ export default function AdminUserDetailPage() {
     const [savingAccess, setSavingAccess] = useState(false);
 
     useEffect(() => {
-        if (!staffDraft?.canli_destek) return;
-        if (String(roleDraft || "").toLowerCase() === "guest") return;
-        setRoleDraft("guest");
-    }, [staffDraft?.canli_destek]);
-
-    useEffect(() => {
         if (authLoading) return;
         if (!user || user.role !== "admin") {
             router.push("/");
@@ -138,12 +132,11 @@ export default function AdminUserDetailPage() {
         if (!detail?.id) return;
         if (savingAccess) return;
         const nextRole = String(roleDraft || "").trim().toLowerCase();
-        if (nextRole !== "freelancer" && nextRole !== "employer" && nextRole !== "guest") {
-            alert("Rol sadece freelancer, iş veren veya misafir olabilir.");
+        if (nextRole !== "freelancer" && nextRole !== "employer") {
+            alert("Rol sadece freelancer veya iş veren olabilir.");
             return;
         }
         const nextStaffRoles = ["editor", "iletisimci", "canli_destek"].filter((k) => !!staffDraft[k]);
-        const finalRole = nextStaffRoles.includes("canli_destek") ? "guest" : nextRole;
         setSavingAccess(true);
         try {
             const { data: sessionData, error: sessionErr } = await supabase.auth.getSession();
@@ -157,14 +150,14 @@ export default function AdminUserDetailPage() {
                     "Content-Type": "application/json",
                     Authorization: `Bearer ${sessionData.session.access_token}`,
                 },
-                body: JSON.stringify({ role: finalRole, staffRoles: nextStaffRoles }),
+                body: JSON.stringify({ role: nextRole, staffRoles: nextStaffRoles }),
             });
             const json = await resp.json().catch(() => ({}));
             if (!resp.ok) {
                 alert("Güncelleme başarısız: " + String((json as any)?.details || (json as any)?.error || resp.status));
                 return;
             }
-            setDetail((prev) => (prev ? { ...prev, role: finalRole, staffRoles: nextStaffRoles } : prev));
+            setDetail((prev) => (prev ? { ...prev, role: nextRole, staffRoles: nextStaffRoles } : prev));
             alert("Yetkiler güncellendi.");
         } catch (e: any) {
             alert("Güncelleme başarısız: " + String(e?.message || e));
@@ -440,14 +433,12 @@ export default function AdminUserDetailPage() {
                         <select
                             value={roleDraft}
                             onChange={(e) => setRoleDraft(e.target.value)}
-                            disabled={!!staffDraft?.canli_destek}
                             className="h-11 w-full rounded-xl border border-gray-200 bg-white px-3 text-sm font-bold text-gray-800"
                         >
                             <option value="freelancer">Freelancer</option>
                             <option value="employer">İş Veren</option>
-                            <option value="guest">Misafir</option>
                         </select>
-                        <p className="text-[10px] text-gray-400 font-bold mt-2">Canlı destek atanırsa rol otomatik misafir olur.</p>
+                        <p className="text-[10px] text-gray-400 font-bold mt-2">Admin rolü bu ekrandan değiştirilmez.</p>
                     </div>
 
                     <div>

@@ -1136,14 +1136,14 @@ function AdminPageContent() {
     const canCategories = canEditSite;
 
     const allowedTabs = [
-        { key: "overview" as const, label: "📊 Genel Bakış", count: null, show: !isLiveSupportOnly },
-        { key: "reports" as const, label: "📈 Raporlar", count: null, show: canReports },
-        { key: "users" as const, label: "👥 Üyeler", count: totalUsersCount, show: canUsers },
-        { key: "support" as const, label: "🎧 Destek", count: openTicketsCount > 0 ? openTicketsCount : null, show: canSupport },
-        { key: "payouts" as const, label: "💸 Ödeme Talepleri", count: null, show: canPayouts },
-        { key: "deletions" as const, label: "⚠️ Silme Talepleri", count: deletionRequests.length > 0 ? deletionRequests.length : null, show: canDeletions },
-        { key: "categories" as const, label: "📂 Kategoriler", count: null, show: canCategories },
-        { key: "site_settings" as const, label: "⚙️ Site Ayarları", count: null, show: canEditSite },
+        { key: "overview" as const, label: "📊 Genel Bakış", count: null, show: true },
+        { key: "reports" as const, label: "📈 Raporlar", count: null, show: canReports && !isLiveSupportOnly },
+        { key: "users" as const, label: "👥 Üyeler", count: totalUsersCount, show: canUsers && !isLiveSupportOnly },
+        { key: "support" as const, label: "🎧 Destek", count: openTicketsCount > 0 ? openTicketsCount : null, show: canSupport && !isLiveSupportOnly },
+        { key: "payouts" as const, label: "💸 Ödeme Talepleri", count: null, show: canPayouts && !isLiveSupportOnly },
+        { key: "deletions" as const, label: "⚠️ Silme Talepleri", count: deletionRequests.length > 0 ? deletionRequests.length : null, show: canDeletions && !isLiveSupportOnly },
+        { key: "categories" as const, label: "📂 Kategoriler", count: null, show: canCategories && !isLiveSupportOnly },
+        { key: "site_settings" as const, label: "⚙️ Site Ayarları", count: null, show: canEditSite && !isLiveSupportOnly },
     ].filter((t) => t.show);
 
     if (!user || (!isAdmin && staffRoles.length === 0)) return (
@@ -1160,9 +1160,9 @@ function AdminPageContent() {
         }
     }
 
-    // Canlı destek sadece support'a yönlendirilsin
-    if (isLiveSupportOnly && activeTab !== "support") {
-        setTimeout(() => setActiveTab("support"), 0);
+    // Canlı destek sadece overview'a yönlendirilsin
+    if (isLiveSupportOnly && activeTab !== "overview") {
+        setTimeout(() => setActiveTab("overview"), 0);
     }
 
     return (

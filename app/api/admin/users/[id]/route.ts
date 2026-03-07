@@ -170,7 +170,7 @@ export async function PATCH(
     const staffRolesRaw = Array.isArray(body?.staffRoles) ? (body.staffRoles as unknown[]) : null;
     const hasStaffRolesField = Array.isArray(staffRolesRaw);
 
-    const allowedRoles = new Set(["employer", "freelancer", "admin", "guest"]);
+    const allowedRoles = new Set(["employer", "freelancer", "admin"]);
     const nextRole = allowedRoles.has(roleRaw) ? roleRaw : "";
     const nextStaffRoles = hasStaffRolesField
       ? (staffRolesRaw || [])
@@ -178,10 +178,6 @@ export async function PATCH(
           .filter(Boolean)
           .slice(0, 10)
       : null;
-
-    const shouldForceGuestForLiveSupport = Array.isArray(nextStaffRoles)
-      ? nextStaffRoles.includes("canli_destek")
-      : false;
 
     if (!password && !email && !username && !hasBanField && !hasRoleField && !hasStaffRolesField) {
       return NextResponse.json({ error: "missing_fields" }, { status: 400 });
@@ -251,14 +247,13 @@ export async function PATCH(
       }
     }
 
-    if (hasRoleField || shouldForceGuestForLiveSupport) {
-      const roleToSet = shouldForceGuestForLiveSupport ? "guest" : nextRole;
-      if (!roleToSet) {
+    if (hasRoleField) {
+      if (!nextRole) {
         return NextResponse.json({ error: "invalid_role" }, { status: 400 });
       }
       const { error: roleErr } = await supabaseAdmin
         .from("profiles")
-        .update({ role: roleToSet })
+        .update({ role: nextRole })
         .eq("id", targetUserId);
       if (roleErr) {
         return NextResponse.json(
@@ -267,7 +262,7 @@ export async function PATCH(
         );
       }
       await supabaseAdmin.auth.admin.updateUserById(targetUserId, {
-        user_metadata: { role: roleToSet },
+        user_metadata: { role: nextRole },
       });
     }
 

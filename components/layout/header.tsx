@@ -562,7 +562,7 @@ export function Header() {
         : user?.role === "freelancer"
             ? [{ href: "/post-gig", label: "Hizmet İlanı Ver", color: "text-green-600 font-semibold" }]
             : user?.role === "admin" || isLiveSupport
-                ? [{ href: "/admin?tab=support", label: "Yönetim Paneli", color: "text-red-600 font-semibold" }]
+                ? [{ href: "/admin?tab=overview", label: "Yönetim Paneli", color: "text-red-600 font-semibold" }]
                 : [];
     const ordersLabel = user?.role === "freelancer" ? "İşlerim" : "Siparişlerim";
 
@@ -703,7 +703,7 @@ export function Header() {
                                             )}
                                         </Link>
                                         {(user.role === "admin" || isLiveSupport) && (
-                                            <Link href="/admin?tab=support" className="flex items-center gap-3 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors" onClick={() => setProfileOpen(false)}>
+                                            <Link href="/admin?tab=overview" className="flex items-center gap-3 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors" onClick={() => setProfileOpen(false)}>
                                                 ⚙️ Yönetim Paneli
                                             </Link>
                                         )}
@@ -791,7 +791,7 @@ export function Header() {
                                     )}
                                 </Link>
                                 {(user.role === "admin" || isLiveSupport) && (
-                                    <Link href="/admin?tab=support" className="flex items-center gap-3 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors" onClick={() => setMobileProfileOpen(false)}>
+                                    <Link href="/admin?tab=overview" className="flex items-center gap-3 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors" onClick={() => setMobileProfileOpen(false)}>
                                         ⚙️ Yönetim Paneli
                                     </Link>
                                 )}

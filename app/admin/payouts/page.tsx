@@ -51,9 +51,11 @@ export default function AdminPayoutsPage() {
     useEffect(() => {
         if (loading) return;
         const staffRoles = Array.isArray((user as any)?.staffRoles) ? (((user as any).staffRoles as string[]) || []) : [];
-        if (!user || user.role !== "admin") {
+        const canEdit = !!user && (user.role === "admin" || staffRoles.includes("editor"));
+        if (!canEdit) {
             const canLiveSupport = !!user && staffRoles.includes("canli_destek");
-            router.push(canLiveSupport ? "/admin?tab=support" : "/");
+            router.push(canLiveSupport ? "/admin?tab=overview" : "/");
+            return;
         }
     }, [loading, user, router]);
 

@@ -53,7 +53,7 @@ export default function AdminCategoriesPage() {
         const canEdit = !!user && (user.role === "admin" || staffRoles.includes("editor"));
         if (!canEdit) {
             const canLiveSupport = !!user && staffRoles.includes("canli_destek");
-            router.push(canLiveSupport ? "/admin?tab=support" : "/");
+            router.push(canLiveSupport ? "/admin?tab=overview" : "/");
             return;
         }
 
