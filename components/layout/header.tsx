@@ -486,9 +486,9 @@ export function Header() {
                     {siteConfig.announcement.text}
                 </div>
             )}
-            <div className="container flex h-20 md:h-24 items-center justify-between px-4 md:px-6">
-                {/* Logo - Sol (Mobilde ortalı) */}
-                <div className="flex-shrink-0 md:flex-shrink-0 w-full md:w-auto flex justify-center md:justify-start">
+            <div className="container flex h-20 md:h-24 items-center justify-between px-4 md:px-6 relative">
+                {/* Logo - Sol (Sadece Logo) */}
+                <div className="flex-shrink-0 z-10">
                     <Link href="/" className="flex items-center gap-2 sm:gap-3 min-w-0">
                         <Image
                             src={siteConfig.logoUrl || "/logo.png"}
@@ -498,10 +498,17 @@ export function Header() {
                             className="h-16 sm:h-14 md:h-24 w-auto object-contain transition-all"
                             unoptimized
                         />
-                        <span className="font-heading text-xl sm:text-2xl md:text-3xl font-bold text-blue-600 block leading-none">
+                        <span className="hidden md:block font-heading text-xl sm:text-2xl md:text-3xl font-bold text-blue-600 leading-none">
                             {siteConfig.siteName || "İŞGÜCÜ"}
                         </span>
                     </Link>
+                </div>
+
+                {/* Mobile Title - Ortada */}
+                <div className="md:hidden absolute left-1/2 -translate-x-1/2 flex items-center justify-center pointer-events-none">
+                    <span className="font-heading text-xl font-bold text-blue-600">
+                        {siteConfig.siteName || "İŞGÜCÜ"}
+                    </span>
                 </div>
 
                 {/* Desktop Nav - Orta (Tam Ortalı) */}
@@ -629,7 +636,7 @@ export function Header() {
 
                 {/* Mobile Menu Button */}
                 <button
-                    className="md:hidden p-2 rounded-lg hover:bg-gray-100 transition-colors"
+                    className="md:hidden p-2 rounded-lg hover:bg-gray-100 transition-colors z-10 mr-2"
                     onClick={() => setMobileOpen(!mobileOpen)}
                 >
                     {mobileOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
