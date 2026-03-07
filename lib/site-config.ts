@@ -233,12 +233,30 @@ const DEFAULT_CONFIG: SiteConfig = {
 const SITE_CONFIG_STORAGE_KEY = "isgucu_site_config";
 const SITE_CONFIG_REMOTE_ENDPOINT = "/api/site-config";
 
+function normalizeNavLabel(label: string): string {
+    const raw = String(label || "").trim();
+    const k = raw.toLowerCase();
+    if (k === "about" || k === "about us" || k === "hakkımızda" || k === "hakkimizda") return "Biz Kimiz";
+    if (k === "contact" || k === "contact us" || k === "iletisim" || k === "iletişim") return "İletişim";
+    if (k === "help" || k === "support" || k === "destek") return "Destek";
+    if (k === "rules" || k === "terms" || k === "kurallar") return "Platform Kuralları";
+    if (k === "privacy" || k === "privacy policy" || k === "gizlilik") return "Veri Gizliliği";
+    if (k === "blog" || k === "academy" || k === "akademi") return "Akademi / Blog";
+    return raw;
+}
+
 function mergeSiteConfig(parsed: Partial<SiteConfig>): SiteConfig {
     return {
         ...DEFAULT_CONFIG,
         ...parsed,
-        headerLinks: Array.isArray(parsed?.headerLinks) ? parsed.headerLinks : DEFAULT_CONFIG.headerLinks,
-        footerLinks: Array.isArray(parsed?.footerLinks) ? parsed.footerLinks : DEFAULT_CONFIG.footerLinks,
+        headerLinks: (Array.isArray(parsed?.headerLinks) ? parsed.headerLinks : DEFAULT_CONFIG.headerLinks).map((l) => ({
+            ...l,
+            label: normalizeNavLabel(String((l as any)?.label || "")),
+        })),
+        footerLinks: (Array.isArray(parsed?.footerLinks) ? parsed.footerLinks : DEFAULT_CONFIG.footerLinks).map((l) => ({
+            ...l,
+            label: normalizeNavLabel(String((l as any)?.label || "")),
+        })),
         socialLinks: Array.isArray(parsed?.socialLinks) ? parsed.socialLinks : DEFAULT_CONFIG.socialLinks,
         catalog: {
             ...DEFAULT_CONFIG.catalog,
@@ -265,6 +283,29 @@ function mergeSiteConfig(parsed: Partial<SiteConfig>): SiteConfig {
                 if (String(page.title || "").trim() === "Hakkımızda") page.title = "Biz Kimiz";
                 if (String(page.menuLabel || "").trim() === "Hakkımızda") page.menuLabel = "Biz Kimiz";
             }
+
+            const slug = String(page?.slug || "").trim();
+            if (slug === "/about") {
+                page.title = normalizeNavLabel(String(page.title || ""));
+                page.menuLabel = normalizeNavLabel(String(page.menuLabel || ""));
+            }
+            if (slug === "/contact") {
+                page.title = normalizeNavLabel(String(page.title || ""));
+                page.menuLabel = normalizeNavLabel(String(page.menuLabel || ""));
+            }
+            if (slug === "/help" || slug === "/support") {
+                page.title = normalizeNavLabel(String(page.title || ""));
+                page.menuLabel = normalizeNavLabel(String(page.menuLabel || ""));
+            }
+            if (slug === "/rules") {
+                page.title = normalizeNavLabel(String(page.title || ""));
+                page.menuLabel = normalizeNavLabel(String(page.menuLabel || ""));
+            }
+            if (slug === "/privacy") {
+                page.title = normalizeNavLabel(String(page.title || ""));
+                page.menuLabel = normalizeNavLabel(String(page.menuLabel || ""));
+            }
+
             return page as ManagedPage;
         }),
         announcement: {
