@@ -9,6 +9,8 @@ import ContactPageContent from "../contact/page";
 import HelpPageContent from "../help/page";
 import PrivacyPageContent from "../privacy/page";
 import RulesPageContent from "../rules/page";
+import JobsPageContent from "../jobs/page";
+import FreelancersPageContent from "../freelancers/page";
 
 // Türkçe slug'ları İngilizce karşılıklarına eşleştir
 const SLUG_MAPPING: Record<string, string> = {
@@ -59,6 +61,8 @@ const STATIC_PAGES: Record<string, React.ComponentType> = {
     "/about": AboutPageContent,
     "/privacy": PrivacyPageContent,
     "/rules": RulesPageContent,
+    "/jobs": JobsPageContent,
+    "/freelancers": FreelancersPageContent,
 };
 
 export default function DynamicPage() {
