@@ -162,10 +162,7 @@ export default function Home() {
                   onSubmit={(e) => {
                     e.preventDefault();
                     const raw = employerQuery.trim();
-                    if (!raw) {
-                      router.push("/jobs");
-                      return;
-                    }
+                    if (!raw) return;
                     const normalized = normalizeJobSearch(raw);
                     router.push(`/jobs?q=${encodeURIComponent(normalized || raw)}`);
                   }}
@@ -180,7 +177,7 @@ export default function Home() {
                         placeholder="İlan, kategori veya anahtar kelime ara..."
                       />
                     </div>
-                    <Button type="submit" size="sm" className="rounded-xl bg-slate-900 hover:bg-slate-800 h-11 px-6 font-black text-white">
+                    <Button type="submit" size="sm" disabled={!employerQuery.trim()} className="rounded-xl bg-slate-900 hover:bg-slate-800 h-11 px-6 font-black text-white disabled:opacity-50 disabled:cursor-not-allowed">
                       Ara
                     </Button>
                   </div>
@@ -205,7 +202,7 @@ export default function Home() {
           <div className="space-y-8">
             <div className="flex flex-col md:flex-row items-center justify-between gap-4">
               <h2 className="text-2xl font-black text-gray-900 uppercase tracking-tight">Kategorileri Keşfet</h2>
-              <Link href="/categories/all" className="text-[10px] font-black uppercase text-amber-600 hover:underline tracking-widest">Kategori Listesi →</Link>
+              <Link href="/kategoriler/tumu" className="text-[10px] font-black uppercase text-amber-600 hover:underline tracking-widest">Kategori Listesi →</Link>
             </div>
             <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
               {categories.map((cat) => (
@@ -267,10 +264,7 @@ export default function Home() {
                 onSubmit={(e) => {
                   e.preventDefault();
                   const raw = query.trim();
-                  if (!raw) {
-                    router.push("/jobs");
-                    return;
-                  }
+                  if (!raw) return;
                   const normalized = normalizeJobSearch(raw);
                   router.push(`/jobs?q=${encodeURIComponent(normalized || raw)}`);
                 }}
@@ -285,7 +279,7 @@ export default function Home() {
                       placeholder="Hizmet, etiket veya ilan ara..."
                     />
                   </div>
-                  <Button size="lg" className="rounded-xl bg-[#0b1f4d] hover:bg-[#102d73] h-12 px-8 font-black text-white">
+                  <Button size="lg" disabled={!query.trim()} className="rounded-xl bg-[#0b1f4d] hover:bg-[#102d73] h-12 px-8 font-black text-white disabled:opacity-50 disabled:cursor-not-allowed">
                     Ara
                   </Button>
                 </div>
@@ -348,13 +342,13 @@ export default function Home() {
       <section className="py-10 md:py-14 bg-[#f5f9ff] border-y border-blue-100">
         <div className="container mx-auto px-4 md:px-6">
           <div className="rounded-2xl border border-blue-100 bg-white/70 p-3 md:p-4">
-            <div className="flex items-center gap-3 md:gap-4 overflow-x-auto pb-1">
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-3 md:gap-4">
               {trustHighlights.map((item, idx) => {
                 const isActive = idx === activeTrustIndex;
                 return (
                   <div
                     key={item}
-                    className={`shrink-0 rounded-xl border px-4 md:px-6 py-3 md:py-4 font-black text-xs md:text-sm whitespace-nowrap transition-all duration-500 ${
+                    className={`rounded-xl border px-4 md:px-6 py-3 md:py-4 font-black text-xs md:text-sm transition-all duration-500 ${
                       isActive
                         ? "bg-[#0b5bd3] text-white border-[#0b5bd3] shadow-md"
                         : "bg-white text-[#0b1f4d] border-blue-200 hover:bg-[#0b5bd3] hover:text-white"
