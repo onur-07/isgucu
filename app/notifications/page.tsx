@@ -25,30 +25,40 @@ const iconMap = {
     system: { icon: Bell, color: "bg-purple-100 text-purple-600" },
 };
 
-const notificationInitKey = (username: string) => `isgucu_notifications_init_${usernameKey(username)}`;
+const notificationKeyByUserId = (userId: string) => `isgucu_notifications_uid_${String(userId || "").trim()}`;
+const notificationInitKeyByUserId = (userId: string) => `isgucu_notifications_init_uid_${String(userId || "").trim()}`;
 
-function loadNotifications(username: string): Notification[] {
+function loadNotifications(userId: string, username: string): Notification[] {
+    const uidKey = notificationKeyByUserId(userId);
+    const uidInitKey = notificationInitKeyByUserId(userId);
+
     const normKey = `isgucu_notifications_${usernameKey(username)}`;
     const legacyKey = `isgucu_notifications_${username}`;
-    const initKey = notificationInitKey(username);
+
+    const uidRaw = localStorage.getItem(uidKey);
+    if (uidRaw) return JSON.parse(uidRaw);
 
     const raw = localStorage.getItem(normKey);
-    if (raw) return JSON.parse(raw);
+    if (raw) {
+        localStorage.setItem(uidKey, raw);
+        localStorage.setItem(uidInitKey, "1");
+        return JSON.parse(raw);
+    }
 
     const legacyRaw = localStorage.getItem(legacyKey);
     if (legacyRaw) {
-        localStorage.setItem(normKey, legacyRaw);
-        localStorage.setItem(initKey, "1");
+        localStorage.setItem(uidKey, legacyRaw);
+        localStorage.setItem(uidInitKey, "1");
         return JSON.parse(legacyRaw);
     }
 
-    if (localStorage.getItem(initKey) === "1") {
+    if (localStorage.getItem(uidInitKey) === "1") {
         return [];
     }
 
     const defaultNotifs: Notification[] = [
         {
-            id: Date.now().toString(),
+            id: "welcome-rules-v1",
             type: "system",
             title: "Hoş Geldiniz!",
             description:
@@ -59,19 +69,25 @@ function loadNotifications(username: string): Notification[] {
             actionLabel: "Kuralları Oku",
         },
     ];
-    localStorage.setItem(normKey, JSON.stringify(defaultNotifs));
-    localStorage.setItem(initKey, "1");
+    localStorage.setItem(uidKey, JSON.stringify(defaultNotifs));
+    localStorage.setItem(uidInitKey, "1");
     return defaultNotifs;
 }
 
-function saveNotifications(username: string, notifs: Notification[]) {
+function saveNotifications(userId: string, username: string, notifs: Notification[]) {
+    const uidKey = notificationKeyByUserId(userId);
+    const uidInitKey = notificationInitKeyByUserId(userId);
+
     const normKey = `isgucu_notifications_${usernameKey(username)}`;
     const legacyKey = `isgucu_notifications_${username}`;
-    const initKey = notificationInitKey(username);
-    localStorage.setItem(normKey, JSON.stringify(notifs));
-    localStorage.setItem(initKey, "1");
+
+    localStorage.setItem(uidKey, JSON.stringify(notifs));
+    localStorage.setItem(uidInitKey, "1");
     try {
         localStorage.removeItem(legacyKey);
+    } catch {}
+    try {
+        localStorage.removeItem(normKey);
     } catch {}
     window.dispatchEvent(new Event("storage_updated"));
 }
@@ -86,34 +102,34 @@ export default function NotificationsPage() {
             router.push("/login");
             return;
         }
-        setNotifications(loadNotifications(user.username));
+        setNotifications(loadNotifications(user.id, user.username));
     }, [user, router]);
 
     const markRead = (id: string) => {
         if (!user) return;
         const updated = notifications.map((n) => (n.id === id ? { ...n, read: true } : n));
         setNotifications(updated);
-        saveNotifications(user.username, updated);
+        saveNotifications(user.id, user.username, updated);
     };
 
     const deleteNotification = (id: string) => {
         if (!user) return;
         const updated = notifications.filter((n) => n.id !== id);
         setNotifications(updated);
-        saveNotifications(user.username, updated);
+        saveNotifications(user.id, user.username, updated);
     };
 
     const markAllRead = () => {
         if (!user) return;
         const updated = notifications.map((n) => ({ ...n, read: true }));
         setNotifications(updated);
-        saveNotifications(user.username, updated);
+        saveNotifications(user.id, user.username, updated);
     };
 
     const clearAll = () => {
         if (!user) return;
         setNotifications([]);
-        saveNotifications(user.username, []);
+        saveNotifications(user.id, user.username, []);
     };
 
     if (!user) return null;

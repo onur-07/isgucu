@@ -42,16 +42,27 @@ export function Header() {
 
     const updateCounts = useCallback(() => {
         if (!user) return;
+        const uidKey = `isgucu_notifications_uid_${String(user.id || "").trim()}`;
+        const uidInitKey = `isgucu_notifications_init_uid_${String(user.id || "").trim()}`;
+
         const key = `isgucu_notifications_${usernameKey(user.username)}`;
         const legacyKey = `isgucu_notifications_${user.username}`;
-        const initKey = `isgucu_notifications_init_${usernameKey(user.username)}`;
 
-        let raw = localStorage.getItem(key);
+        let raw = localStorage.getItem(uidKey);
+        if (!raw) {
+            const userKeyRaw = localStorage.getItem(key);
+            if (userKeyRaw) {
+                localStorage.setItem(uidKey, userKeyRaw);
+                localStorage.setItem(uidInitKey, "1");
+                raw = userKeyRaw;
+            }
+        }
+
         if (!raw) {
             const legacyRaw = localStorage.getItem(legacyKey);
             if (legacyRaw) {
-                localStorage.setItem(key, legacyRaw);
-                localStorage.setItem(initKey, "1");
+                localStorage.setItem(uidKey, legacyRaw);
+                localStorage.setItem(uidInitKey, "1");
                 try {
                     localStorage.removeItem(legacyKey);
                 } catch { }
@@ -60,13 +71,13 @@ export function Header() {
         }
 
         if (!raw) {
-            if (localStorage.getItem(initKey) === "1") {
+            if (localStorage.getItem(uidInitKey) === "1") {
                 setNotifCount(0);
                 return;
             }
             const defaultNotifs = [
                 {
-                    id: "welcome-" + Date.now(),
+                    id: "welcome-rules-v1",
                     type: "system",
                     title: "Hoş Geldiniz!",
                     description:
@@ -77,8 +88,8 @@ export function Header() {
                     actionLabel: "Kuralları Oku",
                 },
             ];
-            localStorage.setItem(key, JSON.stringify(defaultNotifs));
-            localStorage.setItem(initKey, "1");
+            localStorage.setItem(uidKey, JSON.stringify(defaultNotifs));
+            localStorage.setItem(uidInitKey, "1");
             setNotifCount(defaultNotifs.length);
             return;
         }
@@ -97,12 +108,12 @@ export function Header() {
             actionLabel?: string;
         }) => {
             if (!user) return;
-            const key = `isgucu_notifications_${usernameKey(user.username)}`;
-            const initKey = `isgucu_notifications_init_${usernameKey(user.username)}`;
+            const uidKey = `isgucu_notifications_uid_${String(user.id || "").trim()}`;
+            const uidInitKey = `isgucu_notifications_init_uid_${String(user.id || "").trim()}`;
 
             let list: any[] = [];
             try {
-                const raw = localStorage.getItem(key);
+                const raw = localStorage.getItem(uidKey);
                 list = raw ? (JSON.parse(raw) as any[]) : [];
             } catch {
                 list = [];
@@ -124,8 +135,8 @@ export function Header() {
                 ...list,
             ];
 
-            localStorage.setItem(key, JSON.stringify(next));
-            localStorage.setItem(initKey, "1");
+            localStorage.setItem(uidKey, JSON.stringify(next));
+            localStorage.setItem(uidInitKey, "1");
             window.dispatchEvent(new Event("storage_updated"));
         },
         [user]
