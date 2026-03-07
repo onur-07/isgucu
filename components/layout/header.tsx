@@ -30,6 +30,7 @@ export function Header() {
     const [orderApprovalCount, setOrderApprovalCount] = useState(0);
     const [supportReplyCount, setSupportReplyCount] = useState(0);
     const [siteConfig, setSiteConfig] = useState(getSiteConfig());
+    const [navReady, setNavReady] = useState(false);
 
     const handleLogout = async () => {
         setProfileOpen(false);
@@ -134,11 +135,15 @@ export function Header() {
 
     const bustConfigCache = useCallback(() => {
         // Force rehydration from remote to bust any stale local cache
-        hydrateSiteConfigFromRemote().then((remoteConfig) => {
-            if (remoteConfig) {
-                setSiteConfig(remoteConfig);
-            }
-        });
+        hydrateSiteConfigFromRemote()
+            .then((remoteConfig) => {
+                if (remoteConfig) {
+                    setSiteConfig(remoteConfig);
+                }
+            })
+            .finally(() => {
+                setNavReady(true);
+            });
     }, []);
 
     useEffect(() => {
@@ -444,14 +449,16 @@ export function Header() {
         styleTag.textContent = siteConfig.customCss || "";
     }, [siteConfig]);
 
-    const navLinks = [
-        ...siteConfig.headerLinks.map(l => ({ ...l, label: normalizeNavLabel(l.label) })),
-        ...(siteConfig.managedPages || [])
-            .filter((p: { enabled?: boolean; showInHeader?: boolean; slug?: string; menuLabel?: string; title?: string }) =>
-                Boolean(p.enabled) && Boolean(p.showInHeader) && p.slug !== "/" && p.slug !== "/about"
-            )
-            .map((p) => ({ href: p.slug, label: normalizeNavLabel(p.menuLabel || p.title) })),
-    ];
+    const navLinks = navReady
+        ? [
+            ...siteConfig.headerLinks.map(l => ({ ...l, label: normalizeNavLabel(l.label) })),
+            ...(siteConfig.managedPages || [])
+                .filter((p: { enabled?: boolean; showInHeader?: boolean; slug?: string; menuLabel?: string; title?: string }) =>
+                    Boolean(p.enabled) && Boolean(p.showInHeader) && p.slug !== "/" && p.slug !== "/about"
+                )
+                .map((p) => ({ href: p.slug, label: normalizeNavLabel(p.menuLabel || p.title) })),
+        ]
+        : [];
 
     const roleLinks = user?.role === "employer"
         ? [{ href: "/post-job", label: "İş İlanı Ver", color: "text-blue-600 font-semibold" }]
