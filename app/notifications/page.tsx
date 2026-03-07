@@ -131,6 +131,15 @@ export default function NotificationsPage() {
         saveNotifications(user.id, user.username, updated);
     };
 
+    const handleNotificationClick = (notif: Notification) => {
+        if (!user) return;
+        markRead(notif.id);
+        const target = String(notif.actionUrl || "").trim();
+        if (target) {
+            router.push(target);
+        }
+    };
+
     const deleteNotification = (id: string) => {
         if (!user) return;
         const updated = notifications.filter((n) => n.id !== id);
@@ -198,7 +207,7 @@ export default function NotificationsPage() {
                                 <div className={`h-10 w-10 rounded-full flex items-center justify-center shrink-0 ${config.color}`}>
                                     <Icon className="h-5 w-5" />
                                 </div>
-                                <div className="flex-1 min-w-0 cursor-pointer" onClick={() => markRead(notif.id)}>
+                                <div className="flex-1 min-w-0 cursor-pointer" onClick={() => handleNotificationClick(notif)}>
                                     <div className="flex items-center justify-between">
                                         <h3 className={`text-sm ${!notif.read ? "font-bold text-gray-900" : "font-medium text-gray-700"}`}>
                                             {notif.title}
