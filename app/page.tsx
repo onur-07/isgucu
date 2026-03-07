@@ -248,7 +248,7 @@ export default function Home() {
                 <span key={rotatingHeroWords[activeHeroWordIndex]} className="text-orange-300 animate-in fade-in duration-500 inline-block">
                   {rotatingHeroWords[activeHeroWordIndex]}
                 </span>
-                <span className="text-blue-100"> çok kolay</span>
+                <span className="text-blue-100"> çok kolay!</span>
               </p>
               <h1 className="text-4xl md:text-6xl font-black tracking-tight leading-tight text-white">
                 Projeni <span className="text-cyan-300 italic">Doğru Uzmanla</span> Büyüt
