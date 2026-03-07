@@ -36,16 +36,6 @@ type OrderDeliveryRow = {
     created_at: string;
 };
 
-type DisputeRow = {
-    id: string | number;
-    order_id: string | number;
-    opened_by_id: string;
-    opened_by_role: "employer" | "freelancer";
-    reason: string;
-    status: string;
-    created_at: string;
-};
-
 type WorkspaceItemRow = {
     id: string | number;
     order_id: string | number;
@@ -68,6 +58,26 @@ type ScheduleRequestRow = {
     created_at: string;
 };
 
+type ScheduleDecision = "accepted" | "rejected";
+
+const cancellationStatusLabel = (status: string | null | undefined) => {
+    const s = String(status || "").toLowerCase();
+    if (s === "pending") return "Bekliyor";
+    if (s === "accepted") return "Onaylandı";
+    if (s === "rejected") return "Reddedildi";
+    if (s === "admin_approved") return "Admin Onayladı";
+    if (s === "admin_rejected") return "Admin Reddetti";
+    return "Bilinmiyor";
+};
+
+const scheduleStatusLabel = (status: string | null | undefined) => {
+    const s = String(status || "").toLowerCase();
+    if (s === "pending") return "Onay Bekliyor";
+    if (s === "accepted") return "Onaylandı";
+    if (s === "rejected") return "Reddedildi";
+    return "Bilinmiyor";
+};
+
 const statusConfig = {
     pending: { label: "Bekliyor", icon: Clock, color: "text-yellow-600 bg-yellow-50 border-yellow-200" },
     active: { label: "Devam Ediyor", icon: Clock, color: "text-blue-600 bg-blue-50 border-blue-200" },
@@ -82,7 +92,6 @@ export default function OrdersPage() {
     const [orders, setOrders] = useState<Order[]>([]);
     const [cancelRequests, setCancelRequests] = useState<CancellationRequestRow[]>([]);
     const [revisionNotesByOrder, setRevisionNotesByOrder] = useState<Record<string, string>>({});
-    const [disputes, setDisputes] = useState<DisputeRow[]>([]);
     const [workspaceByOrder, setWorkspaceByOrder] = useState<Record<string, WorkspaceItemRow[]>>({});
     const [workspaceInputByOrder, setWorkspaceInputByOrder] = useState<Record<string, string>>({});
     const [scheduleRequests, setScheduleRequests] = useState<ScheduleRequestRow[]>([]);
@@ -114,6 +123,16 @@ export default function OrdersPage() {
     const [acceptOpen, setAcceptOpen] = useState(false);
     const [acceptOrder, setAcceptOrder] = useState<Order | null>(null);
     const [openedFromNotif, setOpenedFromNotif] = useState(false);
+    const [disputeOpen, setDisputeOpen] = useState(false);
+    const [disputeOrder, setDisputeOrder] = useState<Order | null>(null);
+    const [disputeReason, setDisputeReason] = useState("");
+    const [scheduleOpen, setScheduleOpen] = useState(false);
+    const [scheduleOrder, setScheduleOrder] = useState<Order | null>(null);
+    const [scheduleDays, setScheduleDays] = useState("1");
+    const [scheduleReason, setScheduleReason] = useState("");
+    const [scheduleDecisionOpen, setScheduleDecisionOpen] = useState(false);
+    const [scheduleDecisionRequest, setScheduleDecisionRequest] = useState<ScheduleRequestRow | null>(null);
+    const [scheduleDecisionType, setScheduleDecisionType] = useState<ScheduleDecision>("accepted");
 
     const loadCancellationRequests = async (orderRows: Order[]) => {
         const ids = orderRows.map((o) => Number(o.id)).filter((n) => Number.isFinite(n) && n > 0);
@@ -163,24 +182,6 @@ export default function OrdersPage() {
             if (msg) next[key] = msg;
         }
         setRevisionNotesByOrder(next);
-    };
-
-    const loadDisputes = async (orderRows: Order[]) => {
-        const ids = orderRows.map((o) => Number(o.id)).filter((n) => Number.isFinite(n) && n > 0);
-        if (ids.length === 0) {
-            setDisputes([]);
-            return;
-        }
-        const { data, error } = await supabase
-            .from("order_disputes")
-            .select("id, order_id, opened_by_id, opened_by_role, reason, status, created_at")
-            .in("order_id", ids)
-            .order("created_at", { ascending: false });
-        if (error) {
-            setDisputes([]);
-            return;
-        }
-        setDisputes((data || []) as unknown as DisputeRow[]);
     };
 
     const loadWorkspace = async (orderRows: Order[]) => {
@@ -234,7 +235,6 @@ export default function OrdersPage() {
             setOrders(rows);
             await loadCancellationRequests(rows);
             await loadRevisionNotes(rows);
-            await loadDisputes(rows);
             await loadWorkspace(rows);
             await loadScheduleRequests(rows);
         })();
@@ -334,7 +334,6 @@ export default function OrdersPage() {
         setOrders(rows);
         await loadCancellationRequests(rows);
         await loadRevisionNotes(rows);
-        await loadDisputes(rows);
         await loadWorkspace(rows);
         await loadScheduleRequests(rows);
     };
@@ -410,7 +409,7 @@ export default function OrdersPage() {
         const ratioRaw = String(ratioInput || "").trim();
         const ratio = Number(ratioRaw);
         if (!Number.isFinite(ratio) || ratio < 0 || ratio > 100) {
-            window.alert("Gecerli bir oran secin (0-100).");
+            window.alert("Geçerli bir oran seçin (0-100).");
             return;
         }
         const compensationRate = ratio / 100;
@@ -421,7 +420,7 @@ export default function OrdersPage() {
         const responderUsername = requesterRole === "employer" ? order.freelancer : order.client;
         const responderId = requesterRole === "employer" ? (order.sellerId || "") : (order.buyerId || "");
         if (!responderId) {
-            window.alert("Karsi taraf bilgisi bulunamadi.");
+            window.alert("Karşı taraf bilgisi bulunamadı.");
             return;
         }
 
@@ -460,7 +459,7 @@ export default function OrdersPage() {
             });
             await refresh();
         } catch (e: any) {
-            window.alert("Iptal talebi olusturulamadi: " + String(e?.message || e));
+            window.alert("İptal talebi oluşturulamadı: " + String(e?.message || e));
         } finally {
             setBusyId("");
         }
@@ -489,16 +488,16 @@ export default function OrdersPage() {
             await refresh();
             if (typeof window !== "undefined") window.dispatchEvent(new Event("orders_updated"));
         } catch (e: any) {
-            window.alert("Iptal talebi guncellenemedi: " + String(e?.message || e));
+            window.alert("İptal talebi güncellenemedi: " + String(e?.message || e));
         } finally {
             setBusyId("");
         }
     };
 
-    const handleOpenDispute = async (order: Order) => {
+    const handleOpenDispute = async (order: Order, reasonInput: string) => {
         if (!user || !order?.id || busyId) return;
-        const reason = window.prompt("Anlasmazlik nedeni nedir?");
-        if (!reason || !reason.trim()) return;
+        const reason = String(reasonInput || "").trim();
+        if (!reason) return;
         setBusyId(String(order.id));
         try {
             const openedByRole = user.role === "employer" ? "employer" : "freelancer";
@@ -512,6 +511,37 @@ export default function OrdersPage() {
                 },
             ]);
             if (error) throw error;
+
+            const counterpartyUsername = openedByRole === "employer" ? order.freelancer : order.client;
+            const openerLabel = openedByRole === "employer" ? "İş veren" : "Freelancer";
+            pushLocalNotification(counterpartyUsername, {
+                id: `dispute-open-counterparty-${Date.now()}-${String(order.id)}`,
+                type: "system",
+                title: "Sipariş için anlaşmazlık bildirimi",
+                description: `${openerLabel} #${order.id} siparişi için anlaşmazlık başlattı. Detayları sipariş ekranından takip edebilirsiniz.`,
+                actionUrl: "/orders",
+                actionLabel: "Siparişe Git",
+            });
+            pushLocalNotification(user.username, {
+                id: `dispute-open-self-${Date.now()}-${String(order.id)}`,
+                type: "system",
+                title: "Anlaşmazlık kaydı oluşturuldu",
+                description: `#${order.id} siparişiniz için anlaşmazlık talebiniz alındı. Yönetici ekibe iletildi.`,
+                actionUrl: "/orders",
+                actionLabel: "Siparişe Git",
+            });
+            await supabase.from("support_tickets").insert([
+                {
+                    from_user: "SYSTEM",
+                    from_email: "system@isgucu.local",
+                    subject: `Anlaşmazlık Bildirimi #${String(order.id)}`,
+                    category: "Sipariş Sorunu",
+                    message: `Sipariş #${String(order.id)} için anlaşmazlık açıldı.\nAçan: ${String(user.username)} (${openedByRole})\nTaraflar: ${String(order.client)} ↔ ${String(order.freelancer)}\nGerekçe: ${reason}`,
+                    status: "open",
+                    priority: "high",
+                },
+            ]);
+
             await logAuditEvent(supabase, {
                 actorId: user.id,
                 actorRole: user.role,
@@ -522,7 +552,7 @@ export default function OrdersPage() {
             });
             await refresh();
         } catch (e: any) {
-            window.alert("Anlasmazlik olusturulamadi: " + String(e?.message || e));
+            window.alert("Anlaşmazlık oluşturulamadı: " + String(e?.message || e));
         } finally {
             setBusyId("");
         }
@@ -549,7 +579,7 @@ export default function OrdersPage() {
             setWorkspaceInputByOrder((prev) => ({ ...prev, [String(order.id)]: "" }));
             await refresh();
         } catch (e: any) {
-            window.alert("Workspace kaydi eklenemedi: " + String(e?.message || e));
+            window.alert("Çalışma alanı kaydı eklenemedi: " + String(e?.message || e));
         } finally {
             setBusyId("");
         }
@@ -566,7 +596,7 @@ export default function OrdersPage() {
             if (error) throw error;
             await refresh();
         } catch (e: any) {
-            window.alert("Workspace kaydi guncellenemedi: " + String(e?.message || e));
+            window.alert("Çalışma alanı kaydı güncellenemedi: " + String(e?.message || e));
         } finally {
             setBusyId("");
         }
@@ -574,13 +604,19 @@ export default function OrdersPage() {
 
     const handleCreateScheduleRequest = async (order: Order) => {
         if (!user || !order?.id || busyId) return;
-        const daysRaw = window.prompt("Kac gun ek sure istiyorsunuz? (sayi)");
-        const days = Number(String(daysRaw || "").trim());
-        if (!Number.isFinite(days) || days <= 0) return;
-        const reason = window.prompt("Kisa aciklama (opsiyonel):") || "";
+        if (user.role !== "freelancer") {
+            window.alert("Teslim tarihi uzatma talebini sadece freelancer oluşturabilir.");
+            return;
+        }
+        const days = Number(String(scheduleDays || "").trim());
+        if (!Number.isFinite(days) || days <= 0) {
+            window.alert("Lütfen geçerli bir gün sayısı girin.");
+            return;
+        }
+        const reason = String(scheduleReason || "").trim();
 
-        const requesterRole = user.role === "employer" ? "employer" : "freelancer";
-        const responderId = requesterRole === "employer" ? (order.sellerId || "") : (order.buyerId || "");
+        const requesterRole = "freelancer";
+        const responderId = order.buyerId || "";
         if (!responderId) return;
 
         setBusyId(`sch-${String(order.id)}`);
@@ -592,14 +628,31 @@ export default function OrdersPage() {
                     requester_role: requesterRole,
                     responder_id: responderId,
                     requested_days: days,
-                    reason: reason.trim() || null,
+                    reason: reason || null,
                     status: "pending",
                 },
             ]);
             if (error) throw error;
+
+            pushLocalNotification(order.client, {
+                id: `schedule-request-employer-${Date.now()}-${String(order.id)}`,
+                type: "order",
+                title: "Teslim tarihi onay talebi",
+                description: `#${order.id} siparişi için freelancer +${days} gün ek süre talep etti. Onayınız bekleniyor.`,
+                actionUrl: "/orders",
+                actionLabel: "Talebi İncele",
+            });
+            pushLocalNotification(order.freelancer, {
+                id: `schedule-request-freelancer-${Date.now()}-${String(order.id)}`,
+                type: "order",
+                title: "Teslim tarihi talebiniz gönderildi",
+                description: `#${order.id} siparişiniz için +${days} gün talebiniz iş verene iletildi.`,
+                actionUrl: "/orders",
+                actionLabel: "Siparişe Git",
+            });
             await refresh();
         } catch (e: any) {
-            window.alert("Tarih uzatma talebi olusturulamadi: " + String(e?.message || e));
+            window.alert("Tarih uzatma talebi oluşturulamadı: " + String(e?.message || e));
         } finally {
             setBusyId("");
         }
@@ -615,6 +668,14 @@ export default function OrdersPage() {
                 .update({ status: decision, responded_at: new Date().toISOString() })
                 .eq("id", Number(req.id));
             if (updErr) throw updErr;
+            const { data: ordDetails, error: ordDetErr } = await supabase
+                .from("orders")
+                .select("id, total_days, buyer_username, seller_username, created_at")
+                .eq("id", Number(req.order_id))
+                .maybeSingle();
+            if (ordDetErr) throw ordDetErr;
+
+            let newDueText = "";
             if (decision === "accepted") {
                 const { data: ord, error: ordErr } = await supabase
                     .from("orders")
@@ -623,15 +684,47 @@ export default function OrdersPage() {
                     .maybeSingle();
                 if (ordErr) throw ordErr;
                 const currentDays = Number((ord as any)?.total_days || 0);
+                const updatedTotalDays = currentDays + Number(req.requested_days || 0);
                 const { error: ordUpdErr } = await supabase
                     .from("orders")
-                    .update({ total_days: currentDays + Number(req.requested_days || 0) })
+                    .update({ total_days: updatedTotalDays })
                     .eq("id", Number(req.order_id));
                 if (ordUpdErr) throw ordUpdErr;
+
+                const createdAtRaw = String((ordDetails as any)?.created_at || "");
+                const createdAt = new Date(createdAtRaw);
+                if (Number.isFinite(createdAt.getTime())) {
+                    const due = new Date(createdAt.getTime() + updatedTotalDays * 24 * 60 * 60 * 1000);
+                    newDueText = due.toLocaleDateString("tr-TR");
+                }
             }
+
+            const buyerUsername = String((ordDetails as any)?.buyer_username || "");
+            const sellerUsername = String((ordDetails as any)?.seller_username || "");
+            const decisionLabel = decision === "accepted" ? "onaylandı" : "reddedildi";
+            const baseDesc =
+                decision === "accepted"
+                    ? `Teslim tarihi talebi onaylandı.${newDueText ? ` Yeni teslim tarihi: ${newDueText}.` : ""}`
+                    : "Teslim tarihi talebi reddedildi.";
+            pushLocalNotification(buyerUsername, {
+                id: `schedule-response-buyer-${Date.now()}-${String(req.id)}`,
+                type: "order",
+                title: "Teslim tarihi talebi sonuçlandı",
+                description: `#${String(req.order_id)} siparişindeki talep ${decisionLabel}. ${baseDesc}`,
+                actionUrl: "/orders",
+                actionLabel: "Siparişe Git",
+            });
+            pushLocalNotification(sellerUsername, {
+                id: `schedule-response-seller-${Date.now()}-${String(req.id)}`,
+                type: "order",
+                title: "Teslim tarihi talebi sonuçlandı",
+                description: `#${String(req.order_id)} siparişindeki talep ${decisionLabel}. ${baseDesc}`,
+                actionUrl: "/orders",
+                actionLabel: "Siparişe Git",
+            });
             await refresh();
         } catch (e: any) {
-            window.alert("Tarih talebi guncellenemedi: " + String(e?.message || e));
+            window.alert("Tarih talebi güncellenemedi: " + String(e?.message || e));
         } finally {
             setBusyId("");
         }
@@ -939,6 +1032,64 @@ export default function OrdersPage() {
         await handleAcceptDelivery(order);
     };
 
+    const openDisputeModal = (order: Order) => {
+        setDisputeOrder(order);
+        setDisputeReason("");
+        setDisputeOpen(true);
+    };
+
+    const submitDisputeModal = async () => {
+        if (!disputeOrder) return;
+        const reason = disputeReason.trim();
+        if (!reason) {
+            window.alert("Lütfen anlaşmazlık gerekçesini yazın.");
+            return;
+        }
+        const order = disputeOrder;
+        setDisputeOpen(false);
+        setDisputeOrder(null);
+        await handleOpenDispute(order, reason);
+    };
+
+    const openScheduleModal = (order: Order) => {
+        if (user?.role !== "freelancer") {
+            window.alert("Teslim tarihi talebini sadece freelancer açabilir.");
+            return;
+        }
+        setScheduleOrder(order);
+        setScheduleDays("1");
+        setScheduleReason("");
+        setScheduleOpen(true);
+    };
+
+    const submitScheduleModal = async () => {
+        if (!scheduleOrder) return;
+        const dayNum = Number(scheduleDays);
+        if (!Number.isFinite(dayNum) || dayNum <= 0) {
+            window.alert("Lütfen geçerli bir gün sayısı girin.");
+            return;
+        }
+        const order = scheduleOrder;
+        setScheduleOpen(false);
+        setScheduleOrder(null);
+        await handleCreateScheduleRequest(order);
+    };
+
+    const openScheduleDecisionModal = (req: ScheduleRequestRow, decision: ScheduleDecision) => {
+        setScheduleDecisionRequest(req);
+        setScheduleDecisionType(decision);
+        setScheduleDecisionOpen(true);
+    };
+
+    const submitScheduleDecisionModal = async () => {
+        if (!scheduleDecisionRequest) return;
+        const req = scheduleDecisionRequest;
+        const decision = scheduleDecisionType;
+        setScheduleDecisionOpen(false);
+        setScheduleDecisionRequest(null);
+        await handleRespondScheduleRequest(req, decision);
+    };
+
     useEffect(() => {
         if (openedFromNotif) return;
         if (typeof window === "undefined") return;
@@ -1014,7 +1165,7 @@ export default function OrdersPage() {
                             </div>
                             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                                 <div>
-                                    <div className="text-xs font-black uppercase tracking-widest text-slate-500 mb-1">Iletisim</div>
+                                    <div className="text-xs font-black uppercase tracking-widest text-slate-500 mb-1">İletişim</div>
                                     <Input value={reviewCommunication} onChange={(e) => setReviewCommunication(e.target.value.replace(/[^\d]/g, "").slice(0, 1) || "5")} />
                                 </div>
                                 <div>
@@ -1022,7 +1173,7 @@ export default function OrdersPage() {
                                     <Input value={reviewQuality} onChange={(e) => setReviewQuality(e.target.value.replace(/[^\d]/g, "").slice(0, 1) || "5")} />
                                 </div>
                                 <div>
-                                    <div className="text-xs font-black uppercase tracking-widest text-slate-500 mb-1">Hiz</div>
+                                    <div className="text-xs font-black uppercase tracking-widest text-slate-500 mb-1">Hız</div>
                                     <Input value={reviewSpeed} onChange={(e) => setReviewSpeed(e.target.value.replace(/[^\d]/g, "").slice(0, 1) || "5")} />
                                 </div>
                             </div>
@@ -1131,6 +1282,85 @@ export default function OrdersPage() {
                     </div>
                 </div>
             )}
+            {disputeOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+                    <div className="w-full max-w-lg rounded-2xl bg-white shadow-2xl border border-slate-100">
+                        <div className="p-5 border-b border-slate-100 flex items-center justify-between">
+                            <h3 className="font-black text-slate-900">Anlaşmazlık Bildirimi</h3>
+                            <Button variant="outline" size="sm" onClick={() => setDisputeOpen(false)}>Kapat</Button>
+                        </div>
+                        <div className="p-5 space-y-2">
+                            <div className="text-xs text-gray-500">Gerekçe</div>
+                            <Textarea
+                                value={disputeReason}
+                                onChange={(e) => setDisputeReason(e.target.value)}
+                                className="min-h-[140px]"
+                                placeholder="Anlaşmazlık nedenini net ve kısa şekilde yazın."
+                            />
+                        </div>
+                        <div className="p-5 border-t border-slate-100 flex flex-col sm:flex-row gap-2 sm:justify-end">
+                            <Button variant="outline" onClick={() => setDisputeOpen(false)}>Vazgeç</Button>
+                            <Button onClick={submitDisputeModal} disabled={!!busyId} className="bg-rose-600 hover:bg-rose-700 text-white">Gönder</Button>
+                        </div>
+                    </div>
+                </div>
+            )}
+            {scheduleOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+                    <div className="w-full max-w-lg rounded-2xl bg-white shadow-2xl border border-slate-100">
+                        <div className="p-5 border-b border-slate-100 flex items-center justify-between">
+                            <h3 className="font-black text-slate-900">Teslim Tarihi Talebi</h3>
+                            <Button variant="outline" size="sm" onClick={() => setScheduleOpen(false)}>Kapat</Button>
+                        </div>
+                        <div className="p-5 space-y-4">
+                            <div className="space-y-2">
+                                <div className="text-xs text-gray-500">Ek gün sayısı</div>
+                                <Input
+                                    value={scheduleDays}
+                                    onChange={(e) => setScheduleDays(e.target.value.replace(/[^\d]/g, ""))}
+                                    inputMode="numeric"
+                                    placeholder="Örn: 2"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <div className="text-xs text-gray-500">Açıklama (opsiyonel)</div>
+                                <Textarea
+                                    value={scheduleReason}
+                                    onChange={(e) => setScheduleReason(e.target.value)}
+                                    className="min-h-[120px]"
+                                    placeholder="Neden ek süreye ihtiyaç duyduğunuzu yazın."
+                                />
+                            </div>
+                        </div>
+                        <div className="p-5 border-t border-slate-100 flex flex-col sm:flex-row gap-2 sm:justify-end">
+                            <Button variant="outline" onClick={() => setScheduleOpen(false)}>Vazgeç</Button>
+                            <Button onClick={submitScheduleModal} disabled={!!busyId} className="bg-sky-600 hover:bg-sky-700 text-white">İş Veren Onayına Gönder</Button>
+                        </div>
+                    </div>
+                </div>
+            )}
+            {scheduleDecisionOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+                    <div className="w-full max-w-md rounded-2xl bg-white shadow-2xl border border-slate-100">
+                        <div className="p-5 border-b border-slate-100">
+                            <h3 className="font-black text-slate-900">Teslim Tarihi Talebi</h3>
+                            <p className="text-sm text-gray-500 mt-1">
+                                {scheduleDecisionType === "accepted" ? "Bu talebi onaylarsanız teslim günü otomatik güncellenir." : "Bu talebi reddetmek istediğinize emin misiniz?"}
+                            </p>
+                        </div>
+                        <div className="p-5 flex flex-col sm:flex-row gap-2 sm:justify-end">
+                            <Button variant="outline" onClick={() => setScheduleDecisionOpen(false)}>Vazgeç</Button>
+                            <Button
+                                onClick={submitScheduleDecisionModal}
+                                disabled={!!busyId}
+                                className={scheduleDecisionType === "accepted" ? "bg-sky-600 hover:bg-sky-700 text-white" : "bg-red-600 hover:bg-red-700 text-white"}
+                            >
+                                {scheduleDecisionType === "accepted" ? "Onayla" : "Reddet"}
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+            )}
             <div className="mb-8 text-center sm:text-left">
                 <h1 className="text-3xl font-bold font-heading">📋 {pageTitle}</h1>
                 <p className="text-gray-500 mt-1">{pageDescription}</p>
@@ -1221,7 +1451,7 @@ export default function OrdersPage() {
                                                     onClick={() => openCancelModal(order)}
                                                     className="bg-red-50 hover:bg-red-100 text-red-700 border border-red-200"
                                                 >
-                                                    Iptal Talebi
+                                                    İptal Talebi
                                                 </Button>
                                             )}
                                             {order.status === "pending" && isMineEmployer && paymentPending && (
@@ -1277,17 +1507,17 @@ export default function OrdersPage() {
                                                 <Button
                                                     size="sm"
                                                     disabled={busy}
-                                                    onClick={() => handleOpenDispute(order)}
+                                                    onClick={() => openDisputeModal(order)}
                                                     className="bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200"
                                                 >
-                                                    Anlasmazlik
+                                                    Anlaşmazlık
                                                 </Button>
                                             )}
                                             {(order.status === "active" || order.status === "delivered") && (
                                                 <Button
                                                     size="sm"
                                                     disabled={busy}
-                                                    onClick={() => handleCreateScheduleRequest(order)}
+                                                    onClick={() => openScheduleModal(order)}
                                                     className="bg-sky-50 hover:bg-sky-100 text-sky-700 border border-sky-200"
                                                 >
                                                     Tarih Talebi
@@ -1307,7 +1537,7 @@ export default function OrdersPage() {
                                 {latestCancelReq && (
                                     <div className="mt-4 rounded-xl border border-red-100 bg-red-50/50 p-4">
                                         <div className="text-[10px] font-black uppercase tracking-widest text-red-600">
-                                            Iptal Talebi - {String(latestCancelReq.status || "").toUpperCase()}
+                                            İptal Talebi - {cancellationStatusLabel(latestCancelReq.status)}
                                         </div>
                                         <div className="mt-2 text-xs text-gray-700">
                                             Talep: <strong>{latestCancelReq.requester_username}</strong> - Pay orani:{" "}
@@ -1332,19 +1562,19 @@ export default function OrdersPage() {
                                                     onClick={() => handleRespondCancellation(latestCancelReq, "accepted")}
                                                     className="bg-red-600 hover:bg-red-700 text-white"
                                                 >
-                                                    Iptali Onayla
+                                                    İptali Onayla
                                                 </Button>
                                             </div>
                                         )}
                                     </div>
                                 )}
                                 <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-4">
-                                    <div className="text-[10px] font-black uppercase tracking-widest text-slate-500">Order Workspace</div>
+                                    <div className="text-[10px] font-black uppercase tracking-widest text-slate-500">Sipariş Çalışma Alanı</div>
                                     <div className="mt-3 flex gap-2">
                                         <Input
                                             value={workspaceInputByOrder[String(order.id)] || ""}
                                             onChange={(e) => setWorkspaceInputByOrder((prev) => ({ ...prev, [String(order.id)]: e.target.value }))}
-                                            placeholder="Yapilacak veya not ekle..."
+                                            placeholder="Yapılacak veya not ekle..."
                                         />
                                         <Button
                                             size="sm"
@@ -1366,27 +1596,17 @@ export default function OrdersPage() {
                                         ))}
                                     </div>
                                 </div>
-                                {!!disputes.find((d) => Number(d.order_id) === Number(order.id)) && (
-                                    <div className="mt-4 rounded-xl border border-rose-200 bg-rose-50 p-4">
-                                        <div className="text-[10px] font-black uppercase tracking-widest text-rose-700">
-                                            Anlasmazlik Kaydi: {String(disputes.find((d) => Number(d.order_id) === Number(order.id))?.status || "").toUpperCase()}
-                                        </div>
-                                        <div className="text-sm text-rose-900 mt-1">
-                                            {String(disputes.find((d) => Number(d.order_id) === Number(order.id))?.reason || "")}
-                                        </div>
-                                    </div>
-                                )}
                                 {scheduleRequests.filter((r) => Number(r.order_id) === Number(order.id)).slice(0, 1).map((sr) => (
                                     <div key={String(sr.id)} className="mt-4 rounded-xl border border-sky-200 bg-sky-50 p-4">
                                         <div className="text-[10px] font-black uppercase tracking-widest text-sky-700">
-                                            Tarih Talebi - {String(sr.status || "").toUpperCase()}
+                                            Tarih Talebi - {scheduleStatusLabel(sr.status)}
                                         </div>
-                                        <div className="text-sm text-sky-900 mt-1">Ek sure: {sr.requested_days} gun</div>
+                                        <div className="text-sm text-sky-900 mt-1">Ek süre: {sr.requested_days} gün</div>
                                         {sr.reason ? <div className="text-xs text-sky-800 mt-1">{sr.reason}</div> : null}
                                         {String(sr.status) === "pending" && String(sr.responder_id) === String(user.id) ? (
                                             <div className="mt-2 flex gap-2 justify-end">
-                                                <Button size="sm" variant="outline" onClick={() => handleRespondScheduleRequest(sr, "rejected")}>Reddet</Button>
-                                                <Button size="sm" className="bg-sky-600 hover:bg-sky-700 text-white" onClick={() => handleRespondScheduleRequest(sr, "accepted")}>Onayla</Button>
+                                                <Button size="sm" variant="outline" onClick={() => openScheduleDecisionModal(sr, "rejected")}>Reddet</Button>
+                                                <Button size="sm" className="bg-sky-600 hover:bg-sky-700 text-white" onClick={() => openScheduleDecisionModal(sr, "accepted")}>Onayla</Button>
                                             </div>
                                         ) : null}
                                     </div>
