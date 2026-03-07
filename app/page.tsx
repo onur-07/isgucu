@@ -29,11 +29,21 @@ export default function Home() {
   const [query, setQuery] = useState("");
   const [employerQuery, setEmployerQuery] = useState("");
   const [freelancerJobCount, setFreelancerJobCount] = useState(0);
+  const trustHighlights = useMemo(
+    () => [
+      "Aktif Freelancer Havuzu",
+      "Doğru Uzman ile Tamamlanmış Projeler",
+      "Şeffaf Değerlendirme Sistemi",
+      "Hızlı Destek, Güvenilir Ödeme ve %100 Memnuniyet",
+    ],
+    []
+  );
   const rotatingHeroWords = useMemo(
     () => ["Freelancerlık", "Proje Yaptırmak", "Doğru Uzmanı Bulmak"],
     []
   );
   const [activeHeroWordIndex, setActiveHeroWordIndex] = useState(0);
+  const [activeTrustIndex, setActiveTrustIndex] = useState(0);
   const [managedHome, setManagedHome] = useState(() => {
     const config = getSiteConfig();
     return (config.managedPages || []).find((p) => p.slug === "/" || p.id === "home-system") || null;
@@ -70,6 +80,13 @@ export default function Home() {
     }, 2200);
     return () => window.clearInterval(intervalId);
   }, [rotatingHeroWords.length]);
+
+  useEffect(() => {
+    const intervalId = window.setInterval(() => {
+      setActiveTrustIndex((prev) => (prev + 1) % trustHighlights.length);
+    }, 2800);
+    return () => window.clearInterval(intervalId);
+  }, [trustHighlights.length]);
 
   useEffect(() => {
     const refreshManagedHome = () => {
@@ -330,25 +347,23 @@ export default function Home() {
 
       <section className="py-10 md:py-14 bg-[#f5f9ff] border-y border-blue-100">
         <div className="container mx-auto px-4 md:px-6">
-          <div className="overflow-hidden rounded-2xl border border-blue-100 bg-white/70 p-3 md:p-4">
-            <div className="marquee-track flex items-center gap-3 md:gap-4 w-max">
-              {[
-                "Aktif Freelancer Havuzu",
-                "Doğru Uzman ile Tamamlanmış Projeler",
-                "Şeffaf Değerlendirme Sistemi",
-                "Hızlı Destek, Güvenilir Ödeme ve %100 Memnuniyet",
-                "Aktif Freelancer Havuzu",
-                "Doğru Uzman ile Tamamlanmış Projeler",
-                "Şeffaf Değerlendirme Sistemi",
-                "Hızlı Destek, Güvenilir Ödeme ve %100 Memnuniyet",
-              ].map((item, idx) => (
-                <div
-                  key={`${item}-${idx}`}
-                  className="shrink-0 rounded-xl border border-blue-200 bg-white px-4 md:px-6 py-3 md:py-4 text-[#0b1f4d] font-black text-xs md:text-sm whitespace-nowrap transition-colors duration-300 hover:bg-[#0b5bd3] hover:text-white"
-                >
-                  {item}
-                </div>
-              ))}
+          <div className="rounded-2xl border border-blue-100 bg-white/70 p-3 md:p-4">
+            <div className="flex items-center gap-3 md:gap-4 overflow-x-auto pb-1">
+              {trustHighlights.map((item, idx) => {
+                const isActive = idx === activeTrustIndex;
+                return (
+                  <div
+                    key={item}
+                    className={`shrink-0 rounded-xl border px-4 md:px-6 py-3 md:py-4 font-black text-xs md:text-sm whitespace-nowrap transition-all duration-500 ${
+                      isActive
+                        ? "bg-[#0b5bd3] text-white border-[#0b5bd3] shadow-md"
+                        : "bg-white text-[#0b1f4d] border-blue-200 hover:bg-[#0b5bd3] hover:text-white"
+                    }`}
+                  >
+                    {item}
+                  </div>
+                );
+              })}
             </div>
           </div>
 
@@ -375,24 +390,6 @@ export default function Home() {
           </div>
         </div>
       </section>
-      <style jsx>{`
-        .marquee-track {
-          animation: marquee-x 34s linear infinite;
-        }
-        @keyframes marquee-x {
-          0% {
-            transform: translateX(0);
-          }
-          100% {
-            transform: translateX(-50%);
-          }
-        }
-        @media (max-width: 768px) {
-          .marquee-track {
-            animation-duration: 42s;
-          }
-        }
-      `}</style>
 
       {/* Categories */}
       <section className="py-18 md:py-20 bg-white">
