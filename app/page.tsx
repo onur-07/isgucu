@@ -397,8 +397,8 @@ export default function Home() {
                 En çok talep gören alanlara göz at, doğru hizmeti bul.
               </p>
             </div>
-            <Link href="/freelancers" className="text-[10px] font-black uppercase tracking-widest text-blue-600 hover:underline">
-              Tüm Hizmetler →
+            <Link href="/kategoriler/tumu" className="text-[10px] font-black uppercase tracking-widest text-blue-600 hover:underline">
+              Tümünü Gör →
             </Link>
           </div>
 
