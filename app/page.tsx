@@ -251,7 +251,7 @@ export default function Home() {
                 <span className="text-blue-100"> çok kolay!</span>
               </p>
               <h1 className="text-4xl md:text-6xl font-black tracking-tight leading-tight text-white">
-                Projeni <span className="text-cyan-300 italic">Doğru Uzmanla</span> Büyüt
+                Projeni <span className="text-cyan-300 italic">Doğru Uzmanla</span> Yap
               </h1>
               {homeSummaryText.length > 0 ? (
                 <p className="max-w-2xl text-blue-100/90 text-sm md:text-base font-semibold leading-relaxed mx-auto lg:mx-0">
@@ -351,7 +351,7 @@ export default function Home() {
                     className={`rounded-xl border px-4 md:px-6 py-3 md:py-4 font-black text-xs md:text-sm transition-all duration-500 ${
                       isActive
                         ? "bg-[#0b5bd3] text-white border-[#0b5bd3] shadow-md"
-                        : "bg-white text-[#0b1f4d] border-blue-200 hover:bg-[#0b5bd3] hover:text-white"
+                        : "bg-white text-[#0b1f4d] border-blue-200"
                     }`}
                   >
                     {item}
@@ -359,28 +359,6 @@ export default function Home() {
                 );
               })}
             </div>
-          </div>
-
-          <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
-            {[
-              {
-                title: "Aynı Gün Başlangıç",
-                desc: "Doğru freelancer ile dakikalar içinde eşleşip projene hızlıca başlanır.",
-              },
-              {
-                title: "Anlaşmalı Teslim Akışı",
-                desc: "Teslim, revizyon ve onay adımları net olduğundan süreç kontrol sende olur.",
-              },
-              {
-                title: "Ödeme Korumalı Sistem",
-                desc: "Ödeme onay süreciyle yönetilir; iki taraf için de güvenli işleyiş sağlanır.",
-              },
-            ].map((item) => (
-              <div key={item.title} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                <h3 className="text-base font-black text-slate-900">{item.title}</h3>
-                <p className="mt-2 text-sm font-semibold text-slate-600 leading-relaxed">{item.desc}</p>
-              </div>
-            ))}
           </div>
         </div>
       </section>
@@ -463,6 +441,34 @@ export default function Home() {
           </div>
 
           <JobList limit={6} />
+
+          <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-4">
+            {[
+              {
+                title: "Aynı Gün Başlangıç",
+                desc: "Doğru freelancer ile dakikalar içinde eşleşip projene hızlıca başlanır.",
+                bg: "bg-blue-50",
+                border: "border-blue-200",
+              },
+              {
+                title: "Anlaşmalı Teslim Akışı",
+                desc: "Teslim, revizyon ve onay adımları net olduğundan süreç kontrol sende olur.",
+                bg: "bg-indigo-50",
+                border: "border-indigo-200",
+              },
+              {
+                title: "Ödeme Korumalı Sistem",
+                desc: "Ödeme onay süreciyle yönetilir; iki taraf için de güvenli işleyiş sağlanır.",
+                bg: "bg-cyan-50",
+                border: "border-cyan-200",
+              },
+            ].map((item) => (
+              <div key={item.title} className={`rounded-2xl border p-5 shadow-sm ${item.bg} ${item.border}`}>
+                <h3 className="text-base font-black text-slate-900">{item.title}</h3>
+                <p className="mt-2 text-sm font-semibold text-slate-700 leading-relaxed">{item.desc}</p>
+              </div>
+            ))}
+          </div>
         </div>
       </section>
 
@@ -564,4 +570,3 @@ export default function Home() {
     </div>
   );
 }
-
