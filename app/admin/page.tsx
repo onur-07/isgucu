@@ -439,7 +439,9 @@ function AdminPageContent() {
         const merged = new Map<string, DeletedUserRow>();
         for (const arr of groups) {
             for (const r of arr || []) {
-                const k = String(r.original_user_id || "");
+                const emailKey = String(r.email || "").trim().toLowerCase();
+                const idKey = String(r.original_user_id || "").trim();
+                const k = emailKey ? `email:${emailKey}` : idKey ? `id:${idKey}` : "";
                 if (!k) continue;
                 // Aynı kullanıcı için daha yeni kayıt varsa güncelle
                 const existing = merged.get(k);
