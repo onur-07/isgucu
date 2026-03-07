@@ -35,21 +35,40 @@ function loadNotifications(userId: string, username: string): Notification[] {
     const normKey = `isgucu_notifications_${usernameKey(username)}`;
     const legacyKey = `isgucu_notifications_${username}`;
 
-    const uidRaw = localStorage.getItem(uidKey);
-    if (uidRaw) return JSON.parse(uidRaw);
+    const parseList = (raw: string | null) => {
+        if (!raw) return [] as Notification[];
+        try {
+            const parsed = JSON.parse(raw);
+            return Array.isArray(parsed) ? (parsed as Notification[]) : [];
+        } catch {
+            return [];
+        }
+    };
+    const mergeById = (...lists: Notification[][]) => {
+        const seen = new Set<string>();
+        const merged: Notification[] = [];
+        for (const list of lists) {
+            for (const item of list) {
+                const id = String(item?.id || "");
+                if (!id || seen.has(id)) continue;
+                seen.add(id);
+                merged.push(item);
+            }
+        }
+        return merged;
+    };
 
-    const raw = localStorage.getItem(normKey);
-    if (raw) {
-        localStorage.setItem(uidKey, raw);
+    const uidList = parseList(localStorage.getItem(uidKey));
+    const normList = parseList(localStorage.getItem(normKey));
+    const legacyList = parseList(localStorage.getItem(legacyKey));
+    const merged = mergeById(uidList, normList, legacyList);
+    if (merged.length > 0) {
+        localStorage.setItem(uidKey, JSON.stringify(merged));
         localStorage.setItem(uidInitKey, "1");
-        return JSON.parse(raw);
-    }
-
-    const legacyRaw = localStorage.getItem(legacyKey);
-    if (legacyRaw) {
-        localStorage.setItem(uidKey, legacyRaw);
-        localStorage.setItem(uidInitKey, "1");
-        return JSON.parse(legacyRaw);
+        try {
+            localStorage.removeItem(legacyKey);
+        } catch {}
+        return merged;
     }
 
     if (localStorage.getItem(uidInitKey) === "1") {

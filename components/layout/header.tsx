@@ -48,26 +48,41 @@ export function Header() {
         const key = `isgucu_notifications_${usernameKey(user.username)}`;
         const legacyKey = `isgucu_notifications_${user.username}`;
 
-        let raw = localStorage.getItem(uidKey);
-        if (!raw) {
-            const userKeyRaw = localStorage.getItem(key);
-            if (userKeyRaw) {
-                localStorage.setItem(uidKey, userKeyRaw);
-                localStorage.setItem(uidInitKey, "1");
-                raw = userKeyRaw;
+        const parseList = (raw: string | null) => {
+            if (!raw) return [] as Array<{ id?: string; read?: boolean }>;
+            try {
+                const parsed = JSON.parse(raw);
+                return Array.isArray(parsed) ? parsed : [];
+            } catch {
+                return [];
             }
-        }
+        };
+        const mergeById = (...lists: Array<Array<{ id?: string; read?: boolean }>>) => {
+            const seen = new Set<string>();
+            const merged: Array<{ id?: string; read?: boolean }> = [];
+            for (const list of lists) {
+                for (const item of list) {
+                    const id = String(item?.id || "");
+                    if (!id || seen.has(id)) continue;
+                    seen.add(id);
+                    merged.push(item);
+                }
+            }
+            return merged;
+        };
 
-        if (!raw) {
-            const legacyRaw = localStorage.getItem(legacyKey);
-            if (legacyRaw) {
-                localStorage.setItem(uidKey, legacyRaw);
-                localStorage.setItem(uidInitKey, "1");
-                try {
-                    localStorage.removeItem(legacyKey);
-                } catch { }
-                raw = legacyRaw;
-            }
+        const uidList = parseList(localStorage.getItem(uidKey));
+        const userList = parseList(localStorage.getItem(key));
+        const legacyList = parseList(localStorage.getItem(legacyKey));
+        const merged = mergeById(uidList, userList, legacyList);
+        const raw = merged.length > 0 ? JSON.stringify(merged) : "";
+
+        if (merged.length > 0) {
+            localStorage.setItem(uidKey, raw);
+            localStorage.setItem(uidInitKey, "1");
+            try {
+                localStorage.removeItem(legacyKey);
+            } catch { }
         }
 
         if (!raw) {
