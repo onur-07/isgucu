@@ -69,6 +69,30 @@ export default function Home() {
         q: "Freelancer olarak bana uygun işleri nasıl görürüm?",
         a: "Yetenek ve hizmet alanlarına göre filtrelenen öneri iş listesiyle sana uygun ilanlar öne çıkarılır.",
       },
+      {
+        q: "Freelancer seçerken nelere dikkat etmeliyim?",
+        a: "Profil, puan/yorumlar, portföy ve teklif detaylarını karşılaştır. Teslim süresi ve revizyon şartlarını netleştir.",
+      },
+      {
+        q: "İletişim bilgisi paylaşabilir miyim?",
+        a: "Hayır. Telefon/e-posta/IBAN gibi bilgileri paylaşma. Mesajlaşma ve ödeme süreçlerini platform üzerinden yürüt.",
+      },
+      {
+        q: "Siparişi iptal edersem ne olur?",
+        a: "İptal akışı sipariş durumuna göre işler. Uygun koşullarda iptal ve iade süreçleri sistem üzerinden takip edilir.",
+      },
+      {
+        q: "Ödeme ne zaman serbest bırakılır?",
+        a: "Teslim sonrası onay adımı tamamlanınca ödeme süreci ilerler. Böylece iki taraf için de güvenli işleyiş sağlanır.",
+      },
+      {
+        q: "Anlaşmazlık olursa ne yapmalıyım?",
+        a: "Sipariş üzerinden detayları yazılı tut ve destek ile iletişime geç. Sistem kayıtları sürecin hızlı çözülmesine yardımcı olur.",
+      },
+      {
+        q: "Destek ekibine nasıl ulaşırım?",
+        a: "Destek sayfasından ticket açabilirsin. Konu ve detayları yaz, gerekirse dosya ekleyerek daha hızlı çözüm al.",
+      },
     ],
     []
   );
